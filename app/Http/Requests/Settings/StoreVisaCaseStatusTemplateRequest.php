@@ -1,0 +1,27 @@
+<?php
+
+namespace App\Http\Requests\Settings;
+
+use App\Enums\VisaCaseStatus;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+
+class StoreVisaCaseStatusTemplateRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user() !== null && $this->user()->agency_id !== null;
+    }
+
+    /**
+     * @return array<string, array<int, mixed>|string>
+     */
+    public function rules(): array
+    {
+        return [
+            'templates' => ['required', 'array', 'size:7'],
+            'templates.*.status_key' => ['required', 'distinct', Rule::enum(VisaCaseStatus::class)],
+            'templates.*.label' => ['required', 'string', 'max:80'],
+        ];
+    }
+}
