@@ -4,6 +4,7 @@ use App\Http\Controllers\Settings\AgencyController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\TaskStatusTemplateController;
+use App\Http\Controllers\Settings\TeamController;
 use App\Http\Controllers\Settings\VisaCaseStatusTemplateController;
 use App\Http\Controllers\Settings\VisaCaseTaskTemplateController;
 use App\Http\Controllers\Settings\VisaRequirementLibraryController;
@@ -15,6 +16,8 @@ Route::middleware('auth')->group(function () {
 
     Route::get('settings/agency', [AgencyController::class, 'edit'])->name('settings.agency.edit');
     Route::patch('settings/agency', [AgencyController::class, 'update'])->name('settings.agency.update');
+    Route::get('settings/team', [TeamController::class, 'index'])->name('settings.team.index');
+    Route::post('settings/team', [TeamController::class, 'store'])->name('settings.team.store');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');

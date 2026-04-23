@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { ArrowLeft, ChevronDown, Pencil, Plus } from 'lucide-vue-next';
+import { ArrowLeft, Check, ChevronDown, Copy, ExternalLink, Pencil, Plus } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 interface ClientFamilyMember {
@@ -60,6 +60,8 @@ interface ClientDetail {
     status: string;
     status_label: string;
     owner_name: null | string;
+    portal_url: string;
+    portal_login_url: string;
     family_members: ClientFamilyMember[];
     education_history: ClientEducationRecord[];
     work_experiences: ClientWorkExperience[];
@@ -117,6 +119,7 @@ const props = defineProps<{
 
 const page = usePage<SharedData>();
 const isEditDialogOpen = ref(false);
+const copiedPortalLoginLink = ref(false);
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -258,6 +261,19 @@ const formatDateRange = (start: null | string, end: null | string, isCurrent: bo
     return `${startLabel} - ${endLabel}`;
 };
 
+const copyPortalLoginLink = async () => {
+    if (!globalThis.navigator?.clipboard) {
+        return;
+    }
+
+    await globalThis.navigator.clipboard.writeText(props.client.portal_login_url);
+    copiedPortalLoginLink.value = true;
+
+    globalThis.setTimeout(() => {
+        copiedPortalLoginLink.value = false;
+    }, 2000);
+};
+
 const formatValue = (value: null | string) => {
     if (!value) {
         return 'Not set';
@@ -322,6 +338,36 @@ const statusClasses = (status: string) =>
 
             <div class="grid gap-3 xl:grid-cols-[minmax(0,1.3fr)_320px]">
                 <div class="space-y-3">
+                    <section class="app-panel p-3.5">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div class="space-y-2">
+                                <div>
+                                    <h2 class="text-base font-semibold text-slate-950 dark:text-slate-50">Portal access</h2>
+                                    <p class="text-sm text-muted-foreground">Clients use the direct portal link the first time, then sign in with email and password if they ever lose it.</p>
+                                </div>
+
+                                <div class="flex flex-wrap gap-2">
+                                    <Button as-child variant="outline" size="sm" class="gap-2">
+                                        <a :href="client.portal_url" target="_blank" rel="noreferrer">
+                                            <ExternalLink class="size-4" />
+                                            Open portal
+                                        </a>
+                                    </Button>
+                                    <Button type="button" variant="outline" size="sm" class="gap-2" @click="copyPortalLoginLink">
+                                        <Check v-if="copiedPortalLoginLink" class="size-4" />
+                                        <Copy v-else class="size-4" />
+                                        {{ copiedPortalLoginLink ? 'Copied login URL' : 'Copy login URL' }}
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div class="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-900/60 dark:text-slate-300">
+                                Portal login:
+                                <span class="font-medium text-slate-950 dark:text-slate-50">{{ client.portal_login_url }}</span>
+                            </div>
+                        </div>
+                    </section>
+
                     <section class="app-panel p-3.5">
                         <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
                             <div class="space-y-3">

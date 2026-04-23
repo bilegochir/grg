@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import AppNotificationMenu from '@/components/AppNotificationMenu.vue';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import type { BreadcrumbItemType, SharedData } from '@/types';
 import { usePage } from '@inertiajs/vue3';
@@ -29,9 +30,12 @@ const currentTitle = computed(() => props.breadcrumbs[props.breadcrumbs.length -
                     <h1 class="truncate text-lg font-semibold tracking-tight text-slate-950 dark:text-slate-50">{{ currentTitle }}</h1>
                 </div>
             </div>
-            <p class="hidden max-w-56 truncate text-sm text-muted-foreground md:block">
-                {{ agencyName }}
-            </p>
+            <div class="flex items-center gap-3">
+                <p class="hidden max-w-56 truncate text-sm text-muted-foreground md:block">
+                    {{ agencyName }}
+                </p>
+                <AppNotificationMenu />
+            </div>
         </div>
     </header>
 </template>

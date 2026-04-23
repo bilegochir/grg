@@ -9,9 +9,9 @@ use App\Http\Requests\UpdateClientRequest;
 use App\Models\Attachment;
 use App\Models\Client;
 use App\Support\ActivityTimeline;
+use App\Support\ClientProfileDataNormalizer;
 use App\Support\TaskStatusTemplateResolver;
 use App\Support\VisaCaseStatusTemplateResolver;
-use Illuminate\Support\Arr;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -100,8 +100,7 @@ class ClientController extends Controller
         Client $client,
         VisaCaseStatusTemplateResolver $visaCaseStatusTemplateResolver,
         TaskStatusTemplateResolver $taskStatusTemplateResolver,
-    ): Response
-    {
+    ): Response {
         $this->authorize('view', $client);
 
         $client->load([
@@ -134,6 +133,8 @@ class ClientController extends Controller
                 'status_label' => $client->status->label(),
                 'owner_name' => $client->owner?->name,
                 'current_address' => $client->current_address,
+                'portal_url' => route('portal.show', $client->portal_token),
+                'portal_login_url' => route('portal.login'),
                 'family_members' => $client->family_members ?? [],
                 'education_history' => $client->education_history ?? [],
                 'work_experiences' => $client->work_experiences ?? [],
@@ -175,7 +176,7 @@ class ClientController extends Controller
         ]);
     }
 
-    public function store(StoreClientRequest $request): RedirectResponse
+    public function store(StoreClientRequest $request, ClientProfileDataNormalizer $clientProfileDataNormalizer): RedirectResponse
     {
         $this->authorize('create', Client::class);
 
@@ -183,76 +184,23 @@ class ClientController extends Controller
         abort_if($agency === null, 403);
 
         $agency->clients()->create([
-            ...$this->prepareClientData($request->validated()),
+            ...$clientProfileDataNormalizer->normalize($request->validated()),
             'owner_id' => $request->user()->id,
         ]);
 
         return to_route('clients.index')->with('success', 'Client created successfully.');
     }
 
-    public function update(UpdateClientRequest $request, Client $client): RedirectResponse
-    {
+    public function update(
+        UpdateClientRequest $request,
+        Client $client,
+        ClientProfileDataNormalizer $clientProfileDataNormalizer,
+    ): RedirectResponse {
         $this->authorize('update', $client);
 
-        $client->update($this->prepareClientData($request->validated()));
+        $client->update($clientProfileDataNormalizer->normalize($request->validated()));
 
         return to_route('clients.show', $client)->with('success', 'Client updated successfully.');
-    }
-
-    /**
-     * @param array<string, mixed> $validated
-     * @return array<string, mixed>
-     */
-    private function prepareClientData(array $validated): array
-    {
-        $validated['family_members'] = $this->normalizeRows(
-            Arr::get($validated, 'family_members', []),
-            ['relationship', 'full_name', 'date_of_birth', 'nationality', 'occupation', 'is_accompanying'],
-        );
-        $validated['education_history'] = $this->normalizeRows(
-            Arr::get($validated, 'education_history', []),
-            ['institution', 'qualification', 'field_of_study', 'country', 'start_date', 'end_date', 'is_current'],
-        );
-        $validated['work_experiences'] = $this->normalizeRows(
-            Arr::get($validated, 'work_experiences', []),
-            ['employer', 'job_title', 'country', 'start_date', 'end_date', 'is_current', 'summary'],
-        );
-
-        return $validated;
-    }
-
-    /**
-     * @param mixed $rows
-     * @param list<string> $allowedKeys
-     * @return list<array<string, mixed>>
-     */
-    private function normalizeRows(mixed $rows, array $allowedKeys): array
-    {
-        if (! is_array($rows)) {
-            return [];
-        }
-
-        return collect($rows)
-            ->filter(fn ($row): bool => is_array($row))
-            ->map(function (array $row) use ($allowedKeys): array {
-                $normalizedRow = Arr::only($row, $allowedKeys);
-
-                foreach ($normalizedRow as $key => $value) {
-                    if ($value === '') {
-                        $normalizedRow[$key] = null;
-                    }
-                }
-
-                return $normalizedRow;
-            })
-            ->filter(function (array $row): bool {
-                return collect($row)
-                    ->reject(fn ($value, $key): bool => in_array($key, ['is_accompanying', 'is_current'], true))
-                    ->filter(fn ($value): bool => $value !== null)
-                    ->isNotEmpty();
-            })
-            ->values()
-            ->all();
     }
 
     /**

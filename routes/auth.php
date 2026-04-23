@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Auth\AcceptInvitationController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
@@ -11,6 +12,11 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
+    Route::get('team-invitations/{agencyInvitation}/{token}', [AcceptInvitationController::class, 'create'])
+        ->name('team-invitations.accept');
+    Route::put('team-invitations/{agencyInvitation}/{token}', [AcceptInvitationController::class, 'store'])
+        ->name('team-invitations.store');
+
     Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');
 

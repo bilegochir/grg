@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
+use Illuminate\Notifications\DatabaseNotification;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -55,6 +56,43 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => $request->session()->get('success'),
             ],
+            'notifications' => fn (): ?array => $this->notificationData($request),
+        ];
+    }
+
+    /**
+     * @return array{items: list<array<string, mixed>>, unread_count: int}|null
+     */
+    private function notificationData(Request $request): ?array
+    {
+        $user = $request->user();
+
+        if ($user === null) {
+            return null;
+        }
+
+        $notifications = $user->notifications()
+            ->latest()
+            ->limit(8)
+            ->get();
+
+        return [
+            'unread_count' => $user->unreadNotifications()->count(),
+            'items' => $notifications
+                ->map(fn (DatabaseNotification $notification): array => [
+                    'id' => (string) $notification->id,
+                    'kind' => (string) ($notification->data['kind'] ?? 'system'),
+                    'title' => (string) ($notification->data['title'] ?? 'Notification'),
+                    'message' => $notification->data['message'] ?? null,
+                    'context' => $notification->data['context'] ?? null,
+                    'action_label' => (string) ($notification->data['action_label'] ?? 'Open'),
+                    'destination_url' => (string) ($notification->data['action_url'] ?? route('dashboard')),
+                    'open_url' => route('notifications.open', $notification),
+                    'created_at' => $notification->created_at?->toIso8601String(),
+                    'read_at' => $notification->read_at?->toIso8601String(),
+                ])
+                ->values()
+                ->all(),
         ];
     }
 }

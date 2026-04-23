@@ -18,7 +18,7 @@ const props = withDefaults(
     defineProps<{
         title: string;
         routeName: string;
-        routeParameter: number;
+        routeParameter: number | string | Array<number | string>;
         attachments: AttachmentItem[];
         embedded?: boolean;
     }>(),

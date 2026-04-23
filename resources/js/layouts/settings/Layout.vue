@@ -13,6 +13,10 @@ const sidebarNavGroups: Array<{ title: string; items: NavItem[] }> = [
                 href: '/settings/agency',
             },
             {
+                title: 'Team',
+                href: '/settings/team',
+            },
+            {
                 title: 'Profile',
                 href: '/settings/profile',
             },

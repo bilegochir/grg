@@ -19,6 +19,24 @@ export interface Flash {
     success?: string | null;
 }
 
+export interface NotificationItem {
+    id: string;
+    kind: string;
+    title: string;
+    message: null | string;
+    context: null | string;
+    action_label: string;
+    destination_url: string;
+    open_url: string;
+    created_at: null | string;
+    read_at: null | string;
+}
+
+export interface NotificationsState {
+    unread_count: number;
+    items: NotificationItem[];
+}
+
 export interface BreadcrumbItem {
     title: string;
     href: string;
@@ -35,6 +53,7 @@ export interface SharedData {
     name: string;
     auth: Auth;
     flash: Flash;
+    notifications: NotificationsState | null;
     ziggy: {
         location: string;
         url: string;

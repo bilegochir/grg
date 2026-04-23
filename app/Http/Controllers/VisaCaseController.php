@@ -2,13 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\VisaRequirementStatus;
 use App\Enums\VisaCaseStatus;
+use App\Enums\VisaRequirementStatus;
 use App\Http\Requests\StoreVisaCaseRequest;
 use App\Http\Requests\UpdateVisaCaseRequest;
 use App\Models\Attachment;
+use App\Models\User;
 use App\Models\VisaCase;
 use App\Models\VisaRequirementTemplate;
+use App\Notifications\VisaCaseAssignedNotification;
 use App\Support\ActivityTimeline;
 use App\Support\DefaultVisaCaseTaskCreator;
 use App\Support\TaskStatusTemplateResolver;
@@ -112,8 +114,7 @@ class VisaCaseController extends Controller
         VisaCase $visaCase,
         VisaCaseStatusTemplateResolver $visaCaseStatusTemplateResolver,
         TaskStatusTemplateResolver $taskStatusTemplateResolver,
-    ): Response
-    {
+    ): Response {
         $this->authorize('view', $visaCase);
 
         $visaCase->load([
@@ -189,30 +190,30 @@ class VisaCaseController extends Controller
                 'stay_summary' => $requirementTemplate->stay_summary,
             ],
             'requirements' => $visaCase->requirements->map(fn ($requirement): array => [
-                    'id' => $requirement->id,
-                    'category' => $requirement->category,
-                    'label' => $requirement->label,
-                    'help_text' => $requirement->help_text,
-                    'is_required' => $requirement->is_required,
-                    'status' => $requirement->status->value,
-                    'status_label' => $requirement->status->label(),
-                    'due_at' => $requirement->due_at?->toDateString(),
-                    'requested_at' => $requirement->requested_at?->toIso8601String(),
-                    'received_at' => $requirement->received_at?->toIso8601String(),
-                    'reviewed_at' => $requirement->reviewed_at?->toIso8601String(),
-                    'review_notes' => $requirement->review_notes,
-                    'is_completed' => $requirement->is_completed,
-                    'completed_at' => $requirement->completed_at?->toIso8601String(),
-                    'attachments' => $requirement->attachments->map(fn (Attachment $attachment): array => [
-                        'id' => $attachment->id,
-                        'original_name' => $attachment->original_name,
-                        'mime_type' => $attachment->mime_type,
-                        'size' => $attachment->human_size,
-                        'uploaded_by' => $attachment->uploader?->name,
-                        'created_at' => $attachment->created_at?->toIso8601String(),
-                        'download_url' => route('attachments.show', $attachment),
-                    ])->values(),
-                ])
+                'id' => $requirement->id,
+                'category' => $requirement->category,
+                'label' => $requirement->label,
+                'help_text' => $requirement->help_text,
+                'is_required' => $requirement->is_required,
+                'status' => $requirement->status->value,
+                'status_label' => $requirement->status->label(),
+                'due_at' => $requirement->due_at?->toDateString(),
+                'requested_at' => $requirement->requested_at?->toIso8601String(),
+                'received_at' => $requirement->received_at?->toIso8601String(),
+                'reviewed_at' => $requirement->reviewed_at?->toIso8601String(),
+                'review_notes' => $requirement->review_notes,
+                'is_completed' => $requirement->is_completed,
+                'completed_at' => $requirement->completed_at?->toIso8601String(),
+                'attachments' => $requirement->attachments->map(fn (Attachment $attachment): array => [
+                    'id' => $attachment->id,
+                    'original_name' => $attachment->original_name,
+                    'mime_type' => $attachment->mime_type,
+                    'size' => $attachment->human_size,
+                    'uploaded_by' => $attachment->uploader?->name,
+                    'created_at' => $attachment->created_at?->toIso8601String(),
+                    'download_url' => route('attachments.show', $attachment),
+                ])->values(),
+            ])
                 ->values(),
             'tasks' => $visaCase->tasks->map(fn ($task): array => [
                 'id' => $task->id,
@@ -230,8 +231,7 @@ class VisaCaseController extends Controller
         StoreVisaCaseRequest $request,
         DefaultVisaCaseTaskCreator $defaultVisaCaseTaskCreator,
         VisaRequirementChecklistSynchronizer $checklistSynchronizer,
-    ): RedirectResponse
-    {
+    ): RedirectResponse {
         $this->authorize('create', VisaCase::class);
 
         $agency = $request->user()->agency;
@@ -246,6 +246,8 @@ class VisaCaseController extends Controller
             return $visaCase;
         });
 
+        $this->notifyAssignee($visaCase, null, $request->user());
+
         return to_route('visa-cases.show', $visaCase)->with('success', 'Visa case created successfully.');
     }
 
@@ -254,11 +256,11 @@ class VisaCaseController extends Controller
         VisaCase $visaCase,
         DefaultVisaCaseTaskCreator $defaultVisaCaseTaskCreator,
         VisaRequirementChecklistSynchronizer $checklistSynchronizer,
-    ): RedirectResponse
-    {
+    ): RedirectResponse {
         $this->authorize('update', $visaCase);
 
         $previousStatus = $visaCase->status;
+        $previousAssignedUserId = $visaCase->assigned_user_id;
 
         $visaCase->update($this->validatedVisaCaseData($request));
         $checklistSynchronizer->sync($visaCase);
@@ -266,6 +268,8 @@ class VisaCaseController extends Controller
         if ($visaCase->status !== $previousStatus) {
             $defaultVisaCaseTaskCreator->createForCurrentStatus($visaCase, $request->user());
         }
+
+        $this->notifyAssignee($visaCase, $previousAssignedUserId, $request->user());
 
         return to_route('visa-cases.show', $visaCase)->with('success', 'Visa case updated successfully.');
     }
@@ -331,5 +335,17 @@ class VisaCaseController extends Controller
     private function institutionRequirementKey(string $countryName, string $visaType): string
     {
         return "{$countryName}::{$visaType}";
+    }
+
+    private function notifyAssignee(VisaCase $visaCase, ?int $previousAssignedUserId, User $actor): void
+    {
+        if (
+            $visaCase->assigned_user_id === null
+            || $visaCase->assigned_user_id === $previousAssignedUserId
+        ) {
+            return;
+        }
+
+        $visaCase->assignee?->notify(new VisaCaseAssignedNotification($visaCase, $actor));
     }
 }

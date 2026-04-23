@@ -7,6 +7,8 @@ use App\Enums\TaskStatus;
 use App\Http\Requests\StoreTaskRequest;
 use App\Http\Requests\UpdateTaskRequest;
 use App\Models\Task;
+use App\Models\User;
+use App\Notifications\TaskAssignedNotification;
 use App\Support\TaskStatusTemplateResolver;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -110,10 +112,11 @@ class TaskController extends Controller
         $agency = $request->user()->agency;
         abort_if($agency === null, 403);
 
-        $agency->tasks()->create([
+        $task = $agency->tasks()->create([
             ...$request->validated(),
             'created_by_id' => $request->user()->id,
         ]);
+        $this->notifyAssignee($task, $request->user());
 
         return to_route('tasks.index')->with('success', 'Task created successfully.');
     }
@@ -130,5 +133,14 @@ class TaskController extends Controller
         ]);
 
         return to_route('tasks.index')->with('success', 'Task updated successfully.');
+    }
+
+    private function notifyAssignee(Task $task, User $actor): void
+    {
+        if ($task->assigned_user_id === null) {
+            return;
+        }
+
+        $task->assignee?->notify(new TaskAssignedNotification($task, $actor));
     }
 }
