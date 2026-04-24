@@ -32,62 +32,67 @@ const submit = () => {
 <template>
     <Head title="Client portal login" />
 
-    <div class="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.12),_transparent_28%),linear-gradient(180deg,#f8fafc_0%,#eef2ff_45%,#ffffff_100%)]">
-        <div class="mx-auto flex min-h-screen w-full max-w-6xl items-center px-4 py-8 md:px-6 lg:px-8">
-            <div class="grid w-full gap-6 lg:grid-cols-[minmax(0,1.15fr)_440px]">
-                <section class="rounded-[2rem] border border-white/70 bg-[linear-gradient(145deg,#0f172a_0%,#132238_58%,#1e293b_100%)] px-6 py-8 text-white shadow-[0_24px_80px_-40px_rgba(15,23,42,0.6)] lg:px-8">
-                    <p class="text-xs font-semibold uppercase tracking-[0.28em] text-sky-300">Client Portal</p>
-                    <h1 class="mt-4 max-w-xl text-4xl font-semibold tracking-tight">A simple place to follow your visa case and send what’s needed.</h1>
-                    <p class="mt-4 max-w-xl text-sm leading-7 text-slate-300">
-                        Sign in with your email and password to check progress, upload documents, and keep your details current.
+    <div class="min-h-screen bg-slate-50">
+        <div class="mx-auto flex min-h-screen w-full max-w-5xl items-center px-4 py-8 md:px-6">
+            <div class="grid w-full gap-5 lg:grid-cols-[minmax(0,1fr)_420px]">
+                <section class="rounded-3xl border border-slate-200 bg-white p-6 lg:p-8">
+                    <p class="text-sm font-medium text-sky-700">Customer portal</p>
+                    <h1 class="mt-3 text-3xl font-semibold tracking-tight text-slate-950">A simple place to check your visa case</h1>
+                    <p class="mt-3 max-w-2xl text-base leading-7 text-slate-600">
+                        Use this portal to see what documents are still needed, upload files, and keep your contact details up to date.
                     </p>
 
-                    <div v-if="portal.context" class="mt-8 inline-flex rounded-full border border-sky-400/20 bg-sky-400/10 px-4 py-2 text-sm text-sky-100">
+                    <div v-if="portal.context" class="mt-5 inline-flex rounded-full border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-700">
                         {{ portal.context.client_name }}<span v-if="portal.context.company_name"> • {{ portal.context.company_name }}</span>
                     </div>
 
-                    <div class="mt-10 grid gap-4 sm:grid-cols-3">
-                        <div class="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
-                            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Clear next steps</p>
-                            <p class="mt-2 text-sm text-slate-100">Only the most important document requests appear first.</p>
+                    <div class="mt-8 grid gap-3 sm:grid-cols-3">
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <p class="text-sm font-semibold text-slate-950">1. Sign in</p>
+                            <p class="mt-2 text-sm leading-6 text-slate-600">Use your email and password to open your private portal.</p>
                         </div>
-                        <div class="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
-                            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Case updates</p>
-                            <p class="mt-2 text-sm text-slate-100">See how your application is moving without extra clutter.</p>
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <p class="text-sm font-semibold text-slate-950">2. Upload documents</p>
+                            <p class="mt-2 text-sm leading-6 text-slate-600">We show the important requested files first.</p>
                         </div>
-                        <div class="rounded-[1.5rem] border border-white/10 bg-white/5 p-4">
-                            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Secure access</p>
-                            <p class="mt-2 text-sm text-slate-100">If it is your first visit from the private portal link, you can set your password there.</p>
+                        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <p class="text-sm font-semibold text-slate-950">3. Check progress</p>
+                            <p class="mt-2 text-sm leading-6 text-slate-600">See how your application is moving without extra clutter.</p>
                         </div>
+                    </div>
+
+                    <div class="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                        First visit from your private link? Open that link first and create your password there.
                     </div>
                 </section>
 
-                <section class="rounded-[2rem] border border-white/70 bg-white/90 p-6 shadow-[0_24px_80px_-40px_rgba(15,23,42,0.35)] backdrop-blur lg:p-8">
+                <section class="rounded-3xl border border-slate-200 bg-white p-6 lg:p-8">
                     <div v-if="page.props.flash.success" class="rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
                         {{ page.props.flash.success }}
                     </div>
 
                     <div class="space-y-2" :class="page.props.flash.success ? 'mt-5' : ''">
-                        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Sign in</p>
-                        <h2 class="text-3xl font-semibold tracking-tight text-slate-950">Open your portal</h2>
+                        <p class="text-sm font-medium text-slate-500">Sign in</p>
+                        <h2 class="text-2xl font-semibold tracking-tight text-slate-950">Open your portal</h2>
+                        <p class="text-sm leading-6 text-slate-600">Enter the same email you used with your agency.</p>
                     </div>
 
-                    <form class="mt-6 space-y-4" @submit.prevent="submit">
-                        <div class="grid gap-1.5">
+                    <form class="mt-6 space-y-5" @submit.prevent="submit">
+                        <div class="grid gap-2">
                             <Label for="email">Email address</Label>
-                            <Input id="email" v-model="form.email" type="email" autocomplete="email" />
+                            <Input id="email" v-model="form.email" type="email" autocomplete="email" class="h-11 text-base" />
                             <InputError :message="form.errors.email" />
                         </div>
 
-                        <div class="grid gap-1.5">
+                        <div class="grid gap-2">
                             <Label for="password">Password</Label>
-                            <Input id="password" v-model="form.password" type="password" autocomplete="current-password" />
+                            <Input id="password" v-model="form.password" type="password" autocomplete="current-password" class="h-11 text-base" />
                             <InputError :message="form.errors.password" />
                         </div>
 
                         <input v-model="form.portal_token" type="hidden" />
 
-                        <Button :disabled="form.processing" class="w-full">Continue to portal</Button>
+                        <Button :disabled="form.processing" class="h-11 w-full text-base">Continue</Button>
                     </form>
                 </section>
             </div>

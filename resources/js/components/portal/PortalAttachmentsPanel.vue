@@ -55,45 +55,45 @@ const formatDate = (value: null | string) =>
 </script>
 
 <template>
-    <section :class="embedded ? '' : 'rounded-[2rem] border border-white/70 bg-white/90 p-5 shadow-[0_18px_60px_-36px_rgba(15,23,42,0.35)] backdrop-blur lg:p-6'">
+    <section :class="embedded ? '' : 'rounded-3xl border border-slate-200 bg-white p-5 lg:p-6'">
         <div class="flex items-start justify-between gap-3">
             <div>
-                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Additional files</p>
-                <h2 class="mt-2 text-lg font-semibold tracking-tight text-slate-950">{{ title }}</h2>
+                <p class="text-sm font-medium text-slate-500">Extra documents</p>
+                <h2 class="mt-2 text-xl font-semibold tracking-tight text-slate-950">{{ title }}</h2>
             </div>
-            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
+            <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
                 {{ attachments.length }} file{{ attachments.length === 1 ? '' : 's' }}
             </span>
         </div>
 
-        <form class="mt-5 rounded-[1.75rem] border border-dashed border-slate-300 bg-slate-50/80 p-4" @submit.prevent="submit">
-            <div class="flex flex-col gap-3">
-                <div class="grid gap-1.5">
-                    <Label :for="inputId">Upload document</Label>
+        <form class="mt-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4" @submit.prevent="submit">
+            <div class="grid gap-3">
+                <div class="grid gap-2">
+                    <Label :for="inputId">Choose a file to upload</Label>
                     <input
                         :id="inputId"
                         type="file"
-                        class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                        class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700"
                         @change="onFileChange"
                     />
-                    <p class="text-xs text-slate-500">PDF, JPG, PNG, DOC, DOCX, XLS, XLSX up to 10 MB.</p>
+                    <p class="text-xs text-slate-500">Accepted: PDF, JPG, PNG, DOC, DOCX, XLS, XLSX up to 10 MB.</p>
                     <InputError :message="form.errors.attachment" />
                 </div>
 
-                <Button :disabled="form.processing || !form.attachment" class="w-full sm:w-auto">Upload file</Button>
+                <Button :disabled="form.processing || !form.attachment" class="h-11 w-full text-base sm:w-auto">Upload file</Button>
             </div>
         </form>
 
         <div class="mt-5 space-y-2">
-            <div v-if="attachments.length === 0" class="rounded-[1.5rem] bg-slate-50 px-4 py-3 text-sm text-slate-500">
-                No additional files uploaded yet.
+            <div v-if="attachments.length === 0" class="rounded-2xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
+                No extra files uploaded yet.
             </div>
 
             <div v-else class="space-y-2">
                 <div
                     v-for="attachment in attachments"
                     :key="attachment.id"
-                    class="flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-slate-200 bg-white px-4 py-3"
+                    class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 px-4 py-3"
                 >
                     <div class="min-w-0">
                         <p class="truncate text-sm font-medium text-slate-900">{{ attachment.original_name }}</p>

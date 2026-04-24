@@ -61,7 +61,7 @@ const onFileChange = (event: Event) => {
 };
 
 const formatDate = (value: null | string) =>
-    value ? new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : 'Not set';
+    value ? new Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : 'No due date';
 
 const statusClasses = (status: string) =>
     ({
@@ -74,63 +74,64 @@ const statusClasses = (status: string) =>
 </script>
 
 <template>
-    <article class="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4">
-        <div class="flex flex-col gap-3">
+    <article class="rounded-2xl border border-slate-200 bg-white p-4">
+        <div class="space-y-4">
             <div class="flex flex-wrap items-start justify-between gap-3">
                 <div class="min-w-0">
-                    <p v-if="contextLabel" class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">{{ contextLabel }}</p>
-                    <div class="flex flex-wrap items-center gap-2">
-                        <span v-if="requirement.category" class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600">
-                            {{ requirement.category }}
-                        </span>
-                        <span class="rounded-full px-2.5 py-1 text-[11px] font-medium" :class="statusClasses(requirement.status)">
-                            {{ requirement.status_label }}
-                        </span>
-                        <span
-                            class="rounded-full px-2.5 py-1 text-[11px] font-medium"
-                            :class="requirement.is_required ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-600'"
-                        >
-                            {{ requirement.is_required ? 'Required' : 'Optional' }}
-                        </span>
-                    </div>
-                    <h4 class="mt-2 text-sm font-semibold text-slate-950">{{ requirement.label }}</h4>
-                    <p v-if="requirement.help_text" class="mt-1 text-sm leading-6 text-slate-600">{{ requirement.help_text }}</p>
+                    <p v-if="contextLabel" class="text-sm font-medium text-slate-500">{{ contextLabel }}</p>
+                    <h4 class="mt-1 text-lg font-semibold text-slate-950">{{ requirement.label }}</h4>
+                    <p v-if="requirement.help_text" class="mt-2 text-sm leading-6 text-slate-600">{{ requirement.help_text }}</p>
                 </div>
 
-                <div class="text-right text-xs text-slate-500">
-                    <p>{{ requirement.is_completed ? 'Completed' : 'Waiting for you' }}</p>
-                    <p class="mt-1">Due {{ formatDate(requirement.due_at) }}</p>
+                <div class="flex flex-wrap gap-2">
+                    <span v-if="requirement.category" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                        {{ requirement.category }}
+                    </span>
+                    <span class="rounded-full px-3 py-1 text-xs font-medium" :class="statusClasses(requirement.status)">
+                        {{ requirement.status_label }}
+                    </span>
                 </div>
             </div>
 
-            <form class="rounded-[1.25rem] border border-dashed border-slate-300 bg-white p-3" @submit.prevent="submit">
-                <div class="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-                    <div class="grid flex-1 gap-1.5">
-                        <Label :for="`portal-requirement-attachment-${requirement.id}`">Upload document</Label>
+            <div class="grid gap-3 sm:grid-cols-2">
+                <div class="rounded-xl bg-slate-50 px-4 py-3">
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Status</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">{{ requirement.is_completed ? 'Completed' : 'Still needed' }}</p>
+                </div>
+                <div class="rounded-xl bg-slate-50 px-4 py-3">
+                    <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Due date</p>
+                    <p class="mt-1 text-sm font-medium text-slate-900">{{ formatDate(requirement.due_at) }}</p>
+                </div>
+            </div>
+
+            <form class="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4" @submit.prevent="submit">
+                <div class="grid gap-3">
+                    <div class="grid gap-2">
+                        <Label :for="`portal-requirement-attachment-${requirement.id}`">Choose a file to upload</Label>
                         <input
                             :id="`portal-requirement-attachment-${requirement.id}`"
                             type="file"
-                            class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                            class="block w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-700"
                             @change="onFileChange"
                         />
-                        <p class="text-xs text-slate-500">PDF, JPG, PNG, DOC, DOCX, XLS, XLSX up to 10 MB.</p>
+                        <p class="text-xs text-slate-500">Accepted: PDF, JPG, PNG, DOC, DOCX, XLS, XLSX up to 10 MB.</p>
                         <InputError :message="form.errors.attachment" />
                     </div>
 
-                    <Button :disabled="form.processing || !form.attachment" class="sm:shrink-0">Upload</Button>
+                    <Button :disabled="form.processing || !form.attachment" class="h-11 w-full text-base sm:w-auto">Upload this document</Button>
                 </div>
             </form>
 
             <div class="space-y-2">
-                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Uploaded files</p>
-                <div v-if="requirement.attachments.length === 0" class="rounded-[1.25rem] bg-white px-3 py-2 text-sm text-slate-500">
+                <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Files already uploaded</p>
+                <div v-if="requirement.attachments.length === 0" class="rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
                     No files uploaded yet.
                 </div>
                 <div v-else class="space-y-2">
                     <div
                         v-for="attachment in requirement.attachments"
                         :key="attachment.id"
-                        class="flex flex-wrap items-center justify-between gap-3 rounded-[1.25rem] border border-slate-200 bg-white px-3 py-2"
+                        class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 px-4 py-3"
                     >
                         <div class="min-w-0">
                             <p class="truncate text-sm font-medium text-slate-900">{{ attachment.original_name }}</p>
