@@ -131,7 +131,7 @@ class DashboardController extends Controller
             'recentClients' => Client::query()
                 ->forAgency($agency)
                 ->latest()
-                ->limit(5)
+                ->limit(3)
                 ->get()
                 ->map(fn (Client $client): array => [
                     'id' => $client->id,
@@ -148,7 +148,7 @@ class DashboardController extends Controller
                 ->whereIn('status', $openTaskStatuses)
                 ->orderByRaw('due_at is null')
                 ->orderBy('due_at')
-                ->limit(5)
+                ->limit(3)
                 ->get()
                 ->map(fn (Task $task): array => [
                     'id' => $task->id,
@@ -166,7 +166,7 @@ class DashboardController extends Controller
                 ->forAgency($agency)
                 ->with(['client:id,full_name', 'assignee:id,name'])
                 ->latest()
-                ->limit(5)
+                ->limit(3)
                 ->get()
                 ->map(fn (VisaCase $visaCase): array => [
                     'id' => $visaCase->id,

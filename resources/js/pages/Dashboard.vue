@@ -250,13 +250,6 @@ const visaCaseStatusClasses = (status: string) =>
                                 </span>
                                 <span class="text-[11px] text-muted-foreground">{{ visaCase.assignee_name || 'Unassigned' }}</span>
                             </div>
-
-                            <div class="mt-3 flex items-center justify-between border-t border-border/70 pt-3 text-sm">
-                                <span class="font-medium text-foreground/80 transition-colors group-hover:text-foreground">Open case</span>
-                                <ArrowUpRight
-                                    class="size-4 text-muted-foreground transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-foreground"
-                                />
-                            </div>
                         </Link>
                     </div>
                 </section>
