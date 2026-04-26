@@ -45,10 +45,7 @@ const page = usePage<SharedData>();
 const isCreateDialogOpen = ref(false);
 
 const breadcrumbs: BreadcrumbItem[] = [
-    {
-        title: 'Clients',
-        href: '/clients',
-    },
+    { title: 'Clients', href: '/clients' },
 ];
 
 const filterForm = useForm({
@@ -132,34 +129,34 @@ const statusClasses = (status: string) =>
                 {{ page.props.flash.success }}
             </div>
 
-            <section class="app-panel px-4 py-4 md:px-5">
+            <header class="app-panel px-4 py-4 md:px-5">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                     <div class="flex flex-wrap items-center gap-3">
                         <h2 class="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">Clients</h2>
-                        <span class="text-sm text-muted-foreground">{{ clients.length }} records</span>
+                        <span class="rounded-full bg-muted/50 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">{{ clients.length }} records</span>
                     </div>
 
-                    <Button type="button" class="h-11 gap-2 rounded-2xl px-4" @click="isCreateDialogOpen = true">
+                    <Button type="button" class="h-10 gap-2 rounded-xl px-4" @click="isCreateDialogOpen = true">
                         <Plus class="size-4" />
-                        New client
+                        New Client
                     </Button>
                 </div>
-            </section>
+            </header>
 
             <section class="app-panel px-4 py-4 md:px-5">
                 <form class="grid gap-3 xl:grid-cols-[minmax(0,1.5fr)_220px_auto_auto]" @submit.prevent="submitFilters">
                     <div class="relative">
-                        <Search class="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                        <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/70" />
                         <Input
                             v-model="filterForm.search"
-                            class="h-10 rounded-lg border-border bg-background pl-8"
-                            placeholder="Search name, email, phone, passport, occupation, destination, or source"
+                            class="h-10 rounded-xl border-border/60 bg-muted/10 pl-9 focus:bg-background"
+                            placeholder="Search name, email, phone..."
                         />
                     </div>
 
                     <select
                         v-model="filterForm.status"
-                        class="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
+                        class="flex h-10 w-full rounded-xl border border-border/60 bg-muted/10 px-3 py-2 text-sm focus-visible:bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
                     >
                         <option value="all">All statuses</option>
                         <option v-for="option in statusOptions" :key="option.value" :value="option.value">
@@ -167,8 +164,8 @@ const statusClasses = (status: string) =>
                         </option>
                     </select>
 
-                    <Button type="submit" variant="outline" class="h-10 rounded-lg">Apply</Button>
-                    <Button v-if="hasActiveFilters" type="button" variant="ghost" class="h-10 gap-2 rounded-lg" @click="resetFilters">
+                    <Button type="submit" variant="secondary" class="h-10 rounded-xl">Apply Filters</Button>
+                    <Button v-if="hasActiveFilters" type="button" variant="ghost" class="h-10 gap-2 rounded-xl" @click="resetFilters">
                         <X class="size-4" />
                         Clear
                     </Button>
@@ -178,66 +175,68 @@ const statusClasses = (status: string) =>
             <section class="app-panel overflow-hidden">
                 <div
                     v-if="clients.length === 0"
-                    class="m-4 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-12 text-center text-sm text-muted-foreground"
+                    class="m-4 rounded-xl border border-dashed border-border bg-muted/10 px-4 py-16 text-center"
                 >
-                    {{ hasActiveFilters ? 'No clients match the current filters.' : 'No clients yet.' }}
+                    <p class="text-sm text-muted-foreground">
+                        {{ hasActiveFilters ? 'No clients match the current filters.' : 'Your client list is currently empty.' }}
+                    </p>
                 </div>
 
                 <div v-else class="overflow-x-auto">
-                    <table class="w-full text-[13px]">
-                        <thead class="bg-muted/20">
-                            <tr class="border-b border-border/70 text-left text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                                <th class="px-5 py-3.5 font-medium">Client</th>
-                                <th class="px-3 py-3.5 font-medium">Status</th>
-                                <th class="px-3 py-3.5 font-medium">Destination</th>
-                                <th class="px-3 py-3.5 font-medium">Nationality</th>
-                                <th class="px-3 py-3.5 font-medium">Source</th>
-                                <th class="px-3 py-3.5 text-center font-medium">Cases</th>
-                                <th class="px-3 py-3.5 text-center font-medium">Tasks</th>
-                                <th class="px-3 py-3.5 font-medium">Created</th>
-                                <th class="px-5 py-3.5 text-right font-medium">Action</th>
+                    <table class="w-full text-left text-[13px]">
+                        <thead class="bg-muted/30">
+                            <tr class="border-b border-border/60 text-[10px] uppercase tracking-widest text-muted-foreground/80">
+                                <th class="px-5 py-3 font-semibold">Client Detail</th>
+                                <th class="px-3 py-3 font-semibold">Status</th>
+                                <th class="px-3 py-3 font-semibold">Destination</th>
+                                <th class="px-3 py-3 font-semibold">Nationality</th>
+                                <th class="px-3 py-3 font-semibold">Source</th>
+                                <th class="px-3 py-3 text-center font-semibold">Cases</th>
+                                <th class="px-3 py-3 text-center font-semibold">Tasks</th>
+                                <th class="px-3 py-3 font-semibold">Created</th>
+                                <th class="px-5 py-3 text-right font-semibold">Action</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody class="divide-y divide-border/40">
                             <tr
                                 v-for="client in clients"
                                 :key="client.id"
-                                class="border-b border-border/70 align-top transition-colors hover:bg-muted/18"
+                                class="align-top transition-colors hover:bg-muted/20"
                             >
                                 <td class="px-5 py-4">
                                     <div class="flex min-w-0 items-start gap-3">
                                         <div
-                                            class="flex size-11 shrink-0 items-center justify-center rounded-2xl border border-border/80 bg-background text-xs font-semibold tracking-[0.14em] text-foreground"
+                                            class="flex size-10 shrink-0 items-center justify-center rounded-xl border border-border/60 bg-background text-[11px] font-bold text-foreground"
                                         >
                                             {{ clientInitials(client.full_name) }}
                                         </div>
                                         <div class="min-w-0">
-                                            <p class="font-medium text-foreground">{{ client.full_name }}</p>
-                                            <p class="mt-0.5 truncate text-[13px] text-muted-foreground">
-                                                {{ client.email || client.phone || 'No contact method yet' }}
+                                            <p class="font-semibold text-slate-900 dark:text-slate-100">{{ client.full_name }}</p>
+                                            <p class="mt-0.5 truncate text-xs text-muted-foreground">
+                                                {{ client.email || client.phone || 'No contact provided' }}
                                             </p>
-                                            <p class="mt-1 text-xs text-muted-foreground">
-                                                {{ client.owner_name || 'Unassigned owner' }}
+                                            <p class="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                                                {{ client.owner_name || 'Unassigned' }}
                                             </p>
                                         </div>
                                     </div>
                                 </td>
                                 <td class="px-3 py-4">
-                                    <span class="rounded-full px-2.5 py-1 text-[10px] font-medium" :class="statusClasses(client.status)">
+                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-tight" :class="statusClasses(client.status)">
                                         {{ client.status_label }}
                                     </span>
                                 </td>
-                                <td class="px-3 py-4 text-muted-foreground">{{ client.destination_country || 'Not set' }}</td>
-                                <td class="px-3 py-4 text-muted-foreground">{{ client.nationality || 'Not set' }}</td>
-                                <td class="px-3 py-4 text-muted-foreground">{{ client.lead_source || 'Unknown' }}</td>
-                                <td class="px-3 py-4 text-center text-muted-foreground">{{ client.visa_cases_count }}</td>
-                                <td class="px-3 py-4 text-center text-muted-foreground">{{ client.open_tasks_count }}</td>
+                                <td class="px-3 py-4 text-muted-foreground">{{ client.destination_country || '—' }}</td>
+                                <td class="px-3 py-4 text-muted-foreground">{{ client.nationality || '—' }}</td>
+                                <td class="px-3 py-4 text-muted-foreground">{{ client.lead_source || '—' }}</td>
+                                <td class="px-3 py-4 text-center tabular-nums text-muted-foreground">{{ client.visa_cases_count }}</td>
+                                <td class="px-3 py-4 text-center tabular-nums text-muted-foreground">{{ client.open_tasks_count }}</td>
                                 <td class="whitespace-nowrap px-3 py-4 text-muted-foreground">{{ formatDate(client.created_at) }}</td>
                                 <td class="px-5 py-4 text-right">
-                                    <Button as-child variant="ghost" size="sm" class="gap-2 rounded-xl">
+                                    <Button as-child variant="ghost" size="sm" class="h-8 gap-2 rounded-lg hover:bg-muted/80">
                                         <Link :href="route('clients.show', client.id)">
-                                            Open
-                                            <ArrowRight class="size-4" />
+                                            View Profile
+                                            <ArrowRight class="size-3.5" />
                                         </Link>
                                     </Button>
                                 </td>
@@ -248,79 +247,72 @@ const statusClasses = (status: string) =>
             </section>
 
             <Dialog v-model:open="isCreateDialogOpen">
-                <DialogScrollContent class="max-w-3xl p-0">
-                    <DialogHeader class="border-b border-border px-6 py-4">
-                        <DialogTitle>New client</DialogTitle>
+                <DialogScrollContent class="max-w-2xl p-0 overflow-hidden rounded-2xl">
+                    <DialogHeader class="border-b border-border/60 px-6 py-4 bg-muted/10">
+                        <DialogTitle>Add New Client</DialogTitle>
                     </DialogHeader>
 
-                    <form class="grid gap-4 px-6 py-5" @submit.prevent="submit">
+                    <form class="grid gap-5 px-6 py-6" @submit.prevent="submit">
                         <div class="grid gap-4 md:grid-cols-2">
-                            <div class="grid gap-1.5 md:col-span-2">
-                                <Label for="full_name">Full name</Label>
-                                <Input id="full_name" v-model="createForm.full_name" placeholder="Amina Batsukh" />
+                            <div class="grid gap-2 md:col-span-2">
+                                <Label for="full_name">Full Name</Label>
+                                <Input id="full_name" v-model="createForm.full_name" class="rounded-lg" placeholder="John Doe" />
                                 <InputError :message="createForm.errors.full_name" />
                             </div>
 
-                            <div class="grid gap-1.5">
-                                <Label for="email">Email</Label>
-                                <Input id="email" v-model="createForm.email" type="email" placeholder="client@example.com" />
-                                <InputError :message="createForm.errors.email" />
+                            <div class="grid gap-2">
+                                <Label for="email">Email Address</Label>
+                                <Input id="email" v-model="createForm.email" type="email" class="rounded-lg" placeholder="john@example.com" />
                             </div>
 
-                            <div class="grid gap-1.5">
-                                <Label for="phone">Phone</Label>
-                                <Input id="phone" v-model="createForm.phone" placeholder="+976..." />
-                                <InputError :message="createForm.errors.phone" />
+                            <div class="grid gap-2">
+                                <Label for="phone">Phone Number</Label>
+                                <Input id="phone" v-model="createForm.phone" class="rounded-lg" placeholder="+976..." />
                             </div>
 
-                            <div class="grid gap-1.5">
+                            <div class="grid gap-2">
                                 <Label for="nationality">Nationality</Label>
-                                <Input id="nationality" v-model="createForm.nationality" placeholder="Mongolian" />
-                                <InputError :message="createForm.errors.nationality" />
+                                <Input id="nationality" v-model="createForm.nationality" class="rounded-lg" />
                             </div>
 
-                            <div class="grid gap-1.5">
+                            <div class="grid gap-2">
                                 <Label for="destination_country">Destination</Label>
-                                <Input id="destination_country" v-model="createForm.destination_country" placeholder="Australia" />
-                                <InputError :message="createForm.errors.destination_country" />
+                                <Input id="destination_country" v-model="createForm.destination_country" class="rounded-lg" />
                             </div>
 
-                            <div class="grid gap-1.5">
-                                <Label for="status">Status</Label>
+                            <div class="grid gap-2">
+                                <Label for="status">Initial Status</Label>
                                 <select
                                     id="status"
                                     v-model="createForm.status"
-                                    class="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
+                                    class="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
                                 >
                                     <option v-for="option in statusOptions" :key="option.value" :value="option.value">
                                         {{ option.label }}
                                     </option>
                                 </select>
-                                <InputError :message="createForm.errors.status" />
                             </div>
 
-                            <div class="grid gap-1.5">
-                                <Label for="lead_source">Lead source</Label>
-                                <Input id="lead_source" v-model="createForm.lead_source" placeholder="Referral" />
-                                <InputError :message="createForm.errors.lead_source" />
+                            <div class="grid gap-2">
+                                <Label for="lead_source">Lead Source</Label>
+                                <Input id="lead_source" v-model="createForm.lead_source" class="rounded-lg" />
                             </div>
 
-                            <div class="grid gap-1.5 md:col-span-2">
-                                <Label for="notes">Notes</Label>
+                            <div class="grid gap-2 md:col-span-2">
+                                <Label for="notes">Internal Intake Notes</Label>
                                 <textarea
                                     id="notes"
                                     v-model="createForm.notes"
-                                    rows="4"
-                                    class="min-h-24 rounded-md border border-input bg-background px-2.5 py-2 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
-                                    placeholder="Short intake notes or context"
+                                    rows="3"
+                                    class="min-h-20 rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
+                                    placeholder="Add any initial context or requirements..."
                                 />
-                                <InputError :message="createForm.errors.notes" />
                             </div>
                         </div>
 
-                        <DialogFooter class="border-t border-border pt-4">
-                            <Button type="button" variant="ghost" @click="isCreateDialogOpen = false">Cancel</Button>
-                            <Button :disabled="createForm.processing">Create client</Button>
+                        <DialogFooter class="border-t border-border/60 pt-5">
+                            <Button type="button" variant="ghost" class="rounded-lg" @click="isCreateDialogOpen = false">Cancel</Button>
+                            <Button :disabled="createForm.processing" class="rounded-lg px-6">Create Record</Button>
                         </DialogFooter>
                     </form>
                 </DialogScrollContent>

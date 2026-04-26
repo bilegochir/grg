@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
-import { Check, Plus, Search, X } from 'lucide-vue-next';
+import { CheckCircle2, Plus, Search, X, Calendar, User, Briefcase, Filter, Hash } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 interface Option {
@@ -128,17 +128,17 @@ const formatDate = (value: null | string) =>
 
 const priorityClasses = (priority: string) =>
     ({
-        low: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200',
-        medium: 'bg-sky-100 text-sky-800 dark:bg-sky-950/70 dark:text-sky-200',
-        high: 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-200',
-        urgent: 'bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-200',
+        low: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700',
+        medium: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-blue-100 dark:border-blue-800',
+        high: 'bg-orange-50 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 border-orange-100 dark:border-orange-800',
+        urgent: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300 border-red-100 dark:border-red-800',
     })[priority] ?? 'bg-secondary text-secondary-foreground';
 
 const statusClasses = (status: string) =>
     ({
-        todo: 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900',
-        in_progress: 'bg-sky-100 text-sky-800 dark:bg-sky-950/70 dark:text-sky-200',
-        done: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-200',
+        todo: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+        in_progress: 'bg-indigo-50 text-indigo-700 border-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800',
+        done: 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800',
     })[status] ?? 'bg-secondary text-secondary-foreground';
 </script>
 
@@ -146,236 +146,202 @@ const statusClasses = (status: string) =>
     <Head title="Tasks" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex flex-col gap-4 p-3 md:p-4">
-            <div
-                v-if="page.props.flash.success"
-                class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-300"
-            >
-                {{ page.props.flash.success }}
+        <div class="max-w-7xl mx-auto space-y-6 p-4 md:p-6 lg:p-8">
+
+            <transition enter-active-class="transition ease-out duration-300" enter-from-class="opacity-0 -translate-y-2" enter-to-class="opacity-100 translate-y-0">
+                <div v-if="page.props.flash.success" class="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-400">
+                    <CheckCircle2 class="size-5" />
+                    <p class="text-sm font-medium">{{ page.props.flash.success }}</p>
+                </div>
+            </transition>
+
+            <header class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">Task Management</h1>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Track and manage your operational workflows</p>
+                </div>
+                <Button @click="isCreateDialogOpen = true" class="rounded-full shadow-lg shadow-primary/20 transition-all active:scale-95">
+                    <Plus class="mr-2 size-4" />
+                    Create Task
+                </Button>
+            </header>
+
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                    <p class="text-xs font-medium uppercase tracking-wider text-slate-500">Open Tasks</p>
+                    <p class="mt-2 text-3xl font-bold">{{ stats.open }}</p>
+                </div>
+                <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                    <p class="text-xs font-medium uppercase tracking-wider text-slate-500">Due Today</p>
+                    <p class="mt-2 text-3xl font-bold text-blue-600 dark:text-blue-400">{{ stats.dueToday }}</p>
+                </div>
+                <div class="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                    <p class="text-xs font-medium uppercase tracking-wider text-slate-500">Overdue</p>
+                    <p class="mt-2 text-3xl font-bold text-rose-600 dark:text-rose-400">{{ stats.overdue }}</p>
+                </div>
             </div>
 
-            <section class="app-panel px-4 py-4 md:px-5">
-                <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                    <div class="flex flex-wrap items-end gap-6">
-                        <div>
-                            <div class="flex flex-wrap items-center gap-3">
-                                <h1 class="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">Tasks</h1>
-                                <span class="text-sm text-muted-foreground">{{ tasks.length }} items</span>
-                            </div>
-                        </div>
-                        <div class="flex flex-wrap gap-5">
-                            <div class="space-y-1">
-                                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Open</p>
-                                <p class="text-lg font-semibold tracking-tight text-foreground">{{ stats.open }}</p>
-                            </div>
-                            <div class="space-y-1">
-                                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Due today</p>
-                                <p class="text-lg font-semibold tracking-tight text-foreground">{{ stats.dueToday }}</p>
-                            </div>
-                            <div class="space-y-1">
-                                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Overdue</p>
-                                <p class="text-lg font-semibold tracking-tight text-amber-600 dark:text-amber-300">{{ stats.overdue }}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <Button type="button" class="h-10 gap-2 rounded-lg px-4" @click="isCreateDialogOpen = true">
-                        <Plus class="size-4" />
-                        New task
-                    </Button>
-                </div>
-            </section>
-
-            <section class="app-panel px-4 py-4 md:px-5">
-                <form class="grid gap-3 xl:grid-cols-[minmax(0,1.5fr)_220px_220px_auto_auto]" @submit.prevent="submitFilters">
-                    <div class="relative">
-                        <Search class="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <div class="rounded-2xl border border-border bg-card p-2 shadow-sm">
+                <form @submit.prevent="submitFilters" class="flex flex-col gap-2 md:flex-row">
+                    <div class="relative flex-1">
+                        <Search class="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                         <Input
                             v-model="filterForm.search"
-                            class="h-10 rounded-lg border-border bg-background pl-8"
-                            placeholder="Search title, client, case, assignee, or description"
+                            placeholder="Search tasks, clients..."
+                            class="border-none bg-transparent pl-10 focus-visible:ring-0 shadow-none"
                         />
                     </div>
 
-                    <select
-                        v-model="filterForm.status"
-                        class="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
-                    >
-                        <option value="all">All statuses</option>
-                        <option v-for="option in statusOptions" :key="option.value" :value="option.value">
-                            {{ option.label }}
-                        </option>
-                    </select>
+                    <div class="flex flex-wrap items-center gap-2 p-1 md:p-0">
+                        <select v-model="filterForm.status" class="h-9 rounded-lg border-none bg-slate-100 dark:bg-slate-800 px-3 text-xs font-medium focus:ring-2 focus:ring-primary/20">
+                            <option value="all">All Status</option>
+                            <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                        </select>
 
-                    <select
-                        v-model="filterForm.priority"
-                        class="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
-                    >
-                        <option value="all">All priorities</option>
-                        <option v-for="option in priorityOptions" :key="option.value" :value="option.value">
-                            {{ option.label }}
-                        </option>
-                    </select>
+                        <select v-model="filterForm.priority" class="h-9 rounded-lg border-none bg-slate-100 dark:bg-slate-800 px-3 text-xs font-medium focus:ring-2 focus:ring-primary/20">
+                            <option value="all">All Priority</option>
+                            <option v-for="opt in priorityOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                        </select>
 
-                    <Button type="submit" variant="outline" class="h-10 rounded-lg">Apply</Button>
-                    <Button v-if="hasActiveFilters" type="button" variant="ghost" class="h-10 gap-2 rounded-lg" @click="resetFilters">
-                        <X class="size-4" />
-                        Clear
-                    </Button>
+                        <div class="h-6 w-[1px] bg-border mx-1 hidden md:block"></div>
+
+                        <Button type="submit" size="sm" variant="secondary" class="rounded-lg h-9">
+                            <Filter class="mr-2 size-3" /> Filter
+                        </Button>
+
+                        <Button v-if="hasActiveFilters" @click="resetFilters" type="button" size="sm" variant="ghost" class="rounded-lg h-9">
+                            <X class="mr-2 size-3" /> Clear
+                        </Button>
+                    </div>
                 </form>
-            </section>
+            </div>
 
-            <section class="app-panel overflow-hidden">
-                <div
-                    v-if="tasks.length === 0"
-                    class="m-4 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-12 text-center text-sm text-muted-foreground"
-                >
-                    {{ hasActiveFilters ? 'No tasks match the current filters.' : 'No tasks yet.' }}
+            <div class="space-y-3">
+                <div v-if="tasks.length === 0" class="flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border bg-slate-50/50 py-16 dark:bg-slate-900/20">
+                    <div class="rounded-full bg-slate-100 p-4 dark:bg-slate-800">
+                        <Briefcase class="size-8 text-slate-400" />
+                    </div>
+                    <h3 class="mt-4 text-lg font-semibold text-slate-900 dark:text-slate-100">No tasks found</h3>
+                    <p class="mt-1 text-sm text-slate-500">Try adjusting your filters or create a new task to get started.</p>
                 </div>
 
-                <div v-else class="px-5">
-                    <div v-for="task in tasks" :key="task.id" class="border-b border-border/70 py-4 last:border-b-0">
-                        <div class="flex flex-wrap items-start justify-between gap-3">
-                            <div class="min-w-0">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <p class="font-medium text-foreground">{{ task.title }}</p>
-                                    <span class="rounded-full px-2 py-0.5 text-[10px] font-medium" :class="priorityClasses(task.priority)">
-                                        {{ task.priority_label }}
-                                    </span>
-                                    <span class="rounded-full px-2 py-0.5 text-[10px] font-medium" :class="statusClasses(task.status)">
-                                        {{ task.status_label }}
-                                    </span>
-                                </div>
-                                <p class="mt-0.5 text-sm text-muted-foreground">
-                                    {{ task.client_name || 'General task'
-                                    }}<span v-if="task.visa_case_reference"> • {{ task.visa_case_reference }}</span>
-                                </p>
-                                <p v-if="task.description" class="mt-1 text-sm text-muted-foreground">{{ task.description }}</p>
-                                <p class="mt-1 text-xs text-muted-foreground">
-                                    {{ task.assignee_name || 'Unassigned' }} • {{ formatDate(task.due_at) }}
-                                </p>
+                <div v-for="task in tasks" :key="task.id"
+                    class="group relative flex flex-col gap-4 rounded-2xl border border-border bg-card p-5 transition-all hover:shadow-md md:flex-row md:items-center md:justify-between"
+                >
+                    <div class="flex-1 space-y-2">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <h3 class="font-bold text-slate-900 dark:text-slate-100 tracking-tight">{{ task.title }}</h3>
+                            <div class="flex gap-1.5">
+                                <span :class="[priorityClasses(task.priority), 'inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider']">
+                                    {{ task.priority_label }}
+                                </span>
+                                <span :class="[statusClasses(task.status), 'inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider']">
+                                    {{ task.status_label }}
+                                </span>
                             </div>
-
-                            <Button v-if="task.status !== 'done'" variant="outline" size="sm" class="gap-2 rounded-xl" @click="completeTask(task.id)">
-                                <Check class="size-4" />
-                                Done
-                            </Button>
                         </div>
+
+                        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500">
+                            <div class="flex items-center gap-1.5">
+                                <User class="size-3.5" />
+                                <span class="font-medium text-slate-700 dark:text-slate-300">{{ task.client_name || 'General' }}</span>
+                            </div>
+                            <div v-if="task.visa_case_reference" class="flex items-center gap-1.5">
+                                <Hash class="size-3.5" />
+                                <span>{{ task.visa_case_reference }}</span>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <Calendar class="size-3.5" />
+                                <span :class="{'text-rose-500 font-medium': task.status !== 'done' && new Date(task.due_at ?? '') < new Date()}">
+                                    {{ formatDate(task.due_at) }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <p v-if="task.description" class="line-clamp-1 text-sm text-slate-500">{{ task.description }}</p>
+                    </div>
+
+                    <div class="flex items-center justify-between border-t border-border pt-4 md:border-none md:pt-0">
+                        <div class="flex items-center gap-2 md:mr-4">
+                            <div class="flex size-7 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
+                                {{ task.assignee_name?.split(' ').map(n => n[0]).join('') || '?' }}
+                            </div>
+                            <span class="text-xs font-medium text-slate-600 dark:text-slate-400">{{ task.assignee_name || 'Unassigned' }}</span>
+                        </div>
+
+                        <Button
+                            v-if="task.status !== 'done'"
+                            variant="outline"
+                            size="sm"
+                            @click="completeTask(task.id)"
+                            class="rounded-full border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 dark:border-emerald-900/50 dark:hover:bg-emerald-900/20"
+                        >
+                            <CheckCircle2 class="mr-2 size-4" />
+                            Mark Done
+                        </Button>
                     </div>
                 </div>
-            </section>
+            </div>
 
             <Dialog v-model:open="isCreateDialogOpen">
-                <DialogScrollContent class="max-w-4xl p-0">
-                    <DialogHeader class="border-b border-border px-6 py-4">
-                        <DialogTitle>New task</DialogTitle>
+                <DialogScrollContent class="sm:max-w-[600px] p-0 overflow-hidden rounded-3xl">
+                    <DialogHeader class="bg-slate-50/50 dark:bg-slate-900/50 border-b p-6 text-left">
+                        <DialogTitle class="text-xl font-bold">New Task Details</DialogTitle>
                     </DialogHeader>
 
-                    <form class="grid gap-4 px-6 py-5" @submit.prevent="submit">
-                        <div class="grid gap-4 md:grid-cols-2">
-                            <div class="grid gap-1.5 md:col-span-2">
-                                <Label for="title">Title</Label>
-                                <Input id="title" v-model="createForm.title" placeholder="Request updated bank statement" />
+                    <form @submit.prevent="submit" class="p-6">
+                        <div class="grid gap-6">
+                            <div class="space-y-2">
+                                <Label for="title" class="text-xs font-bold uppercase tracking-wider text-slate-500">Task Title</Label>
+                                <Input id="title" v-model="createForm.title" placeholder="e.g. Verify residency documents" class="h-11 rounded-xl border-slate-200 focus:ring-4 focus:ring-primary/10" />
                                 <InputError :message="createForm.errors.title" />
                             </div>
 
-                            <div class="grid gap-1.5">
-                                <Label for="client_id">Client</Label>
-                                <select
-                                    id="client_id"
-                                    v-model="createForm.client_id"
-                                    class="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
-                                >
-                                    <option value="">No client</option>
-                                    <option v-for="client in clients" :key="client.id" :value="client.id">
-                                        {{ client.full_name }}
-                                    </option>
-                                </select>
-                                <InputError :message="createForm.errors.client_id" />
-                            </div>
-
-                            <div class="grid gap-1.5">
-                                <Label for="visa_case_id">Visa case</Label>
-                                <select
-                                    id="visa_case_id"
-                                    v-model="createForm.visa_case_id"
-                                    class="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
-                                >
-                                    <option value="">No linked case</option>
-                                    <option v-for="visaCase in visaCases" :key="visaCase.id" :value="visaCase.id">
-                                        {{ visaCase.reference_code }}
-                                    </option>
-                                </select>
-                                <InputError :message="createForm.errors.visa_case_id" />
-                            </div>
-
-                            <div class="grid gap-1.5">
-                                <Label for="assigned_user_id">Assigned agent</Label>
-                                <select
-                                    id="assigned_user_id"
-                                    v-model="createForm.assigned_user_id"
-                                    class="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
-                                >
-                                    <option value="">Unassigned</option>
-                                    <option v-for="user in users" :key="user.id" :value="user.id">
-                                        {{ user.name }}
-                                    </option>
-                                </select>
-                                <InputError :message="createForm.errors.assigned_user_id" />
-                            </div>
-
-                            <div class="grid gap-2 md:grid-cols-2">
-                                <div class="grid gap-1.5">
-                                    <Label for="status">Status</Label>
-                                    <select
-                                        id="status"
-                                        v-model="createForm.status"
-                                        class="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
-                                    >
-                                        <option v-for="option in statusOptions" :key="option.value" :value="option.value">
-                                            {{ option.label }}
-                                        </option>
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div class="space-y-2">
+                                    <Label class="text-xs font-bold uppercase tracking-wider text-slate-500">Client</Label>
+                                    <select v-model="createForm.client_id" class="flex h-11 w-full rounded-xl border border-slate-200 bg-background px-3 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10">
+                                        <option value="">No client</option>
+                                        <option v-for="c in clients" :key="c.id" :value="c.id">{{ c.full_name }}</option>
                                     </select>
-                                    <InputError :message="createForm.errors.status" />
                                 </div>
-
-                                <div class="grid gap-1.5">
-                                    <Label for="priority">Priority</Label>
-                                    <select
-                                        id="priority"
-                                        v-model="createForm.priority"
-                                        class="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
-                                    >
-                                        <option v-for="option in priorityOptions" :key="option.value" :value="option.value">
-                                            {{ option.label }}
-                                        </option>
+                                <div class="space-y-2">
+                                    <Label class="text-xs font-bold uppercase tracking-wider text-slate-500">Assigned Agent</Label>
+                                    <select v-model="createForm.assigned_user_id" class="flex h-11 w-full rounded-xl border border-slate-200 bg-background px-3 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10">
+                                        <option value="">Unassigned</option>
+                                        <option v-for="u in users" :key="u.id" :value="u.id">{{ u.name }}</option>
                                     </select>
-                                    <InputError :message="createForm.errors.priority" />
                                 </div>
                             </div>
 
-                            <div class="grid gap-1.5">
-                                <Label for="due_at">Due</Label>
-                                <Input id="due_at" v-model="createForm.due_at" type="datetime-local" />
-                                <InputError :message="createForm.errors.due_at" />
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                                <div class="space-y-2">
+                                    <Label class="text-xs font-bold uppercase tracking-wider text-slate-500">Status</Label>
+                                    <select v-model="createForm.status" class="flex h-11 w-full rounded-xl border border-slate-200 bg-background px-3 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10">
+                                        <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-2">
+                                    <Label class="text-xs font-bold uppercase tracking-wider text-slate-500">Priority</Label>
+                                    <select v-model="createForm.priority" class="flex h-11 w-full rounded-xl border border-slate-200 bg-background px-3 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10">
+                                        <option v-for="opt in priorityOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                                    </select>
+                                </div>
+                                <div class="space-y-2">
+                                    <Label class="text-xs font-bold uppercase tracking-wider text-slate-500">Due Date</Label>
+                                    <Input v-model="createForm.due_at" type="datetime-local" class="h-11 rounded-xl border-slate-200" />
+                                </div>
                             </div>
 
-                            <div class="grid gap-1.5 md:col-span-2">
-                                <Label for="description">Description</Label>
-                                <textarea
-                                    id="description"
-                                    v-model="createForm.description"
-                                    rows="4"
-                                    class="min-h-24 rounded-md border border-input bg-background px-2.5 py-2 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
-                                    placeholder="Optional context or next-step details"
-                                />
-                                <InputError :message="createForm.errors.description" />
+                            <div class="space-y-2">
+                                <Label class="text-xs font-bold uppercase tracking-wider text-slate-500">Description</Label>
+                                <textarea v-model="createForm.description" rows="3" class="w-full rounded-xl border border-slate-200 bg-background p-3 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10" placeholder="Provide additional details..."></textarea>
                             </div>
                         </div>
 
-                        <DialogFooter class="border-t border-border pt-4">
-                            <Button type="button" variant="ghost" @click="isCreateDialogOpen = false">Cancel</Button>
-                            <Button :disabled="createForm.processing">Create task</Button>
+                        <DialogFooter class="mt-8 gap-2">
+                            <Button type="button" variant="ghost" @click="isCreateDialogOpen = false" class="rounded-xl">Cancel</Button>
+                            <Button :disabled="createForm.processing" class="rounded-xl px-8">Create Task</Button>
                         </DialogFooter>
                     </form>
                 </DialogScrollContent>
@@ -383,3 +349,9 @@ const statusClasses = (status: string) =>
         </div>
     </AppLayout>
 </template>
+
+<style scoped>
+.app-panel {
+    @apply bg-card rounded-2xl border border-border shadow-sm;
+}
+</style>
