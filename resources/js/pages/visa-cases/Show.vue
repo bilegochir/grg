@@ -117,7 +117,7 @@ const isEditDialogOpen = ref(false);
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Visa Cases',
+        title: 'Visa cases',
         href: '/visa-cases',
     },
     {

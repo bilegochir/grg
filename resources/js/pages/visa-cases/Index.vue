@@ -29,6 +29,8 @@ interface VisaCaseRecord {
     decision_at: null | string;
 }
 
+const institutionRequirementKey = (country: string, visaType: string) => `${country}::${visaType}`;
+
 const props = defineProps<{
     visaCases: VisaCaseRecord[];
     clients: Array<{ id: number; full_name: string }>;
@@ -44,12 +46,15 @@ const props = defineProps<{
     };
 }>();
 
-const institutionRequirementKey = (country: string, visaType: string) => `${country}::${visaType}`;
-
 const page = usePage<SharedData>();
 const isCreateDialogOpen = ref(false);
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Visa Cases', href: '/visa-cases' }];
+const breadcrumbs: BreadcrumbItem[] = [
+    {
+        title: 'Visa Cases',
+        href: '/visa-cases',
+    },
+];
 
 const filterForm = useForm({
     search: props.filters.search ?? '',
@@ -78,9 +83,11 @@ const hasActiveFilters = computed(() => filterForm.search.trim() !== '' || filte
 watch(
     () => createForm.destination_country,
     () => {
-        if (!availableVisaTypes.value.includes(createForm.visa_type)) {
-            createForm.visa_type = '';
+        if (availableVisaTypes.value.includes(createForm.visa_type)) {
+            return;
         }
+
+        createForm.visa_type = '';
     },
 );
 
@@ -101,7 +108,11 @@ const submitFilters = () => {
             status: filterForm.status !== 'all' ? filterForm.status : undefined,
             country: filterForm.country || undefined,
         },
-        { preserveScroll: true, preserveState: true, replace: true },
+        {
+            preserveScroll: true,
+            preserveState: true,
+            replace: true,
+        },
     );
 };
 
@@ -149,84 +160,111 @@ const statusClasses = (status: string) =>
                 {{ page.props.flash.success }}
             </div>
 
-            <header class="app-panel px-4 py-4 md:px-5">
+            <section class="app-panel px-4 py-4 md:px-5">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                    <div class="flex flex-wrap items-center gap-3">
-                        <h2 class="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">Visa Cases</h2>
-                        <span class="rounded-full bg-muted/50 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">{{ visaCases.length }} cases</span>
+                    <div class="flex flex-wrap items-end gap-6">
+                        <div>
+                            <div class="flex flex-wrap items-center gap-3">
+                                <h2 class="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">Visa cases</h2>
+                                <span class="text-sm text-muted-foreground">{{ visaCases.length }} cases</span>
+                            </div>
+                        </div>
+                        <span class="text-sm text-muted-foreground">{{ hasActiveFilters ? 'Filtered view' : 'All destinations' }}</span>
                     </div>
 
-                    <Button type="button" class="h-10 gap-2 rounded-xl px-4" @click="isCreateDialogOpen = true">
+                    <Button type="button" class="h-10 gap-2 rounded-lg px-4" @click="isCreateDialogOpen = true">
                         <Plus class="size-4" />
-                        New Case
+                        New case
                     </Button>
                 </div>
-            </header>
+            </section>
 
             <section class="app-panel px-4 py-4 md:px-5">
-                <form class="grid gap-3 xl:grid-cols-[minmax(0,1.5fr)_200px_200px_auto_auto]" @submit.prevent="submitFilters">
+                <form class="grid gap-3 xl:grid-cols-[minmax(0,1.5fr)_220px_220px_auto_auto]" @submit.prevent="submitFilters">
                     <div class="relative">
-                        <Search class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground/70" />
+                        <Search class="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                         <Input
                             v-model="filterForm.search"
-                            class="h-10 rounded-xl border-border/60 bg-muted/10 pl-9 focus:bg-background"
-                            placeholder="Search reference, client, visa type..."
+                            class="h-10 rounded-lg border-border bg-background pl-8"
+                            placeholder="Search reference, client, visa, school, country, or assignee"
                         />
                     </div>
 
-                    <select v-model="filterForm.status" class="flex h-10 w-full rounded-xl border border-border/60 bg-muted/10 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/15">
+                    <select
+                        v-model="filterForm.status"
+                        class="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
+                    >
                         <option value="all">All statuses</option>
-                        <option v-for="option in statusOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                        <option v-for="option in statusOptions" :key="option.value" :value="option.value">
+                            {{ option.label }}
+                        </option>
                     </select>
 
-                    <select v-model="filterForm.country" class="flex h-10 w-full rounded-xl border border-border/60 bg-muted/10 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/15">
+                    <select
+                        v-model="filterForm.country"
+                        class="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
+                    >
                         <option value="">All countries</option>
-                        <option v-for="country in requirementCountries" :key="country" :value="country">{{ country }}</option>
+                        <option v-for="country in requirementCountries" :key="country" :value="country">
+                            {{ country }}
+                        </option>
                     </select>
 
-                    <Button type="submit" variant="secondary" class="h-10 rounded-xl">Apply</Button>
-                    <Button v-if="hasActiveFilters" type="button" variant="ghost" class="h-10 gap-2 rounded-xl" @click="resetFilters">
-                        <X class="size-4" /> Clear
+                    <Button type="submit" variant="outline" class="h-10 rounded-lg">Apply</Button>
+                    <Button v-if="hasActiveFilters" type="button" variant="ghost" class="h-10 gap-2 rounded-lg" @click="resetFilters">
+                        <X class="size-4" />
+                        Clear
                     </Button>
                 </form>
             </section>
 
             <section class="app-panel overflow-hidden">
-                <div v-if="visaCases.length === 0" class="m-4 rounded-xl border border-dashed border-border bg-muted/10 px-4 py-16 text-center">
-                    <p class="text-sm text-muted-foreground">{{ hasActiveFilters ? 'No cases match your search criteria.' : 'No visa cases recorded yet.' }}</p>
+                <div
+                    v-if="visaCases.length === 0"
+                    class="m-4 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-12 text-center text-sm text-muted-foreground"
+                >
+                    {{ hasActiveFilters ? 'No visa cases match the current filters.' : 'No visa cases yet.' }}
                 </div>
 
                 <div v-else class="overflow-x-auto">
-                    <table class="w-full text-left text-[13px]">
-                        <thead class="bg-muted/30">
-                            <tr class="border-b border-border/60 text-[10px] uppercase tracking-widest text-muted-foreground/80">
-                                <th class="px-5 py-3 font-semibold">Ref Code</th>
-                                <th class="px-3 py-3 font-semibold">Client</th>
-                                <th class="px-3 py-3 font-semibold">Visa Detail</th>
-                                <th class="px-3 py-3 font-semibold">Status</th>
-                                <th class="px-3 py-3 font-semibold">Assignee</th>
-                                <th class="px-3 py-3 font-semibold">Submitted</th>
-                                <th class="px-3 py-3 font-semibold text-right">Action</th>
+                    <table class="w-full text-[13px]">
+                        <thead class="bg-muted/20">
+                            <tr class="border-b border-border/70 text-left text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                                <th class="px-5 py-3.5 font-medium">Reference</th>
+                                <th class="px-3 py-3.5 font-medium">Client</th>
+                                <th class="px-3 py-3.5 font-medium">Visa type</th>
+                                <th class="px-3 py-3.5 font-medium">Destination</th>
+                                <th class="px-3 py-3.5 font-medium">Status</th>
+                                <th class="px-3 py-3.5 font-medium">Assignee</th>
+                                <th class="px-3 py-3.5 font-medium">Submitted</th>
+                                <th class="px-3 py-3.5 font-medium">Decision</th>
+                                <th class="px-5 py-3.5 text-right font-medium">Action</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-border/40">
-                            <tr v-for="visaCase in visaCases" :key="visaCase.id" class="align-top transition-colors hover:bg-muted/20">
-                                <td class="px-5 py-4 font-mono text-[11px] font-semibold text-slate-900 dark:text-slate-100">{{ visaCase.reference_code }}</td>
-                                <td class="px-3 py-4 font-medium text-foreground">{{ visaCase.client_name || '—' }}</td>
+                        <tbody>
+                            <tr
+                                v-for="visaCase in visaCases"
+                                :key="visaCase.id"
+                                class="border-b border-border/70 align-top transition-colors hover:bg-muted/18"
+                            >
+                                <td class="px-5 py-4 font-medium text-foreground">{{ visaCase.reference_code }}</td>
+                                <td class="px-3 py-4 text-muted-foreground">{{ visaCase.client_name || 'No client linked' }}</td>
+                                <td class="px-3 py-4 text-muted-foreground">{{ visaCase.visa_type }}</td>
+                                <td class="px-3 py-4 text-muted-foreground">{{ visaCase.destination_country }}</td>
                                 <td class="px-3 py-4">
-                                    <p class="font-medium text-foreground">{{ visaCase.visa_type }}</p>
-                                    <p class="mt-0.5 text-xs text-muted-foreground">{{ visaCase.destination_country }}</p>
-                                </td>
-                                <td class="px-3 py-4">
-                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase" :class="statusClasses(visaCase.status)">
+                                    <span class="rounded-full px-2.5 py-1 text-[10px] font-medium" :class="statusClasses(visaCase.status)">
                                         {{ visaCase.status_label }}
                                     </span>
                                 </td>
                                 <td class="px-3 py-4 text-muted-foreground">{{ visaCase.assignee_name || 'Unassigned' }}</td>
-                                <td class="px-3 py-4 tabular-nums text-muted-foreground">{{ formatDate(visaCase.submitted_at) }}</td>
+                                <td class="whitespace-nowrap px-3 py-4 text-muted-foreground">{{ formatDate(visaCase.submitted_at) }}</td>
+                                <td class="whitespace-nowrap px-3 py-4 text-muted-foreground">{{ formatDate(visaCase.decision_at) }}</td>
                                 <td class="px-5 py-4 text-right">
-                                    <Button as-child variant="ghost" size="sm" class="h-8 gap-2 rounded-lg">
-                                        <Link :href="route('visa-cases.show', visaCase.id)">View Case <ArrowRight class="size-3.5" /></Link>
+                                    <Button as-child variant="ghost" size="sm" class="gap-2 rounded-xl">
+                                        <Link :href="route('visa-cases.show', visaCase.id)">
+                                            Open
+                                            <ArrowRight class="size-4" />
+                                        </Link>
                                     </Button>
                                 </td>
                             </tr>
@@ -236,72 +274,122 @@ const statusClasses = (status: string) =>
             </section>
 
             <Dialog v-model:open="isCreateDialogOpen">
-                <DialogScrollContent class="max-w-3xl p-0 overflow-hidden rounded-2xl">
-                    <DialogHeader class="border-b border-border/60 px-6 py-4 bg-muted/10">
-                        <DialogTitle>Initiate New Visa Case</DialogTitle>
+                <DialogScrollContent class="max-w-4xl p-0">
+                    <DialogHeader class="border-b border-border px-6 py-4">
+                        <DialogTitle>New visa case</DialogTitle>
                     </DialogHeader>
 
-                    <form class="grid gap-5 px-6 py-6" @submit.prevent="submit">
+                    <form class="grid gap-4 px-6 py-5" @submit.prevent="submit">
                         <div class="grid gap-4 md:grid-cols-2">
-                            <div class="grid gap-2">
+                            <div class="grid gap-1.5">
                                 <Label for="client_id">Client</Label>
-                                <select id="client_id" v-model="createForm.client_id" class="flex h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-ring/15">
+                                <select
+                                    id="client_id"
+                                    v-model="createForm.client_id"
+                                    class="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
+                                >
                                     <option value="">Select a client</option>
-                                    <option v-for="client in clients" :key="client.id" :value="client.id">{{ client.full_name }}</option>
+                                    <option v-for="client in clients" :key="client.id" :value="client.id">
+                                        {{ client.full_name }}
+                                    </option>
                                 </select>
                                 <InputError :message="createForm.errors.client_id" />
                             </div>
 
-                            <div class="grid gap-2">
-                                <Label for="assigned_user_id">Assignee</Label>
-                                <select id="assigned_user_id" v-model="createForm.assigned_user_id" class="flex h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-ring/15">
+                            <div class="grid gap-1.5">
+                                <Label for="assigned_user_id">Assigned agent</Label>
+                                <select
+                                    id="assigned_user_id"
+                                    v-model="createForm.assigned_user_id"
+                                    class="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
+                                >
                                     <option value="">Unassigned</option>
-                                    <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }}</option>
+                                    <option v-for="user in users" :key="user.id" :value="user.id">
+                                        {{ user.name }}
+                                    </option>
                                 </select>
+                                <InputError :message="createForm.errors.assigned_user_id" />
                             </div>
 
-                            <div class="grid gap-2">
+                            <div class="grid gap-1.5">
                                 <Label for="destination_country">Destination</Label>
-                                <select id="destination_country" v-model="createForm.destination_country" class="flex h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-ring/15">
+                                <select
+                                    id="destination_country"
+                                    v-model="createForm.destination_country"
+                                    class="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
+                                >
                                     <option value="">Select a country</option>
-                                    <option v-for="country in requirementCountries" :key="country" :value="country">{{ country }}</option>
+                                    <option v-for="country in requirementCountries" :key="country" :value="country">
+                                        {{ country }}
+                                    </option>
                                 </select>
+                                <InputError :message="createForm.errors.destination_country" />
                             </div>
 
-                            <div class="grid gap-2">
-                                <Label for="visa_type">Visa Type</Label>
-                                <select id="visa_type" v-model="createForm.visa_type" :disabled="!createForm.destination_country" class="flex h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-ring/15 disabled:opacity-50">
-                                    <option value="">{{ !createForm.destination_country ? 'Select country first' : 'Select a visa' }}</option>
-                                    <option v-for="v in availableVisaTypes" :key="v" :value="v">{{ v }}</option>
+                            <div class="grid gap-1.5">
+                                <Label for="visa_type">Visa type</Label>
+                                <select
+                                    id="visa_type"
+                                    v-model="createForm.visa_type"
+                                    :disabled="createForm.destination_country === ''"
+                                    class="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    <option value="">{{ createForm.destination_country === '' ? 'Select country first' : 'Select a visa' }}</option>
+                                    <option v-for="visaType in availableVisaTypes" :key="visaType" :value="visaType">
+                                        {{ visaType }}
+                                    </option>
                                 </select>
+                                <InputError :message="createForm.errors.visa_type" />
                             </div>
 
-                            <div v-if="needsInstitutionName" class="grid gap-2 md:col-span-2">
-                                <Label for="institution_name">Institution (University/College)</Label>
-                                <Input id="institution_name" v-model="createForm.institution_name" class="rounded-lg" />
-                            </div>
-
-                            <div class="grid gap-2">
-                                <Label for="submitted_at">Submission Date</Label>
-                                <Input id="submitted_at" v-model="createForm.submitted_at" type="date" class="rounded-lg" />
-                            </div>
-
-                            <div class="grid gap-2">
-                                <Label for="status">Initial Status</Label>
-                                <select id="status" v-model="createForm.status" class="flex h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-ring/15">
-                                    <option v-for="option in statusOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+                            <div class="grid gap-1.5">
+                                <Label for="status">Status</Label>
+                                <select
+                                    id="status"
+                                    v-model="createForm.status"
+                                    class="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
+                                >
+                                    <option v-for="option in statusOptions" :key="option.value" :value="option.value">
+                                        {{ option.label }}
+                                    </option>
                                 </select>
+                                <InputError :message="createForm.errors.status" />
                             </div>
 
-                            <div class="grid gap-2 md:col-span-2">
-                                <Label for="notes">Internal Case Notes</Label>
-                                <textarea id="notes" v-model="createForm.notes" rows="3" class="min-h-20 rounded-lg border border-input bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-ring/15" />
+                            <div v-if="needsInstitutionName" class="grid gap-1.5 md:col-span-2">
+                                <Label for="institution_name">University or college</Label>
+                                <Input id="institution_name" v-model="createForm.institution_name" placeholder="University of Melbourne" />
+                                <InputError :message="createForm.errors.institution_name" />
+                            </div>
+
+                            <div class="grid gap-1.5">
+                                <Label for="submitted_at">Submitted</Label>
+                                <Input id="submitted_at" v-model="createForm.submitted_at" type="date" />
+                                <InputError :message="createForm.errors.submitted_at" />
+                            </div>
+
+                            <div class="grid gap-1.5">
+                                <Label for="decision_at">Decision</Label>
+                                <Input id="decision_at" v-model="createForm.decision_at" type="date" />
+                                <InputError :message="createForm.errors.decision_at" />
+                            </div>
+
+                            <div class="grid gap-1.5 md:col-span-2">
+                                <Label for="notes">Notes</Label>
+                                <textarea
+                                    id="notes"
+                                    v-model="createForm.notes"
+                                    rows="4"
+                                    class="min-h-24 rounded-md border border-input bg-background px-2.5 py-2 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
+                                    placeholder="Case summary, blockers, or filing context"
+                                />
+                                <InputError :message="createForm.errors.notes" />
                             </div>
                         </div>
 
-                        <DialogFooter class="border-t border-border/60 pt-5">
+                        <DialogFooter class="border-t border-border pt-4">
                             <Button type="button" variant="ghost" @click="isCreateDialogOpen = false">Cancel</Button>
-                            <Button :disabled="createForm.processing" class="px-6 rounded-lg">Create Case</Button>
+                            <Button :disabled="createForm.processing">Create case</Button>
                         </DialogFooter>
                     </form>
                 </DialogScrollContent>

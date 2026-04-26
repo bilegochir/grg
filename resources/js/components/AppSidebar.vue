@@ -19,7 +19,7 @@ const mainNavItems: NavItem[] = [
         icon: Users,
     },
     {
-        title: 'Visa Cases',
+        title: 'Visa cases',
         href: '/visa-cases',
         icon: BriefcaseBusiness,
     },
