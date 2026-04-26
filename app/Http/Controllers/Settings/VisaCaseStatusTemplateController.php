@@ -11,14 +11,12 @@ use Inertia\Response;
 
 class VisaCaseStatusTemplateController extends Controller
 {
-    public function __construct(private VisaCaseStatusTemplateResolver $visaCaseStatusTemplateResolver)
-    {
-    }
+    public function __construct(private VisaCaseStatusTemplateResolver $visaCaseStatusTemplateResolver) {}
 
     public function index(): Response
     {
         $agency = request()->user()?->agency;
-        abort_if($agency === null, 403);
+        abort_if($agency === null || ! request()->user()?->canManageWorkflowSettings(), 403);
 
         return Inertia::render('settings/VisaCaseStatusTemplates', [
             'templates' => $this->visaCaseStatusTemplateResolver->templates($agency)
@@ -34,7 +32,7 @@ class VisaCaseStatusTemplateController extends Controller
     public function store(StoreVisaCaseStatusTemplateRequest $request): RedirectResponse
     {
         $agency = $request->user()?->agency;
-        abort_if($agency === null, 403);
+        abort_if($agency === null || ! $request->user()?->canManageWorkflowSettings(), 403);
 
         foreach ($request->validated('templates') as $index => $template) {
             $agency->visaCaseStatusTemplates()->updateOrCreate(

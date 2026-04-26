@@ -18,7 +18,7 @@ const user = page.props.auth.user as User;
                 <DropdownMenuTrigger as-child>
                     <SidebarMenuButton
                         size="lg"
-                        class="h-10 rounded-xl bg-sidebar-accent/55 px-3 text-sidebar-foreground transition-colors hover:bg-sidebar-accent data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                        class="h-10 rounded-lg border border-sidebar-border bg-white px-3 text-sidebar-foreground shadow-sm transition-colors hover:bg-sidebar-accent data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-foreground"
                     >
                         <UserInfo :user="user" show-email />
                         <ChevronsUpDown class="ml-auto size-4 group-data-[collapsible=icon]:hidden" />

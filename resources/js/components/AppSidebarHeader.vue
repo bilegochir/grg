@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import AppNotificationMenu from '@/components/AppNotificationMenu.vue';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import type { BreadcrumbItemType, SharedData } from '@/types';
-import { usePage } from '@inertiajs/vue3';
+import type { BreadcrumbItemType } from '@/types';
 import { computed } from 'vue';
 
 const props = withDefaults(
@@ -14,26 +13,25 @@ const props = withDefaults(
     },
 );
 
-const page = usePage<SharedData>();
-const agencyName = computed(() => page.props.auth.agency?.name ?? 'Company workspace');
 const currentTitle = computed(() => props.breadcrumbs[props.breadcrumbs.length - 1]?.title ?? 'Workspace');
 </script>
 
 <template>
-    <header
-        class="sticky top-0 z-20 shrink-0 border-b border-border/70 bg-background/95 px-5 backdrop-blur supports-[backdrop-filter]:bg-background/90"
-    >
-        <div class="flex h-14 items-center justify-between gap-4">
-            <div class="flex min-w-0 items-center gap-3">
-                <SidebarTrigger class="-ml-1 h-8 w-8 rounded-lg text-muted-foreground hover:bg-muted" />
+    <header class="sticky top-0 z-20 shrink-0 app-topbar rounded-t-2xl">
+        <div class="flex min-h-16 items-center justify-between gap-4 px-4 py-3 md:px-5">
+            <div class="flex min-w-0 items-start gap-3">
+                <SidebarTrigger
+                    class="mt-0.5 h-9 w-9 rounded-lg border border-border bg-card text-muted-foreground shadow-none hover:bg-muted"
+                />
+
                 <div class="min-w-0">
-                    <h1 class="truncate text-lg font-semibold tracking-tight text-slate-950 dark:text-slate-50">{{ currentTitle }}</h1>
+                    <h1 class="truncate text-[1.4rem] font-semibold tracking-tight text-slate-950 dark:text-slate-50">
+                        {{ currentTitle }}
+                    </h1>
                 </div>
             </div>
+
             <div class="flex items-center gap-3">
-                <p class="hidden max-w-56 truncate text-sm text-muted-foreground md:block">
-                    {{ agencyName }}
-                </p>
                 <AppNotificationMenu />
             </div>
         </div>

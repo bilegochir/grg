@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\UserRole;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,7 +13,7 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
+    /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
     /**
@@ -23,6 +25,7 @@ class User extends Authenticatable
         'agency_id',
         'name',
         'email',
+        'role',
         'password',
     ];
 
@@ -45,6 +48,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'role' => UserRole::class,
             'password' => 'hashed',
         ];
     }
@@ -82,5 +86,40 @@ class User extends Authenticatable
     public function attachments(): HasMany
     {
         return $this->hasMany(Attachment::class, 'uploaded_by_id');
+    }
+
+    public function canManageCompanySettings(): bool
+    {
+        return $this->role === UserRole::Admin;
+    }
+
+    public function canManageWorkflowSettings(): bool
+    {
+        return $this->role === UserRole::Admin;
+    }
+
+    public function canManageTeam(): bool
+    {
+        return $this->role === UserRole::Admin;
+    }
+
+    public function canManageClients(): bool
+    {
+        return in_array($this->role, [UserRole::Admin, UserRole::CaseManager], true);
+    }
+
+    public function canManageVisaCases(): bool
+    {
+        return in_array($this->role, [UserRole::Admin, UserRole::CaseManager], true);
+    }
+
+    public function canManageTasks(): bool
+    {
+        return in_array($this->role, [UserRole::Admin, UserRole::CaseManager, UserRole::Staff], true);
+    }
+
+    public function roleLabel(): string
+    {
+        return $this->role->label();
     }
 }

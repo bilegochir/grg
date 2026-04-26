@@ -10,6 +10,7 @@ use App\Models\Attachment;
 use App\Models\Client;
 use App\Support\ActivityTimeline;
 use App\Support\ClientProfileDataNormalizer;
+use App\Support\CrmActivityLogger;
 use App\Support\TaskStatusTemplateResolver;
 use App\Support\VisaCaseStatusTemplateResolver;
 use Illuminate\Http\RedirectResponse;
@@ -195,10 +196,13 @@ class ClientController extends Controller
         UpdateClientRequest $request,
         Client $client,
         ClientProfileDataNormalizer $clientProfileDataNormalizer,
+        CrmActivityLogger $crmActivityLogger,
     ): RedirectResponse {
         $this->authorize('update', $client);
 
+        $originalAttributes = $client->getRawOriginal();
         $client->update($clientProfileDataNormalizer->normalize($request->validated()));
+        $crmActivityLogger->logClientUpdated($client, $originalAttributes, $request->user());
 
         return to_route('clients.show', $client)->with('success', 'Client updated successfully.');
     }

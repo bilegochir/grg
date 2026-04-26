@@ -36,6 +36,7 @@ class AcceptInvitationController extends Controller
                 'agency_id' => $agencyInvitation->agency_id,
                 'name' => $request->validated('name'),
                 'email' => $agencyInvitation->email,
+                'role' => $agencyInvitation->role,
                 'password' => Hash::make($request->validated('password')),
             ]);
             $user->email_verified_at = now();

@@ -12,8 +12,10 @@ use Inertia\Response;
 
 class VisaRequirementLibraryController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        abort_if($request->user() === null || ! $request->user()->canManageWorkflowSettings(), 403);
+
         return Inertia::render('settings/VisaRequirements', [
             'templates' => $this->templates(),
         ]);
@@ -21,6 +23,8 @@ class VisaRequirementLibraryController extends Controller
 
     public function store(StoreVisaRequirementTemplateRequest $request): RedirectResponse
     {
+        abort_if(! $request->user()?->canManageWorkflowSettings(), 403);
+
         $template = $this->storeTemplate($request->validated());
 
         return to_route('settings.visa-requirements.index')
@@ -29,7 +33,7 @@ class VisaRequirementLibraryController extends Controller
 
     public function markReviewed(Request $request, VisaRequirementTemplate $visaRequirementTemplate): RedirectResponse
     {
-        abort_unless($request->user() !== null, 403);
+        abort_unless($request->user()?->canManageWorkflowSettings(), 403);
 
         $visaRequirementTemplate->update([
             'source_checked_at' => now()->toDateString(),
@@ -101,7 +105,7 @@ class VisaRequirementLibraryController extends Controller
                 'country_name' => trim($validated['country_name']),
                 'visa_type' => trim($validated['visa_type']),
             ],
-                [
+            [
                 'region' => $validated['region'],
                 'visa_code' => filled($validated['visa_code']) ? trim($validated['visa_code']) : null,
                 'requires_institution_name' => $validated['requires_institution_name'],

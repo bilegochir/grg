@@ -138,10 +138,10 @@ const openEditDialog = () => {
     <Head :title="visaCase.reference_code" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex flex-col gap-3 p-3 md:p-4">
+        <div class="flex flex-col gap-5 p-3 md:p-4">
             <div
                 v-if="page.props.flash.success"
-                class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-300"
+                class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-300"
             >
                 {{ page.props.flash.success }}
             </div>
@@ -156,8 +156,8 @@ const openEditDialog = () => {
                 @edit="openEditDialog"
             />
 
-            <div class="grid gap-3 xl:grid-cols-[minmax(0,1.4fr)_340px]">
-                <div class="space-y-3">
+            <div class="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_360px]">
+                <div class="space-y-4">
                     <VisaRequirementsChecklist
                         :visa-case-id="visaCase.id"
                         :template="requirementTemplate"
@@ -172,10 +172,11 @@ const openEditDialog = () => {
                         <template #notes>
                             <NotesPanel
                                 embedded
-                                title="Notes"
+                                title="Add note"
                                 route-name="visa-cases.notes.store"
                                 :route-parameter="visaCase.id"
                                 :notes="visaCase.notes"
+                                :show-list="false"
                             />
                         </template>
 

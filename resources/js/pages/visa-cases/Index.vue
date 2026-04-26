@@ -152,100 +152,115 @@ const statusClasses = (status: string) =>
     <Head title="Visa Cases" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex flex-col gap-3 p-3 md:p-4">
-            <div v-if="page.props.flash.success" class="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <div class="flex flex-col gap-4 p-3 md:p-4">
+            <div
+                v-if="page.props.flash.success"
+                class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-300"
+            >
                 {{ page.props.flash.success }}
             </div>
 
-            <section class="app-panel overflow-hidden">
-                <div class="flex flex-col gap-2 border-b border-border px-3.5 py-3 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <h2 class="text-base font-semibold tracking-tight text-slate-950 dark:text-slate-50">Visa cases</h2>
-                    </div>
-
-                    <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>{{ visaCases.length }} cases</span>
-                        <Button type="button" class="gap-2" @click="isCreateDialogOpen = true">
-                            <Plus class="size-4" />
-                            New case
-                        </Button>
-                    </div>
-                </div>
-
-                <div class="border-b border-border px-3.5 py-3">
-                    <form class="grid gap-2 md:grid-cols-[minmax(0,1fr)_180px_180px_auto_auto]" @submit.prevent="submitFilters">
-                        <div class="relative">
-                            <Search class="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input v-model="filterForm.search" class="pl-8" placeholder="Search reference, client, visa, school, country, or assignee" />
+            <section class="app-panel px-4 py-4 md:px-5">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div class="flex flex-wrap items-end gap-6">
+                        <div>
+                            <div class="flex flex-wrap items-center gap-3">
+                                <h2 class="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">Visa cases</h2>
+                                <span class="text-sm text-muted-foreground">{{ visaCases.length }} cases</span>
+                            </div>
                         </div>
+                        <span class="text-sm text-muted-foreground">{{ hasActiveFilters ? 'Filtered view' : 'All destinations' }}</span>
+                    </div>
 
-                        <select
-                            v-model="filterForm.status"
-                            class="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
-                        >
-                            <option value="all">All statuses</option>
-                            <option v-for="option in statusOptions" :key="option.value" :value="option.value">
-                                {{ option.label }}
-                            </option>
-                        </select>
-
-                        <select
-                            v-model="filterForm.country"
-                            class="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
-                        >
-                            <option value="">All countries</option>
-                            <option v-for="country in requirementCountries" :key="country" :value="country">
-                                {{ country }}
-                            </option>
-                        </select>
-
-                        <Button type="submit" variant="outline">Apply</Button>
-                        <Button v-if="hasActiveFilters" type="button" variant="ghost" class="gap-2" @click="resetFilters">
-                            <X class="size-4" />
-                            Clear
-                        </Button>
-                    </form>
+                    <Button type="button" class="h-10 gap-2 rounded-lg px-4" @click="isCreateDialogOpen = true">
+                        <Plus class="size-4" />
+                        New case
+                    </Button>
                 </div>
+            </section>
 
-                <div v-if="visaCases.length === 0" class="px-3.5 py-4 text-sm text-muted-foreground">
+            <section class="app-panel px-4 py-4 md:px-5">
+                <form class="grid gap-3 xl:grid-cols-[minmax(0,1.5fr)_220px_220px_auto_auto]" @submit.prevent="submitFilters">
+                    <div class="relative">
+                        <Search class="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            v-model="filterForm.search"
+                            class="h-10 rounded-lg border-border bg-background pl-8"
+                            placeholder="Search reference, client, visa, school, country, or assignee"
+                        />
+                    </div>
+
+                    <select
+                        v-model="filterForm.status"
+                        class="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
+                    >
+                        <option value="all">All statuses</option>
+                        <option v-for="option in statusOptions" :key="option.value" :value="option.value">
+                            {{ option.label }}
+                        </option>
+                    </select>
+
+                    <select
+                        v-model="filterForm.country"
+                        class="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
+                    >
+                        <option value="">All countries</option>
+                        <option v-for="country in requirementCountries" :key="country" :value="country">
+                            {{ country }}
+                        </option>
+                    </select>
+
+                    <Button type="submit" variant="outline" class="h-10 rounded-lg">Apply</Button>
+                    <Button v-if="hasActiveFilters" type="button" variant="ghost" class="h-10 gap-2 rounded-lg" @click="resetFilters">
+                        <X class="size-4" />
+                        Clear
+                    </Button>
+                </form>
+            </section>
+
+            <section class="app-panel overflow-hidden">
+                <div
+                    v-if="visaCases.length === 0"
+                    class="m-4 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-12 text-center text-sm text-muted-foreground"
+                >
                     {{ hasActiveFilters ? 'No visa cases match the current filters.' : 'No visa cases yet.' }}
                 </div>
 
                 <div v-else class="overflow-x-auto">
                     <table class="w-full text-[13px]">
-                        <thead>
-                            <tr class="border-b border-border text-left text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                                <th class="px-3.5 py-2 font-medium">Reference</th>
-                                <th class="px-3 py-2 font-medium">Client</th>
-                                <th class="px-3 py-2 font-medium">Visa type</th>
-                                <th class="px-3 py-2 font-medium">Destination</th>
-                                <th class="px-3 py-2 font-medium">Status</th>
-                                <th class="px-3 py-2 font-medium">Assignee</th>
-                                <th class="px-3 py-2 font-medium">Submitted</th>
-                                <th class="px-3 py-2 font-medium">Decision</th>
-                                <th class="px-3.5 py-2 text-right font-medium">Action</th>
+                        <thead class="bg-muted/20">
+                            <tr class="border-b border-border/70 text-left text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                                <th class="px-5 py-3.5 font-medium">Reference</th>
+                                <th class="px-3 py-3.5 font-medium">Client</th>
+                                <th class="px-3 py-3.5 font-medium">Visa type</th>
+                                <th class="px-3 py-3.5 font-medium">Destination</th>
+                                <th class="px-3 py-3.5 font-medium">Status</th>
+                                <th class="px-3 py-3.5 font-medium">Assignee</th>
+                                <th class="px-3 py-3.5 font-medium">Submitted</th>
+                                <th class="px-3 py-3.5 font-medium">Decision</th>
+                                <th class="px-5 py-3.5 text-right font-medium">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr
                                 v-for="visaCase in visaCases"
                                 :key="visaCase.id"
-                                class="border-b border-border/70 align-top transition-colors hover:bg-muted/40"
+                                class="border-b border-border/70 align-top transition-colors hover:bg-muted/18"
                             >
-                                <td class="px-3.5 py-2.5 font-medium text-foreground">{{ visaCase.reference_code }}</td>
-                                <td class="px-3 py-2.5 text-muted-foreground">{{ visaCase.client_name || 'No client linked' }}</td>
-                                <td class="px-3 py-2.5 text-muted-foreground">{{ visaCase.visa_type }}</td>
-                                <td class="px-3 py-2.5 text-muted-foreground">{{ visaCase.destination_country }}</td>
-                                <td class="px-3 py-2.5">
-                                    <span class="rounded-full px-2 py-0.5 text-[10px] font-medium" :class="statusClasses(visaCase.status)">
+                                <td class="px-5 py-4 font-medium text-foreground">{{ visaCase.reference_code }}</td>
+                                <td class="px-3 py-4 text-muted-foreground">{{ visaCase.client_name || 'No client linked' }}</td>
+                                <td class="px-3 py-4 text-muted-foreground">{{ visaCase.visa_type }}</td>
+                                <td class="px-3 py-4 text-muted-foreground">{{ visaCase.destination_country }}</td>
+                                <td class="px-3 py-4">
+                                    <span class="rounded-full px-2.5 py-1 text-[10px] font-medium" :class="statusClasses(visaCase.status)">
                                         {{ visaCase.status_label }}
                                     </span>
                                 </td>
-                                <td class="px-3 py-2.5 text-muted-foreground">{{ visaCase.assignee_name || 'Unassigned' }}</td>
-                                <td class="whitespace-nowrap px-3 py-2.5 text-muted-foreground">{{ formatDate(visaCase.submitted_at) }}</td>
-                                <td class="whitespace-nowrap px-3 py-2.5 text-muted-foreground">{{ formatDate(visaCase.decision_at) }}</td>
-                                <td class="px-3.5 py-2.5 text-right">
-                                    <Button as-child variant="ghost" size="sm" class="gap-2">
+                                <td class="px-3 py-4 text-muted-foreground">{{ visaCase.assignee_name || 'Unassigned' }}</td>
+                                <td class="whitespace-nowrap px-3 py-4 text-muted-foreground">{{ formatDate(visaCase.submitted_at) }}</td>
+                                <td class="whitespace-nowrap px-3 py-4 text-muted-foreground">{{ formatDate(visaCase.decision_at) }}</td>
+                                <td class="px-5 py-4 text-right">
+                                    <Button as-child variant="ghost" size="sm" class="gap-2 rounded-xl">
                                         <Link :href="route('visa-cases.show', visaCase.id)">
                                             Open
                                             <ArrowRight class="size-4" />

@@ -19,6 +19,7 @@ use App\Models\VisaRequirementTemplate;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Testing\AssertableInertia;
 use Tests\TestCase;
 
 class CrmWorkflowTest extends TestCase
@@ -304,7 +305,7 @@ class CrmWorkflowTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_users_can_add_notes_to_clients_and_see_them_in_the_timeline(): void
+    public function test_client_timeline_includes_notes_and_updates_in_reverse_chronological_order(): void
     {
         $user = User::factory()->create();
         $client = Client::factory()->create([
@@ -324,10 +325,38 @@ class CrmWorkflowTest extends TestCase
         $this->assertSame($client->id, $note->notable_id);
         $this->assertSame('client', $note->notable_type);
 
+        $this->travel(5)->minutes();
+
+        $this->actingAs($user)
+            ->patch(route('clients.update', $client), [
+                'full_name' => $client->full_name,
+                'email' => 'timeline@example.com',
+                'phone' => $client->phone,
+                'date_of_birth' => $client->date_of_birth?->toDateString(),
+                'passport_number' => $client->passport_number,
+                'passport_expiry_date' => $client->passport_expiry_date?->toDateString(),
+                'marital_status' => $client->marital_status,
+                'occupation' => $client->occupation,
+                'current_address' => $client->current_address,
+                'nationality' => $client->nationality,
+                'destination_country' => $client->destination_country,
+                'lead_source' => $client->lead_source,
+                'status' => $client->status->value,
+                'family_members' => $client->family_members ?? [],
+                'education_history' => $client->education_history ?? [],
+                'work_experiences' => $client->work_experiences ?? [],
+            ])
+            ->assertRedirect(route('clients.show', $client));
+
         $this->actingAs($user)
             ->get(route('clients.show', $client))
             ->assertOk()
-            ->assertSee('Requested updated employment letter');
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('timeline.0.title', 'Client updated')
+                ->where('timeline.0.meta.author', $user->name)
+                ->where('timeline.1.title', 'Note added')
+                ->where('timeline.1.description', 'Requested updated employment letter from the client.')
+            );
     }
 
     public function test_users_can_update_clients_in_their_own_agency(): void
@@ -443,6 +472,14 @@ class CrmWorkflowTest extends TestCase
         $this->assertSame('Japan', $visaCase->destination_country);
         $this->assertNull($visaCase->institution_name);
         $this->assertSame(VisaCaseStatus::Submitted, $visaCase->status);
+
+        $this->actingAs($user)
+            ->get(route('visa-cases.show', $visaCase))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('timeline.0.title', 'Visa case updated')
+                ->where('timeline.0.meta.author', $user->name)
+            );
     }
 
     public function test_visa_cases_require_an_institution_name_when_the_template_demands_it(): void

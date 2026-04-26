@@ -10,7 +10,7 @@ class StoreVisaCaseStatusTemplateRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user() !== null && $this->user()->agency_id !== null;
+        return $this->user() !== null && $this->user()->agency_id !== null && $this->user()->canManageWorkflowSettings();
     }
 
     /**

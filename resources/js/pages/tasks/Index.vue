@@ -146,82 +146,95 @@ const statusClasses = (status: string) =>
     <Head title="Tasks" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex flex-col gap-3 p-3 md:p-4">
-            <div v-if="page.props.flash.success" class="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <div class="flex flex-col gap-4 p-3 md:p-4">
+            <div
+                v-if="page.props.flash.success"
+                class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-300"
+            >
                 {{ page.props.flash.success }}
             </div>
 
-            <section class="app-panel overflow-hidden">
-                <div class="flex flex-col gap-2 border-b border-border px-3.5 py-3 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <h1 class="text-base font-semibold tracking-tight text-slate-950 dark:text-slate-50">Tasks</h1>
-                    </div>
-
-                    <div class="flex items-center gap-2 text-sm text-muted-foreground">
-                        <span>{{ tasks.length }} tasks</span>
-                        <Button type="button" class="gap-2" @click="isCreateDialogOpen = true">
-                            <Plus class="size-4" />
-                            New task
-                        </Button>
-                    </div>
-                </div>
-
-                <div class="grid gap-3 border-b border-border px-3.5 py-3 md:grid-cols-3">
-                    <div>
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Open</p>
-                        <p class="mt-1 text-lg font-semibold tracking-tight text-foreground">{{ stats.open }}</p>
-                    </div>
-                    <div>
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Due today</p>
-                        <p class="mt-1 text-lg font-semibold tracking-tight text-foreground">{{ stats.dueToday }}</p>
-                    </div>
-                    <div>
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Overdue</p>
-                        <p class="mt-1 text-lg font-semibold tracking-tight text-amber-600 dark:text-amber-300">{{ stats.overdue }}</p>
-                    </div>
-                </div>
-
-                <div class="border-b border-border px-3.5 py-3">
-                    <form class="grid gap-2 md:grid-cols-[minmax(0,1fr)_180px_180px_auto_auto]" @submit.prevent="submitFilters">
-                        <div class="relative">
-                            <Search class="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input v-model="filterForm.search" class="pl-8" placeholder="Search title, client, case, assignee, or description" />
+            <section class="app-panel px-4 py-4 md:px-5">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div class="flex flex-wrap items-end gap-6">
+                        <div>
+                            <div class="flex flex-wrap items-center gap-3">
+                                <h1 class="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">Tasks</h1>
+                                <span class="text-sm text-muted-foreground">{{ tasks.length }} items</span>
+                            </div>
                         </div>
+                        <div class="flex flex-wrap gap-5">
+                            <div class="space-y-1">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Open</p>
+                                <p class="text-lg font-semibold tracking-tight text-foreground">{{ stats.open }}</p>
+                            </div>
+                            <div class="space-y-1">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Due today</p>
+                                <p class="text-lg font-semibold tracking-tight text-foreground">{{ stats.dueToday }}</p>
+                            </div>
+                            <div class="space-y-1">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Overdue</p>
+                                <p class="text-lg font-semibold tracking-tight text-amber-600 dark:text-amber-300">{{ stats.overdue }}</p>
+                            </div>
+                        </div>
+                    </div>
 
-                        <select
-                            v-model="filterForm.status"
-                            class="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
-                        >
-                            <option value="all">All statuses</option>
-                            <option v-for="option in statusOptions" :key="option.value" :value="option.value">
-                                {{ option.label }}
-                            </option>
-                        </select>
-
-                        <select
-                            v-model="filterForm.priority"
-                            class="flex h-8 w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
-                        >
-                            <option value="all">All priorities</option>
-                            <option v-for="option in priorityOptions" :key="option.value" :value="option.value">
-                                {{ option.label }}
-                            </option>
-                        </select>
-
-                        <Button type="submit" variant="outline">Apply</Button>
-                        <Button v-if="hasActiveFilters" type="button" variant="ghost" class="gap-2" @click="resetFilters">
-                            <X class="size-4" />
-                            Clear
-                        </Button>
-                    </form>
+                    <Button type="button" class="h-10 gap-2 rounded-lg px-4" @click="isCreateDialogOpen = true">
+                        <Plus class="size-4" />
+                        New task
+                    </Button>
                 </div>
+            </section>
 
-                <div v-if="tasks.length === 0" class="px-3.5 py-4 text-sm text-muted-foreground">
+            <section class="app-panel px-4 py-4 md:px-5">
+                <form class="grid gap-3 xl:grid-cols-[minmax(0,1.5fr)_220px_220px_auto_auto]" @submit.prevent="submitFilters">
+                    <div class="relative">
+                        <Search class="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                            v-model="filterForm.search"
+                            class="h-10 rounded-lg border-border bg-background pl-8"
+                            placeholder="Search title, client, case, assignee, or description"
+                        />
+                    </div>
+
+                    <select
+                        v-model="filterForm.status"
+                        class="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
+                    >
+                        <option value="all">All statuses</option>
+                        <option v-for="option in statusOptions" :key="option.value" :value="option.value">
+                            {{ option.label }}
+                        </option>
+                    </select>
+
+                    <select
+                        v-model="filterForm.priority"
+                        class="flex h-10 w-full rounded-lg border border-input bg-background px-3 py-2 text-sm focus-visible:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/15"
+                    >
+                        <option value="all">All priorities</option>
+                        <option v-for="option in priorityOptions" :key="option.value" :value="option.value">
+                            {{ option.label }}
+                        </option>
+                    </select>
+
+                    <Button type="submit" variant="outline" class="h-10 rounded-lg">Apply</Button>
+                    <Button v-if="hasActiveFilters" type="button" variant="ghost" class="h-10 gap-2 rounded-lg" @click="resetFilters">
+                        <X class="size-4" />
+                        Clear
+                    </Button>
+                </form>
+            </section>
+
+            <section class="app-panel overflow-hidden">
+                <div
+                    v-if="tasks.length === 0"
+                    class="m-4 rounded-lg border border-dashed border-border bg-muted/20 px-4 py-12 text-center text-sm text-muted-foreground"
+                >
                     {{ hasActiveFilters ? 'No tasks match the current filters.' : 'No tasks yet.' }}
                 </div>
 
-                <div v-else class="px-3.5 py-1">
-                    <div v-for="task in tasks" :key="task.id" class="border-b border-border/70 py-2.5 last:border-b-0">
+                <div v-else class="px-5">
+                    <div v-for="task in tasks" :key="task.id" class="border-b border-border/70 py-4 last:border-b-0">
                         <div class="flex flex-wrap items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <div class="flex flex-wrap items-center gap-2">
@@ -243,7 +256,7 @@ const statusClasses = (status: string) =>
                                 </p>
                             </div>
 
-                            <Button v-if="task.status !== 'done'" variant="outline" size="sm" class="gap-2" @click="completeTask(task.id)">
+                            <Button v-if="task.status !== 'done'" variant="outline" size="sm" class="gap-2 rounded-xl" @click="completeTask(task.id)">
                                 <Check class="size-4" />
                                 Done
                             </Button>

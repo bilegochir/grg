@@ -55,7 +55,7 @@ const markAllAsRead = () => {
             <Button
                 variant="ghost"
                 size="icon"
-                class="relative h-9 w-9 rounded-xl border border-border/70 bg-background text-muted-foreground shadow-sm transition hover:bg-muted hover:text-foreground"
+                class="relative h-9 w-9 rounded-lg border border-border bg-card text-muted-foreground shadow-none transition hover:bg-muted hover:text-foreground"
             >
                 <Bell class="h-4 w-4" />
                 <span

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\UserRole;
 use Database\Factories\AgencyInvitationFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -21,6 +22,7 @@ class AgencyInvitation extends Model
         'invited_by_id',
         'name',
         'email',
+        'role',
         'token',
         'expires_at',
         'accepted_at',
@@ -32,6 +34,7 @@ class AgencyInvitation extends Model
     protected function casts(): array
     {
         return [
+            'role' => UserRole::class,
             'expires_at' => 'datetime',
             'accepted_at' => 'datetime',
         ];

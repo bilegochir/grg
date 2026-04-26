@@ -3,6 +3,16 @@ import type { LucideIcon } from 'lucide-vue-next';
 export interface Auth {
     user: User | null;
     agency: Agency | null;
+    permissions: AuthPermissions | null;
+}
+
+export interface AuthPermissions {
+    manage_company_settings: boolean;
+    manage_workflow_settings: boolean;
+    manage_team: boolean;
+    manage_clients: boolean;
+    manage_visa_cases: boolean;
+    manage_tasks: boolean;
 }
 
 export interface Agency {
@@ -68,6 +78,8 @@ export interface User {
     name: string;
     email: string;
     avatar?: string;
+    role: string;
+    role_label: string;
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;

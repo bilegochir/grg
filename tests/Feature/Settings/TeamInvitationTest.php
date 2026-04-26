@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Settings;
 
+use App\Enums\UserRole;
 use App\Models\AgencyInvitation;
 use App\Models\User;
 use App\Notifications\TeamInvitationNotification;
@@ -26,12 +27,15 @@ class TeamInvitationTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('settings.team.index'))
+            ->assertOk()
             ->assertInertia(fn (AssertableInertia $page) => $page
                 ->component('settings/Team')
                 ->has('teamMembers', 1)
                 ->where('teamMembers.0.email', $user->email)
+                ->where('teamMembers.0.role', UserRole::Admin->value)
                 ->has('pendingInvites', 1)
                 ->where('pendingInvites.0.email', 'pending@example.com')
+                ->where('pendingInvites.0.role', UserRole::Staff->value)
             );
     }
 
@@ -44,6 +48,7 @@ class TeamInvitationTest extends TestCase
         $response = $this->actingAs($user)->post(route('settings.team.store'), [
             'name' => 'Ariunaa Bat',
             'email' => 'ariunaa@example.com',
+            'role' => UserRole::Viewer->value,
         ]);
 
         $response
@@ -56,6 +61,7 @@ class TeamInvitationTest extends TestCase
         $this->assertSame($user->id, $invitation->invited_by_id);
         $this->assertSame('Ariunaa Bat', $invitation->name);
         $this->assertSame('ariunaa@example.com', $invitation->email);
+        $this->assertSame(UserRole::Viewer, $invitation->role);
         $this->assertTrue($invitation->expires_at->isFuture());
 
         Notification::assertSentOnDemand(TeamInvitationNotification::class, function (
@@ -80,6 +86,7 @@ class TeamInvitationTest extends TestCase
         $this->actingAs($inviter)->post(route('settings.team.store'), [
             'name' => 'Ariunaa Bat',
             'email' => 'ariunaa@example.com',
+            'role' => UserRole::CaseManager->value,
         ]);
 
         $this->post(route('logout'));
@@ -116,6 +123,7 @@ class TeamInvitationTest extends TestCase
         $response->assertRedirect(route('dashboard'));
         $this->assertAuthenticatedAs($user);
         $this->assertSame($inviter->agency_id, $user->agency_id);
+        $this->assertSame(UserRole::CaseManager, $user->role);
         $this->assertNotNull($user->email_verified_at);
         $this->assertNotNull($invitation->fresh()->accepted_at);
         $this->assertNull($invitation->fresh()->token);
@@ -134,6 +142,7 @@ class TeamInvitationTest extends TestCase
             ->post(route('settings.team.store'), [
                 'name' => $existingUser->name,
                 'email' => $existingUser->email,
+                'role' => UserRole::Staff->value,
             ])
             ->assertSessionHasErrors('email');
 

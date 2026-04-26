@@ -19,16 +19,16 @@ class ClientPolicy
 
     public function create(User $user): bool
     {
-        return $user->agency_id !== null;
+        return $user->agency_id !== null && $user->canManageClients();
     }
 
     public function update(User $user, Client $client): bool
     {
-        return $user->agency_id === $client->agency_id;
+        return $user->agency_id === $client->agency_id && $user->canManageClients();
     }
 
     public function delete(User $user, Client $client): bool
     {
-        return $user->agency_id === $client->agency_id;
+        return $user->agency_id === $client->agency_id && $user->canManageClients();
     }
 }

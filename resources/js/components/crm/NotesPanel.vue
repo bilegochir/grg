@@ -18,9 +18,11 @@ const props = withDefaults(
         routeParameter: number;
         notes: NoteItem[];
         embedded?: boolean;
+        showList?: boolean;
     }>(),
     {
         embedded: false,
+        showList: true,
     },
 );
 
@@ -62,7 +64,7 @@ const formatDate = (value: null | string) =>
                 <Button :disabled="form.processing">Save note</Button>
             </form>
 
-            <div class="space-y-2.5">
+            <div v-if="props.showList" class="space-y-2.5">
                 <div v-if="notes.length === 0" class="text-sm text-muted-foreground">No notes yet.</div>
                 <div v-else class="space-y-2.5">
                     <div v-for="note in notes" :key="note.id" class="border-b border-border/70 pb-2.5 last:border-b-0 last:pb-0">

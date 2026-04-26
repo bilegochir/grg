@@ -111,38 +111,42 @@ const visaCaseStatusClasses = (status: string) =>
     <Head title="Dashboard" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex flex-col gap-3 p-3 md:p-4">
+        <div class="flex flex-col gap-4 p-3 md:p-4">
             <div
                 v-if="page.props.flash.success"
-                class="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200"
+                class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-300"
             >
                 {{ page.props.flash.success }}
             </div>
 
-            <section class="flex flex-col gap-1">
-                <h2 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">Overview</h2>
+            <section class="app-panel px-4 py-4 md:px-5">
+                <div class="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                    <div>
+                        <h2 class="text-[1.75rem] font-semibold tracking-tight text-slate-950 dark:text-slate-50">Dashboard</h2>
+                    </div>
+
+                    <div class="grid flex-1 gap-0 border border-border sm:grid-cols-2 xl:max-w-3xl xl:grid-cols-4">
+                        <section class="px-4 py-4 sm:border-r sm:border-border">
+                            <p class="text-2xl font-semibold tracking-tight">{{ stats.totalClients }}</p>
+                            <p class="mt-1 text-sm text-muted-foreground">Clients</p>
+                        </section>
+                        <section class="px-4 py-4 xl:border-r xl:border-border">
+                            <p class="text-2xl font-semibold tracking-tight">{{ stats.activeCases }}</p>
+                            <p class="mt-1 text-sm text-muted-foreground">Active cases</p>
+                        </section>
+                        <section class="border-t border-border px-4 py-4 sm:border-t sm:border-r sm:border-border xl:border-t-0">
+                            <p class="text-2xl font-semibold tracking-tight">{{ stats.openTasks }}</p>
+                            <p class="mt-1 text-sm text-muted-foreground">Open tasks</p>
+                        </section>
+                        <section class="border-t border-border px-4 py-4 sm:border-t xl:border-t-0">
+                            <p class="text-2xl font-semibold tracking-tight text-amber-700 dark:text-amber-300">{{ stats.overdueTasks }}</p>
+                            <p class="mt-1 text-sm text-muted-foreground">Overdue</p>
+                        </section>
+                    </div>
+                </div>
             </section>
 
-            <div class="grid gap-2.5 md:grid-cols-2 xl:grid-cols-4">
-                <section class="app-panel px-3 py-2.5">
-                    <p class="text-2xl font-semibold tracking-tight">{{ stats.totalClients }}</p>
-                    <p class="mt-0.5 text-sm text-muted-foreground">Clients</p>
-                </section>
-                <section class="app-panel px-3 py-2.5">
-                    <p class="text-2xl font-semibold tracking-tight">{{ stats.activeCases }}</p>
-                    <p class="mt-0.5 text-sm text-muted-foreground">Active cases</p>
-                </section>
-                <section class="app-panel px-3 py-2.5">
-                    <p class="text-2xl font-semibold tracking-tight">{{ stats.openTasks }}</p>
-                    <p class="mt-0.5 text-sm text-muted-foreground">Open tasks</p>
-                </section>
-                <section class="app-panel px-3 py-2.5">
-                    <p class="text-2xl font-semibold tracking-tight text-amber-700 dark:text-amber-300">{{ stats.overdueTasks }}</p>
-                    <p class="mt-0.5 text-sm text-muted-foreground">Overdue</p>
-                </section>
-            </div>
-
-            <div class="grid gap-3 xl:grid-cols-2">
+            <div class="grid gap-4 xl:grid-cols-2">
                 <section class="app-panel overflow-hidden">
                     <div class="flex flex-col gap-3 border-b border-border/70 px-3.5 py-3 md:flex-row md:items-center md:justify-between">
                         <div class="flex items-center gap-2">
@@ -168,8 +172,8 @@ const visaCaseStatusClasses = (status: string) =>
                         </Button>
                     </div>
 
-                    <div v-else class="space-y-2.5 p-3.5">
-                        <div v-for="task in upcomingTasks" :key="task.id" class="rounded-xl border border-border/70 bg-background p-4">
+                    <div v-else class="divide-y divide-border/70 px-4">
+                        <div v-for="task in upcomingTasks" :key="task.id" class="py-3.5">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0">
                                     <p class="truncate text-sm font-semibold text-foreground sm:text-[15px]">{{ task.title }}</p>
@@ -219,12 +223,12 @@ const visaCaseStatusClasses = (status: string) =>
                         </Button>
                     </div>
 
-                    <div v-else class="space-y-2.5 p-3.5">
+                    <div v-else class="divide-y divide-border/70 px-4">
                         <Link
                             v-for="visaCase in pipeline"
                             :key="visaCase.id"
                             :href="route('visa-cases.show', visaCase.id)"
-                            class="group block rounded-xl border border-border/70 bg-background p-4 transition-colors hover:bg-muted/30"
+                            class="group block py-3.5 transition-colors hover:bg-muted/10"
                         >
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0">
@@ -280,13 +284,13 @@ const visaCaseStatusClasses = (status: string) =>
                     </Button>
                 </div>
 
-                <div v-else class="grid content-start gap-2.5 p-3.5 md:grid-cols-2 xl:grid-cols-3">
-                    <Link
-                        v-for="client in recentClients"
-                        :key="client.id"
-                        :href="route('clients.show', client.id)"
-                        class="group rounded-xl border border-border/70 bg-background p-4 transition-colors hover:bg-muted/30"
-                    >
+                    <div v-else class="divide-y divide-border/70 px-4">
+                        <Link
+                            v-for="client in recentClients"
+                            :key="client.id"
+                            :href="route('clients.show', client.id)"
+                            class="group block py-3.5 transition-colors hover:bg-muted/10"
+                        >
                         <div class="flex items-start gap-3">
                             <div
                                 class="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-slate-900/5 text-sm font-semibold text-slate-900 ring-1 ring-black/5 dark:bg-white/10 dark:text-white dark:ring-white/10"

@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\UserRole;
 use App\Models\Agency;
 use App\Models\AgencyInvitation;
 use App\Models\User;
@@ -26,6 +27,7 @@ class AgencyInvitationFactory extends Factory
             'invited_by_id' => User::factory(),
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
+            'role' => UserRole::Staff,
             'token' => hash('sha256', Str::random(64)),
             'expires_at' => Carbon::now()->addDays(7),
             'accepted_at' => null,

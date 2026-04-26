@@ -14,7 +14,7 @@ class AgencyController extends Controller
 {
     public function edit(Request $request): Response
     {
-        abort_if($request->user()?->agency === null, 403);
+        abort_if($request->user()?->agency === null || ! $request->user()?->canManageCompanySettings(), 403);
 
         return Inertia::render('settings/Agency');
     }
@@ -22,7 +22,7 @@ class AgencyController extends Controller
     public function update(UpdateAgencyRequest $request): RedirectResponse
     {
         $agency = $request->user()?->agency;
-        abort_if($agency === null, 403);
+        abort_if($agency === null || ! $request->user()?->canManageCompanySettings(), 403);
 
         $validated = $request->validated();
 

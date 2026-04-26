@@ -176,18 +176,9 @@ const statusClasses = (status: string): string =>
         <div class="border-b border-border/70 px-4 py-4">
             <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div class="min-w-0">
-                    <div class="flex flex-wrap items-center gap-2">
-                        <h2 class="text-base font-semibold text-slate-950 dark:text-slate-50">
-                            Requirements
-                        </h2>
-
-                        <span
-                            v-if="template"
-                            class="rounded-full border border-border/70 bg-muted/25 px-2.5 py-0.5 text-xs text-muted-foreground"
-                        >
-                            {{ template.country_name }} · {{ template.visa_type }}
-                        </span>
-                    </div>
+                    <h2 class="text-base font-semibold text-slate-950 dark:text-slate-50">
+                        Requirements
+                    </h2>
 
                     <p v-if="!template" class="mt-1 text-sm text-muted-foreground">
                         No requirement template matched this destination and visa type yet.
@@ -198,36 +189,31 @@ const statusClasses = (status: string): string =>
                     </p>
                 </div>
 
-                <div
-                    v-if="items.length > 0"
-                    class="flex w-full items-center gap-3 rounded-xl border border-border/70 bg-muted/20 px-3 py-2 lg:w-auto lg:min-w-[260px]"
-                >
-                    <div class="min-w-0 flex-1">
-                        <div class="flex items-center justify-between gap-3">
-                            <p class="text-sm font-medium text-foreground">
-                                {{ completedCount }}/{{ items.length }} complete
-                            </p>
+                <div v-if="items.length > 0" class="w-full lg:w-auto lg:min-w-[260px]">
+                    <div class="flex items-center justify-between gap-3">
+                        <p class="text-sm font-medium text-foreground">
+                            {{ completedCount }}/{{ items.length }} complete
+                        </p>
 
-                            <span class="rounded-full bg-background px-2 py-0.5 text-[11px] font-medium text-foreground">
-                                {{ completionPercent }}%
-                            </span>
-                        </div>
+                        <span class="text-sm font-medium text-muted-foreground">
+                            {{ completionPercent }}%
+                        </span>
+                    </div>
 
-                        <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-background">
-                            <div
-                                class="h-full rounded-full bg-slate-900 transition-all dark:bg-slate-100"
-                                :style="{ width: `${completionPercent}%` }"
-                            />
-                        </div>
+                    <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div
+                            class="h-full rounded-full bg-slate-900 transition-all dark:bg-slate-100"
+                            :style="{ width: `${completionPercent}%` }"
+                        />
                     </div>
                 </div>
             </div>
 
-            <div v-if="templateHighlights.length > 0 || template?.source_url" class="mt-3 flex flex-wrap gap-2">
+            <div v-if="templateHighlights.length > 0 || template?.source_url" class="mt-3 flex flex-wrap gap-x-5 gap-y-2 border-t border-border/70 pt-3">
                 <div
                     v-for="detail in templateHighlights"
                     :key="detail.label"
-                    class="rounded-full border border-border/70 bg-muted/25 px-3 py-1.5"
+                    class="flex items-center gap-2"
                 >
                     <span class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                         {{ detail.label }}
@@ -238,7 +224,7 @@ const statusClasses = (status: string): string =>
                     </span>
                 </div>
 
-                <div v-if="template?.source_url" class="rounded-full border border-border/70 bg-muted/25 px-3 py-1.5">
+                <div v-if="template?.source_url" class="flex items-center gap-2">
                     <span class="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                         Source
                     </span>

@@ -19,16 +19,16 @@ class VisaCasePolicy
 
     public function create(User $user): bool
     {
-        return $user->agency_id !== null;
+        return $user->agency_id !== null && $user->canManageVisaCases();
     }
 
     public function update(User $user, VisaCase $visaCase): bool
     {
-        return $user->agency_id === $visaCase->agency_id;
+        return $user->agency_id === $visaCase->agency_id && $user->canManageVisaCases();
     }
 
     public function delete(User $user, VisaCase $visaCase): bool
     {
-        return $user->agency_id === $visaCase->agency_id;
+        return $user->agency_id === $visaCase->agency_id && $user->canManageVisaCases();
     }
 }

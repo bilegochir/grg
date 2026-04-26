@@ -119,6 +119,11 @@ class Client extends Model
         return $this->morphMany(Note::class, 'notable');
     }
 
+    public function crmActivities(): MorphMany
+    {
+        return $this->morphMany(CrmActivity::class, 'notable')->latest();
+    }
+
     public function attachments(): MorphMany
     {
         return $this->morphMany(Attachment::class, 'attachable');

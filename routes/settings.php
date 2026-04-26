@@ -18,6 +18,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('settings/agency', [AgencyController::class, 'update'])->name('settings.agency.update');
     Route::get('settings/team', [TeamController::class, 'index'])->name('settings.team.index');
     Route::post('settings/team', [TeamController::class, 'store'])->name('settings.team.store');
+    Route::patch('settings/team/{user}/role', [TeamController::class, 'updateRole'])->name('settings.team.role.update');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');

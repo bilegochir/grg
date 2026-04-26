@@ -11,14 +11,12 @@ use Inertia\Response;
 
 class TaskStatusTemplateController extends Controller
 {
-    public function __construct(private TaskStatusTemplateResolver $taskStatusTemplateResolver)
-    {
-    }
+    public function __construct(private TaskStatusTemplateResolver $taskStatusTemplateResolver) {}
 
     public function index(): Response
     {
         $agency = request()->user()?->agency;
-        abort_if($agency === null, 403);
+        abort_if($agency === null || ! request()->user()?->canManageWorkflowSettings(), 403);
 
         return Inertia::render('settings/TaskStatusTemplates', [
             'templates' => $this->taskStatusTemplateResolver->templates($agency)
@@ -34,7 +32,7 @@ class TaskStatusTemplateController extends Controller
     public function store(StoreTaskStatusTemplateRequest $request): RedirectResponse
     {
         $agency = $request->user()?->agency;
-        abort_if($agency === null, 403);
+        abort_if($agency === null || ! $request->user()?->canManageWorkflowSettings(), 403);
 
         foreach ($request->validated('templates') as $index => $template) {
             $agency->taskStatusTemplates()->updateOrCreate(

@@ -19,16 +19,16 @@ class TaskPolicy
 
     public function create(User $user): bool
     {
-        return $user->agency_id !== null;
+        return $user->agency_id !== null && $user->canManageTasks();
     }
 
     public function update(User $user, Task $task): bool
     {
-        return $user->agency_id === $task->agency_id;
+        return $user->agency_id === $task->agency_id && $user->canManageTasks();
     }
 
     public function delete(User $user, Task $task): bool
     {
-        return $user->agency_id === $task->agency_id;
+        return $user->agency_id === $task->agency_id && $user->canManageTasks();
     }
 }

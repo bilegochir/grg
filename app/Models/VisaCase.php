@@ -3,17 +3,18 @@
 namespace App\Models;
 
 use App\Enums\VisaCaseStatus;
+use Database\Factories\VisaCaseFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 class VisaCase extends Model
 {
-    /** @use HasFactory<\Database\Factories\VisaCaseFactory> */
+    /** @use HasFactory<VisaCaseFactory> */
     use HasFactory;
 
     /**
@@ -87,6 +88,11 @@ class VisaCase extends Model
     public function crmNotes(): MorphMany
     {
         return $this->morphMany(Note::class, 'notable');
+    }
+
+    public function crmActivities(): MorphMany
+    {
+        return $this->morphMany(CrmActivity::class, 'notable')->latest();
     }
 
     public function attachments(): MorphMany

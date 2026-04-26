@@ -40,7 +40,18 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $request->user()
+                    ? [
+                        'id' => $request->user()->id,
+                        'name' => $request->user()->name,
+                        'email' => $request->user()->email,
+                        'role' => $request->user()->role->value,
+                        'role_label' => $request->user()->roleLabel(),
+                        'email_verified_at' => $request->user()->email_verified_at?->toIso8601String(),
+                        'created_at' => $request->user()->created_at?->toIso8601String(),
+                        'updated_at' => $request->user()->updated_at?->toIso8601String(),
+                    ]
+                    : null,
                 'agency' => $request->user()?->agency
                     ? [
                         'id' => $request->user()->agency->id,
@@ -50,6 +61,16 @@ class HandleInertiaRequests extends Middleware
                         'phone' => $request->user()->agency->phone,
                         'website' => $request->user()->agency->website,
                         'address' => $request->user()->agency->address,
+                    ]
+                    : null,
+                'permissions' => $request->user()
+                    ? [
+                        'manage_company_settings' => $request->user()->canManageCompanySettings(),
+                        'manage_workflow_settings' => $request->user()->canManageWorkflowSettings(),
+                        'manage_team' => $request->user()->canManageTeam(),
+                        'manage_clients' => $request->user()->canManageClients(),
+                        'manage_visa_cases' => $request->user()->canManageVisaCases(),
+                        'manage_tasks' => $request->user()->canManageTasks(),
                     ]
                     : null,
             ],

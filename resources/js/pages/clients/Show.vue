@@ -11,7 +11,18 @@ import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { type BreadcrumbItem, type SharedData } from '@/types';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { ArrowLeft, Check, ChevronDown, Copy, ExternalLink, Pencil, Plus } from 'lucide-vue-next';
+import {
+    ArrowLeft,
+    Briefcase,
+    Check,
+    ChevronDown,
+    Copy,
+    Files,
+    GraduationCap,
+    Pencil,
+    Plus,
+    Users,
+} from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 
 interface ClientFamilyMember {
@@ -161,6 +172,8 @@ const blankWorkExperience = (): ClientWorkExperience => ({
     summary: '',
 });
 
+const cloneRecords = <T extends Record<string, unknown>>(records: T[]): T[] => records.map((record) => ({ ...record }));
+
 const form = useForm({
     full_name: props.client.full_name,
     email: props.client.email ?? '',
@@ -175,26 +188,33 @@ const form = useForm({
     destination_country: props.client.destination_country ?? '',
     lead_source: props.client.lead_source ?? '',
     status: props.client.status,
-    family_members: props.client.family_members.length > 0 ? structuredClone(props.client.family_members) : [blankFamilyMember()],
-    education_history: props.client.education_history.length > 0 ? structuredClone(props.client.education_history) : [blankEducationRecord()],
-    work_experiences: props.client.work_experiences.length > 0 ? structuredClone(props.client.work_experiences) : [blankWorkExperience()],
+    family_members: props.client.family_members.length > 0 ? cloneRecords(props.client.family_members) : [blankFamilyMember()],
+    education_history: props.client.education_history.length > 0 ? cloneRecords(props.client.education_history) : [blankEducationRecord()],
+    work_experiences: props.client.work_experiences.length > 0 ? cloneRecords(props.client.work_experiences) : [blankWorkExperience()],
 });
 
-const primaryItems = computed(() => [
+const clientInitials = computed(() =>
+    props.client.full_name
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part.charAt(0).toUpperCase())
+        .join(' '),
+);
+
+const detailItems = computed(() => [
     { label: 'Email', value: props.client.email || 'Not set' },
     { label: 'Phone', value: props.client.phone || 'Not set' },
+    { label: 'Owner', value: props.client.owner_name || 'Unassigned' },
     { label: 'Occupation', value: props.client.occupation || 'Not set' },
     { label: 'Destination', value: props.client.destination_country || 'Not set' },
     { label: 'Lead source', value: props.client.lead_source || 'Not set' },
-    { label: 'Owner', value: props.client.owner_name || 'Unassigned' },
-]);
-
-const identityItems = computed(() => [
     { label: 'Date of birth', value: formatDateOnly(props.client.date_of_birth) },
     { label: 'Nationality', value: props.client.nationality || 'Not set' },
     { label: 'Passport', value: props.client.passport_number || 'Not set' },
     { label: 'Passport expiry', value: formatDateOnly(props.client.passport_expiry_date) },
     { label: 'Marital status', value: formatValue(props.client.marital_status) },
+    { label: 'Address', value: props.client.current_address || 'Not set' },
 ]);
 
 const submit = () => {
@@ -285,6 +305,23 @@ const formatValue = (value: null | string) => {
         .join(' ');
 };
 
+const formatCountLabel = (count: number, singular: string, plural: string) => `${count} ${count === 1 ? singular : plural}`;
+
+const backgroundSummaries = computed(() => ({
+    family:
+        props.client.family_members[0]?.full_name || props.client.family_members[0]?.relationship
+            ? `${props.client.family_members[0]?.full_name || props.client.family_members[0]?.relationship}${props.client.family_members.length > 1 ? ` +${props.client.family_members.length - 1}` : ''}`
+            : 'No records',
+    education:
+        props.client.education_history[0]?.institution || props.client.education_history[0]?.qualification
+            ? `${props.client.education_history[0]?.institution || props.client.education_history[0]?.qualification}${props.client.education_history.length > 1 ? ` +${props.client.education_history.length - 1}` : ''}`
+            : 'No records',
+    work:
+        props.client.work_experiences[0]?.job_title || props.client.work_experiences[0]?.employer
+            ? `${props.client.work_experiences[0]?.job_title || props.client.work_experiences[0]?.employer}${props.client.work_experiences.length > 1 ? ` +${props.client.work_experiences.length - 1}` : ''}`
+            : 'No records',
+}));
+
 const statusClasses = (status: string) =>
     ({
         lead: 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900',
@@ -292,142 +329,127 @@ const statusClasses = (status: string) =>
         active: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-200',
         closed: 'bg-neutral-200 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200',
     })[status] ?? 'bg-secondary text-secondary-foreground';
+
+const taskStatusClasses = (status: string) =>
+    ({
+        Completed: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-200',
+        'In progress': 'bg-sky-100 text-sky-800 dark:bg-sky-950/70 dark:text-sky-200',
+        Todo: 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-200',
+        Blocked: 'bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-200',
+    })[status] ?? 'bg-muted text-muted-foreground';
+
+const taskPriorityClasses = (priority: string) =>
+    ({
+        High: 'text-rose-600 dark:text-rose-300',
+        Medium: 'text-amber-600 dark:text-amber-300',
+        Low: 'text-slate-500 dark:text-slate-400',
+    })[priority] ?? 'text-muted-foreground';
 </script>
 
 <template>
     <Head :title="client.full_name" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex flex-col gap-3 p-3 md:p-4">
-            <div v-if="page.props.flash.success" class="bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <div class="flex flex-col gap-4 p-3 md:p-4">
+            <div
+                v-if="page.props.flash.success"
+                class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-300"
+            >
                 {{ page.props.flash.success }}
             </div>
 
             <section class="app-panel overflow-hidden">
-                <div class="flex flex-col gap-3 px-4 py-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div class="space-y-2">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <h1 class="text-xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">{{ client.full_name }}</h1>
-                            <span class="rounded-full px-2 py-0.5 text-[10px] font-medium" :class="statusClasses(client.status)">
-                                {{ client.status_label }}
-                            </span>
+                <div class="grid gap-5 px-4 py-4 lg:grid-cols-[minmax(0,1.4fr)_280px] lg:px-5">
+                    <div class="space-y-3">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
+                            <div
+                                class="flex size-14 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/30 text-base font-semibold tracking-[0.18em] text-foreground shadow-sm"
+                            >
+                                {{ clientInitials }}
+                            </div>
+
+                            <div class="min-w-0 space-y-1.5">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <h1 class="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">
+                                        {{ client.full_name }}
+                                    </h1>
+                                    <span class="rounded-full px-2.5 py-1 text-[11px] font-medium" :class="statusClasses(client.status)">
+                                        {{ client.status_label }}
+                                    </span>
+                                </div>
+
+                                <p class="text-sm text-muted-foreground">
+                                    {{ client.destination_country || 'No destination set' }}<span class="mx-2">•</span>{{ client.owner_name || 'Unassigned owner' }}
+                                </p>
+                            </div>
                         </div>
 
-                        <div class="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                            <span>{{ client.owner_name || 'Unassigned owner' }}</span>
-                            <span>{{ visaCases.length }} cases</span>
-                            <span>{{ tasks.length }} tasks</span>
-                            <span>{{ client.attachments.length }} files</span>
+                        <div class="flex flex-wrap gap-2">
+                            <Button type="button" size="sm" class="gap-2 rounded-lg px-3" @click="isEditDialogOpen = true">
+                                <Pencil class="size-4" />
+                                Edit profile
+                            </Button>
+                            <Button as-child variant="ghost" size="sm" class="gap-2 rounded-lg">
+                                <Link href="/clients">
+                                    <ArrowLeft class="size-4" />
+                                    Back
+                                </Link>
+                            </Button>
                         </div>
-                    </div>
-
-                    <div class="flex flex-wrap gap-2">
-                        <Button type="button" variant="outline" class="gap-2" @click="isEditDialogOpen = true">
-                            <Pencil class="size-4" />
-                            Edit profile
-                        </Button>
-                        <Button as-child variant="ghost" class="gap-2">
-                            <Link href="/clients">
-                                <ArrowLeft class="size-4" />
-                                Back
-                            </Link>
-                        </Button>
                     </div>
                 </div>
             </section>
 
-            <div class="grid gap-3 xl:grid-cols-[minmax(0,1.3fr)_320px]">
-                <div class="space-y-3">
+            <div class="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_340px]">
+                <div class="space-y-4">
                     <section class="app-panel p-3.5">
-                        <div class="flex flex-wrap items-start justify-between gap-3">
-                            <div class="space-y-2">
-                                <div>
-                                    <h2 class="text-base font-semibold text-slate-950 dark:text-slate-50">Portal access</h2>
-                                    <p class="text-sm text-muted-foreground">Clients use the direct portal link the first time, then sign in with email and password if they ever lose it.</p>
-                                </div>
-
-                                <div class="flex flex-wrap gap-2">
-                                    <Button as-child variant="outline" size="sm" class="gap-2">
-                                        <a :href="client.portal_url" target="_blank" rel="noreferrer">
-                                            <ExternalLink class="size-4" />
-                                            Open portal
-                                        </a>
-                                    </Button>
-                                    <Button type="button" variant="outline" size="sm" class="gap-2" @click="copyPortalLoginLink">
-                                        <Check v-if="copiedPortalLoginLink" class="size-4" />
-                                        <Copy v-else class="size-4" />
-                                        {{ copiedPortalLoginLink ? 'Copied login URL' : 'Copy login URL' }}
-                                    </Button>
-                                </div>
-                            </div>
-
-                            <div class="rounded-xl bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:bg-slate-900/60 dark:text-slate-300">
-                                Portal login:
-                                <span class="font-medium text-slate-950 dark:text-slate-50">{{ client.portal_login_url }}</span>
-                            </div>
+                        <div class="flex items-center justify-between gap-3">
+                            <h2 class="text-base font-semibold text-slate-950 dark:text-slate-50">Client details</h2>
+                            <Button type="button" variant="ghost" size="sm" class="gap-2 rounded-lg" @click="isEditDialogOpen = true">
+                                <Pencil class="size-4" />
+                                Edit
+                            </Button>
                         </div>
+
+                        <dl class="mt-3 grid gap-x-5 gap-y-3 sm:grid-cols-2 xl:grid-cols-3">
+                            <div v-for="item in detailItems" :key="item.label" class="space-y-1">
+                                <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{{ item.label }}</dt>
+                                <dd class="text-sm font-medium text-foreground">{{ item.value }}</dd>
+                            </div>
+                        </dl>
                     </section>
 
                     <section class="app-panel p-3.5">
-                        <div class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                            <div class="space-y-3">
-                                <div>
-                                    <h2 class="text-base font-semibold text-slate-950 dark:text-slate-50">Overview</h2>
-                                </div>
-
-                                <dl class="grid gap-x-6 gap-y-3 sm:grid-cols-2">
-                                    <div v-for="item in primaryItems" :key="item.label" class="space-y-1">
-                                        <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{{ item.label }}</dt>
-                                        <dd class="text-sm text-foreground">{{ item.value }}</dd>
-                                    </div>
-                                </dl>
-                            </div>
-
-                            <div class="space-y-3">
-                                <div>
-                                    <h2 class="text-base font-semibold text-slate-950 dark:text-slate-50">Identity</h2>
-                                </div>
-
-                                <dl class="grid gap-x-6 gap-y-3 sm:grid-cols-2">
-                                    <div v-for="item in identityItems" :key="item.label" class="space-y-1">
-                                        <dt class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{{ item.label }}</dt>
-                                        <dd class="text-sm text-foreground">{{ item.value }}</dd>
-                                    </div>
-                                </dl>
-                            </div>
-                        </div>
-
-                        <div v-if="client.current_address" class="mt-4 border-t border-border pt-4">
-                            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Address</p>
-                            <p class="mt-1 text-sm text-foreground">{{ client.current_address }}</p>
-                        </div>
-                    </section>
-
-                    <section class="app-panel p-3.5">
-                        <div>
+                        <div class="flex flex-wrap items-center gap-2">
                             <h2 class="text-base font-semibold text-slate-950 dark:text-slate-50">Background</h2>
                         </div>
 
-                        <div class="mt-4 space-y-2">
+                        <div class="mt-3 divide-y divide-border/70 border-t border-border/70">
                             <Collapsible v-slot="{ open }" :default-open="false">
-                                <div class="rounded-lg border border-border">
-                                    <CollapsibleTrigger class="flex w-full items-center justify-between px-3 py-2.5 text-left">
-                                        <div>
-                                            <p class="text-sm font-medium text-foreground">Family information</p>
-                                            <p class="text-xs text-muted-foreground">{{ client.family_members.length }} records</p>
+                                <div>
+                                    <CollapsibleTrigger class="flex w-full items-center justify-between py-2.5 text-left">
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex items-center gap-2">
+                                                <Users class="size-4 text-slate-500" />
+                                                <p class="text-sm font-medium text-foreground">Family</p>
+                                                <span class="text-xs text-muted-foreground">
+                                                    {{ formatCountLabel(client.family_members.length, 'record', 'records') }}
+                                                </span>
+                                            </div>
+                                            <p class="mt-0.5 truncate text-xs text-muted-foreground">{{ backgroundSummaries.family }}</p>
                                         </div>
                                         <ChevronDown class="size-4 text-muted-foreground transition-transform" :class="{ 'rotate-180': open }" />
                                     </CollapsibleTrigger>
                                     <CollapsibleContent>
-                                        <div class="border-t border-border px-3 py-3">
+                                        <div class="border-t border-border/70 pb-2 pt-2">
                                             <div v-if="client.family_members.length === 0" class="text-sm text-muted-foreground">
                                                 No family information added.
                                             </div>
-                                            <div v-else class="space-y-2.5">
+                                            <div v-else class="space-y-2">
                                                 <div
                                                     v-for="(member, index) in client.family_members"
                                                     :key="`${member.full_name}-${index}`"
-                                                    class="border-b border-border/70 pb-2.5 last:border-b-0 last:pb-0"
+                                                    class="rounded-lg border border-border/70 px-3 py-2 last:mb-0"
                                                 >
                                                     <div class="flex flex-wrap items-center gap-2">
                                                         <p class="font-medium text-foreground">{{ member.full_name || 'Unnamed family member' }}</p>
@@ -441,7 +463,7 @@ const statusClasses = (status: string) =>
                                                             Accompanying
                                                         </span>
                                                     </div>
-                                                    <p class="mt-1 text-sm text-muted-foreground">
+                                                    <p class="mt-0.5 text-xs text-muted-foreground">
                                                         {{ member.nationality || 'Nationality not set' }} •
                                                         {{ member.occupation || 'Occupation not set' }} •
                                                         {{ formatDateOnly(member.date_of_birth) }}
@@ -454,32 +476,38 @@ const statusClasses = (status: string) =>
                             </Collapsible>
 
                             <Collapsible v-slot="{ open }" :default-open="false">
-                                <div class="rounded-lg border border-border">
-                                    <CollapsibleTrigger class="flex w-full items-center justify-between px-3 py-2.5 text-left">
-                                        <div>
-                                            <p class="text-sm font-medium text-foreground">Education</p>
-                                            <p class="text-xs text-muted-foreground">{{ client.education_history.length }} records</p>
+                                <div>
+                                    <CollapsibleTrigger class="flex w-full items-center justify-between py-2.5 text-left">
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex items-center gap-2">
+                                                <GraduationCap class="size-4 text-slate-500" />
+                                                <p class="text-sm font-medium text-foreground">Education</p>
+                                                <span class="text-xs text-muted-foreground">
+                                                    {{ formatCountLabel(client.education_history.length, 'record', 'records') }}
+                                                </span>
+                                            </div>
+                                            <p class="mt-0.5 truncate text-xs text-muted-foreground">{{ backgroundSummaries.education }}</p>
                                         </div>
                                         <ChevronDown class="size-4 text-muted-foreground transition-transform" :class="{ 'rotate-180': open }" />
                                     </CollapsibleTrigger>
                                     <CollapsibleContent>
-                                        <div class="border-t border-border px-3 py-3">
+                                        <div class="border-t border-border/70 pb-2 pt-2">
                                             <div v-if="client.education_history.length === 0" class="text-sm text-muted-foreground">
                                                 No education history added.
                                             </div>
-                                            <div v-else class="space-y-2.5">
+                                            <div v-else class="space-y-2">
                                                 <div
                                                     v-for="(record, index) in client.education_history"
                                                     :key="`${record.institution}-${index}`"
-                                                    class="border-b border-border/70 pb-2.5 last:border-b-0 last:pb-0"
+                                                    class="rounded-lg border border-border/70 px-3 py-2"
                                                 >
                                                     <p class="font-medium text-foreground">{{ record.institution || 'Institution not set' }}</p>
-                                                    <p class="mt-1 text-sm text-muted-foreground">
+                                                    <p class="mt-0.5 text-sm text-muted-foreground">
                                                         {{ record.qualification || 'Qualification not set' }}
                                                         <span v-if="record.field_of_study"> • {{ record.field_of_study }}</span>
                                                         <span v-if="record.country"> • {{ record.country }}</span>
                                                     </p>
-                                                    <p class="mt-1 text-xs text-muted-foreground">
+                                                    <p class="mt-0.5 text-xs text-muted-foreground">
                                                         {{ formatDateRange(record.start_date, record.end_date, record.is_current) }}
                                                     </p>
                                                 </div>
@@ -490,34 +518,40 @@ const statusClasses = (status: string) =>
                             </Collapsible>
 
                             <Collapsible v-slot="{ open }" :default-open="false">
-                                <div class="rounded-lg border border-border">
-                                    <CollapsibleTrigger class="flex w-full items-center justify-between px-3 py-2.5 text-left">
-                                        <div>
-                                            <p class="text-sm font-medium text-foreground">Work experience</p>
-                                            <p class="text-xs text-muted-foreground">{{ client.work_experiences.length }} records</p>
+                                <div>
+                                    <CollapsibleTrigger class="flex w-full items-center justify-between py-2.5 text-left">
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex items-center gap-2">
+                                                <Briefcase class="size-4 text-slate-500" />
+                                                <p class="text-sm font-medium text-foreground">Work experience</p>
+                                                <span class="text-xs text-muted-foreground">
+                                                    {{ formatCountLabel(client.work_experiences.length, 'record', 'records') }}
+                                                </span>
+                                            </div>
+                                            <p class="mt-0.5 truncate text-xs text-muted-foreground">{{ backgroundSummaries.work }}</p>
                                         </div>
                                         <ChevronDown class="size-4 text-muted-foreground transition-transform" :class="{ 'rotate-180': open }" />
                                     </CollapsibleTrigger>
                                     <CollapsibleContent>
-                                        <div class="border-t border-border px-3 py-3">
+                                        <div class="border-t border-border/70 pb-2 pt-2">
                                             <div v-if="client.work_experiences.length === 0" class="text-sm text-muted-foreground">
                                                 No work experience added.
                                             </div>
-                                            <div v-else class="space-y-2.5">
+                                            <div v-else class="space-y-2">
                                                 <div
                                                     v-for="(experience, index) in client.work_experiences"
                                                     :key="`${experience.employer}-${index}`"
-                                                    class="border-b border-border/70 pb-2.5 last:border-b-0 last:pb-0"
+                                                    class="rounded-lg border border-border/70 px-3 py-2"
                                                 >
                                                     <p class="font-medium text-foreground">
                                                         {{ experience.job_title || 'Role not set' }}
                                                         <span class="text-muted-foreground"> • {{ experience.employer || 'Employer not set' }}</span>
                                                     </p>
-                                                    <p class="mt-1 text-sm text-muted-foreground">
+                                                    <p class="mt-0.5 text-sm text-muted-foreground">
                                                         {{ experience.country || 'Country not set' }} •
                                                         {{ formatDateRange(experience.start_date, experience.end_date, experience.is_current) }}
                                                     </p>
-                                                    <p v-if="experience.summary" class="mt-1 text-sm text-muted-foreground">
+                                                    <p v-if="experience.summary" class="mt-0.5 text-xs text-muted-foreground">
                                                         {{ experience.summary }}
                                                     </p>
                                                 </div>
@@ -532,8 +566,36 @@ const statusClasses = (status: string) =>
                     <ActivityTimeline title="Timeline" :items="timeline" />
                 </div>
 
-                <div class="space-y-3">
-                    <NotesPanel title="Notes" route-name="clients.notes.store" :route-parameter="client.id" :notes="client.notes" />
+                <div class="space-y-4 xl:sticky xl:top-24 xl:self-start">
+                    <section class="app-panel p-3.5">
+                        <div class="flex items-center justify-between gap-3">
+                            <h2 class="text-base font-semibold text-slate-950 dark:text-slate-50">Portal access</h2>
+                            <span class="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">Client</span>
+                        </div>
+
+                        <div class="mt-3 space-y-3">
+                            <div>
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Login page</p>
+                                <p class="mt-1.5 break-all text-sm font-medium text-foreground">{{ client.portal_login_url }}</p>
+                            </div>
+
+                            <div class="grid gap-2">
+                                <Button as-child variant="outline" class="justify-start gap-2">
+                                    <a :href="client.portal_url" target="_blank" rel="noreferrer">
+                                        <ExternalLink class="size-4" />
+                                        Open customer portal
+                                    </a>
+                                </Button>
+                                <Button type="button" variant="ghost" class="justify-start gap-2" @click="copyPortalLoginLink">
+                                    <Check v-if="copiedPortalLoginLink" class="size-4" />
+                                    <Copy v-else class="size-4" />
+                                    {{ copiedPortalLoginLink ? 'Copied login URL' : 'Copy login URL' }}
+                                </Button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <NotesPanel title="Add note" route-name="clients.notes.store" :route-parameter="client.id" :notes="client.notes" :show-list="false" />
 
                     <AttachmentsPanel
                         title="Attachments"
@@ -545,21 +607,31 @@ const statusClasses = (status: string) =>
                     <section class="app-panel p-3.5">
                         <div class="flex items-center justify-between gap-3">
                             <h2 class="text-base font-semibold text-slate-950 dark:text-slate-50">Visa cases</h2>
-                            <span class="text-sm text-muted-foreground">{{ visaCases.length }}</span>
+                            <span class="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">{{ visaCases.length }}</span>
                         </div>
 
                         <div class="mt-3">
-                            <div v-if="visaCases.length === 0" class="text-sm text-muted-foreground">No visa cases yet.</div>
-                            <div v-else class="space-y-2.5">
+                            <div
+                                v-if="visaCases.length === 0"
+                                class="rounded-lg border border-dashed border-border/80 bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground"
+                            >
+                                No visa cases yet.
+                            </div>
+                            <div v-else class="divide-y divide-border/70">
                                 <div
                                     v-for="visaCase in visaCases"
                                     :key="visaCase.id"
-                                    class="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 pb-2.5 last:border-b-0 last:pb-0"
+                                    class="flex flex-wrap items-center justify-between gap-3 py-3"
                                 >
                                     <div>
-                                        <p class="font-medium text-foreground">{{ visaCase.reference_code }}</p>
-                                        <p class="text-sm text-muted-foreground">
-                                            {{ visaCase.visa_type }} • {{ visaCase.status_label }} • {{ visaCase.assignee_name || 'Unassigned' }}
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <p class="font-medium text-foreground">{{ visaCase.reference_code }}</p>
+                                            <span class="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                                                {{ visaCase.status_label }}
+                                            </span>
+                                        </div>
+                                        <p class="mt-1 text-sm text-muted-foreground">
+                                            {{ visaCase.visa_type }} • {{ visaCase.assignee_name || 'Unassigned' }}
                                         </p>
                                     </div>
                                     <Button as-child variant="ghost" size="sm">
@@ -573,18 +645,37 @@ const statusClasses = (status: string) =>
                     <section class="app-panel p-3.5">
                         <div class="flex items-center justify-between gap-3">
                             <h2 class="text-base font-semibold text-slate-950 dark:text-slate-50">Tasks</h2>
-                            <span class="text-sm text-muted-foreground">{{ tasks.length }}</span>
+                            <span class="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground">{{ tasks.length }}</span>
                         </div>
 
                         <div class="mt-3">
-                            <div v-if="tasks.length === 0" class="text-sm text-muted-foreground">No tasks yet.</div>
-                            <div v-else class="space-y-2.5">
-                                <div v-for="task in tasks" :key="task.id" class="border-b border-border/70 pb-2.5 last:border-b-0 last:pb-0">
-                                    <p class="font-medium text-foreground">{{ task.title }}</p>
-                                    <p class="mt-0.5 text-sm text-muted-foreground">
-                                        {{ task.status_label }} • {{ task.priority_label }} • {{ task.assignee_name || 'Unassigned' }}
+                            <div
+                                v-if="tasks.length === 0"
+                                class="rounded-lg border border-dashed border-border/80 bg-muted/20 px-4 py-6 text-center text-sm text-muted-foreground"
+                            >
+                                No tasks yet.
+                            </div>
+                            <div v-else class="space-y-2">
+                                <div v-for="task in tasks" :key="task.id" class="rounded-lg border border-border/70 px-3 py-2.5">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex flex-wrap items-center gap-2">
+                                                <p class="truncate text-sm font-medium text-foreground">{{ task.title }}</p>
+                                                <span class="rounded-full px-2 py-0.5 text-[10px] font-medium" :class="taskStatusClasses(task.status_label)">
+                                                    {{ task.status_label }}
+                                                </span>
+                                            </div>
+                                            <p class="mt-1 text-xs text-muted-foreground">
+                                                Due {{ formatDate(task.due_at) }}
+                                            </p>
+                                        </div>
+                                        <span class="text-[11px] font-medium" :class="taskPriorityClasses(task.priority_label)">
+                                            {{ task.priority_label }}
+                                        </span>
+                                    </div>
+                                    <p class="mt-1.5 text-xs text-muted-foreground">
+                                        {{ task.assignee_name || 'Unassigned' }}
                                     </p>
-                                    <p class="mt-0.5 text-xs text-muted-foreground">{{ formatDate(task.due_at) }}</p>
                                 </div>
                             </div>
                         </div>

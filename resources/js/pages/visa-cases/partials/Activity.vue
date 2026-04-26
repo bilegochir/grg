@@ -9,19 +9,19 @@ defineProps<{
 </script>
 
 <template>
-    <section class="app-panel overflow-hidden">
-        <div class="border-b border-border/70 px-4 py-4">
+    <section class="app-panel p-3.5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
             <h2 class="text-base font-semibold text-slate-950 dark:text-slate-50">Case activity</h2>
-            <p class="mt-1 text-sm text-muted-foreground">Notes, history, and case events.</p>
+            <p class="text-xs text-muted-foreground">{{ notesCount }} notes · {{ timelineCount }} events</p>
         </div>
 
-        <div class="divide-y divide-border/70">
+        <div class="mt-3 divide-y divide-border/70 border-t border-border/70">
             <Collapsible v-slot="{ open }" :default-open="true">
                 <div>
-                    <CollapsibleTrigger class="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-muted/40">
+                    <CollapsibleTrigger class="flex w-full items-center justify-between py-3 text-left hover:text-foreground">
                         <div>
                             <p class="text-sm font-semibold text-foreground">Notes</p>
-                            <p class="text-xs text-muted-foreground">{{ notesCount }} entries</p>
+                            <p class="text-xs text-muted-foreground">Add context for this case</p>
                         </div>
 
                         <ChevronDown
@@ -31,19 +31,19 @@ defineProps<{
                     </CollapsibleTrigger>
 
                     <CollapsibleContent>
-                        <div class="border-t border-border/70 px-4 py-4">
+                        <div class="border-t border-border/70 pb-3 pt-3">
                             <slot name="notes" />
                         </div>
                     </CollapsibleContent>
                 </div>
             </Collapsible>
 
-            <Collapsible v-slot="{ open }" :default-open="false">
+            <Collapsible v-slot="{ open }" :default-open="true">
                 <div>
-                    <CollapsibleTrigger class="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-muted/40">
+                    <CollapsibleTrigger class="flex w-full items-center justify-between py-3 text-left hover:text-foreground">
                         <div>
                             <p class="text-sm font-semibold text-foreground">Timeline</p>
-                            <p class="text-xs text-muted-foreground">{{ timelineCount }} events</p>
+                            <p class="text-xs text-muted-foreground">Latest case activity first</p>
                         </div>
 
                         <ChevronDown
@@ -53,7 +53,7 @@ defineProps<{
                     </CollapsibleTrigger>
 
                     <CollapsibleContent>
-                        <div class="border-t border-border/70 px-4 py-4">
+                        <div class="border-t border-border/70 pb-3 pt-3">
                             <slot name="timeline" />
                         </div>
                     </CollapsibleContent>

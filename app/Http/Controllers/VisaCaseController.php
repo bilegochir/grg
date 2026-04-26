@@ -12,6 +12,7 @@ use App\Models\VisaCase;
 use App\Models\VisaRequirementTemplate;
 use App\Notifications\VisaCaseAssignedNotification;
 use App\Support\ActivityTimeline;
+use App\Support\CrmActivityLogger;
 use App\Support\DefaultVisaCaseTaskCreator;
 use App\Support\TaskStatusTemplateResolver;
 use App\Support\VisaCaseStatusTemplateResolver;
@@ -255,15 +256,18 @@ class VisaCaseController extends Controller
         UpdateVisaCaseRequest $request,
         VisaCase $visaCase,
         DefaultVisaCaseTaskCreator $defaultVisaCaseTaskCreator,
+        CrmActivityLogger $crmActivityLogger,
         VisaRequirementChecklistSynchronizer $checklistSynchronizer,
     ): RedirectResponse {
         $this->authorize('update', $visaCase);
 
         $previousStatus = $visaCase->status;
         $previousAssignedUserId = $visaCase->assigned_user_id;
+        $originalAttributes = $visaCase->getRawOriginal();
 
         $visaCase->update($this->validatedVisaCaseData($request));
         $checklistSynchronizer->sync($visaCase);
+        $crmActivityLogger->logVisaCaseUpdated($visaCase, $originalAttributes, $request->user());
 
         if ($visaCase->status !== $previousStatus) {
             $defaultVisaCaseTaskCreator->createForCurrentStatus($visaCase, $request->user());
