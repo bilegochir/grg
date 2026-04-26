@@ -186,23 +186,6 @@ const busyLabel = (item: RequirementItem): string | null => {
                         </span>
                     </p>
                 </div>
-
-                <!-- FIX: flex-none + min-w-0 on label so progress bar never gets squeezed out -->
-                <div v-if="items.length" class="flex flex-none items-center gap-3">
-                    <span class="text-sm tabular-nums text-muted-foreground">
-                        {{ completedCount }}/{{ items.length }}
-                    </span>
-                    <!-- FIX: flex-1 with min/max instead of hardcoded w-28 -->
-                    <div class="h-1 w-24 min-w-[4rem] max-w-[8rem] overflow-hidden rounded-full bg-muted">
-                        <div
-                            class="h-full rounded-full bg-emerald-500 transition-all duration-300"
-                            :style="{ width: `${completionPercent}%` }"
-                        />
-                    </div>
-                    <span class="w-8 text-sm font-medium tabular-nums text-foreground">
-                        {{ completionPercent }}%
-                    </span>
-                </div>
             </div>
 
             <div v-if="template?.source_url" class="flex items-center gap-3 text-xs text-muted-foreground">
