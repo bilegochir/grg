@@ -358,50 +358,50 @@ const taskPriorityClasses = (priority: string) =>
                 {{ page.props.flash.success }}
             </div>
 
-            <section class="app-panel overflow-hidden">
-                <div class="grid gap-5 px-4 py-4 lg:grid-cols-[minmax(0,1.4fr)_280px] lg:px-5">
-                    <div class="space-y-3">
-                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
-                            <div
-                                class="flex size-14 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/30 text-base font-semibold tracking-[0.18em] text-foreground shadow-sm"
-                            >
-                                {{ clientInitials }}
-                            </div>
-
-                            <div class="min-w-0 space-y-1.5">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <h1 class="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">
-                                        {{ client.full_name }}
-                                    </h1>
-                                    <span class="rounded-full px-2.5 py-1 text-[11px] font-medium" :class="statusClasses(client.status)">
-                                        {{ client.status_label }}
-                                    </span>
-                                </div>
-
-                                <p class="text-sm text-muted-foreground">
-                                    {{ client.destination_country || 'No destination set' }}<span class="mx-2">•</span>{{ client.owner_name || 'Unassigned owner' }}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="flex flex-wrap gap-2">
-                            <Button type="button" size="sm" class="gap-2 rounded-lg px-3" @click="isEditDialogOpen = true">
-                                <Pencil class="size-4" />
-                                Edit profile
-                            </Button>
-                            <Button as-child variant="ghost" size="sm" class="gap-2 rounded-lg">
-                                <Link href="/clients">
-                                    <ArrowLeft class="size-4" />
-                                    Back
-                                </Link>
-                            </Button>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
             <div class="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_340px]">
                 <div class="space-y-4">
+                    <section class="app-panel overflow-hidden">
+                        <div class="grid gap-5 px-4 py-4 lg:grid-cols-[minmax(0,1.4fr)_280px] lg:px-5">
+                            <div class="space-y-3">
+                                <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
+                                    <div
+                                        class="flex size-14 shrink-0 items-center justify-center rounded-xl border border-border/80 bg-muted/30 text-base font-semibold tracking-[0.18em] text-foreground shadow-sm"
+                                    >
+                                        {{ clientInitials }}
+                                    </div>
+
+                                    <div class="min-w-0 space-y-1.5">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <h1 class="text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-50">
+                                                {{ client.full_name }}
+                                            </h1>
+                                            <span class="rounded-full px-2.5 py-1 text-[11px] font-medium" :class="statusClasses(client.status)">
+                                                {{ client.status_label }}
+                                            </span>
+                                        </div>
+
+                                        <p class="text-sm text-muted-foreground">
+                                            {{ client.destination_country || 'No destination set' }}<span class="mx-2">•</span>{{ client.owner_name || 'Unassigned owner' }}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div class="flex flex-wrap gap-2">
+                                    <Button type="button" size="sm" class="gap-2 rounded-lg px-3" @click="isEditDialogOpen = true">
+                                        <Pencil class="size-4" />
+                                        Edit profile
+                                    </Button>
+                                    <Button as-child variant="ghost" size="sm" class="gap-2 rounded-lg">
+                                        <Link href="/clients">
+                                            <ArrowLeft class="size-4" />
+                                            Back
+                                        </Link>
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
                     <section class="app-panel p-3.5">
                         <div class="flex items-center justify-between gap-3">
                             <h2 class="text-base font-semibold text-slate-950 dark:text-slate-50">Client details</h2>
@@ -566,7 +566,7 @@ const taskPriorityClasses = (priority: string) =>
                     <ActivityTimeline title="Timeline" :items="timeline" />
                 </div>
 
-                <div class="space-y-4 xl:sticky xl:top-24 xl:self-start">
+                <div class="space-y-4 xl:sticky xl:top-24">
                     <section class="app-panel p-3.5">
                         <div class="flex items-center justify-between gap-3">
                             <h2 class="text-base font-semibold text-slate-950 dark:text-slate-50">Portal access</h2>

@@ -146,18 +146,18 @@ const openEditDialog = () => {
                 {{ page.props.flash.success }}
             </div>
 
-            <Hero
-                :visa-case="visaCase"
-                :requirements-count="requirements.length"
-                :completed-requirements-count="completedRequirementsCount"
-                :tasks-count="tasks.length"
-                :attachments-count="attachmentsCount"
-                :institution-requirements="institutionRequirements"
-                @edit="openEditDialog"
-            />
-
             <div class="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_360px]">
                 <div class="space-y-4">
+                    <Hero
+                        :visa-case="visaCase"
+                        :requirements-count="requirements.length"
+                        :completed-requirements-count="completedRequirementsCount"
+                        :tasks-count="tasks.length"
+                        :attachments-count="attachmentsCount"
+                        :institution-requirements="institutionRequirements"
+                        @edit="openEditDialog"
+                    />
+
                     <VisaRequirementsChecklist
                         :visa-case-id="visaCase.id"
                         :template="requirementTemplate"
