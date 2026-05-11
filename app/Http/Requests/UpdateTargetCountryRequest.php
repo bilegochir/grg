@@ -1,0 +1,26 @@
+<?php
+
+namespace App\Http\Requests;
+
+use App\Models\TargetCountry;
+use Illuminate\Foundation\Http\FormRequest;
+
+class UpdateTargetCountryRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        /** @var TargetCountry $country */
+        $country = $this->route('country');
+
+        return [
+            'name' => ['required', 'string', 'max:255'],
+            'slug' => ['nullable', 'string', 'max:255'],
+            'is_active' => ['sometimes', 'boolean'],
+        ];
+    }
+}
