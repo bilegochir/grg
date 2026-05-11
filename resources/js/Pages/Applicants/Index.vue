@@ -73,7 +73,7 @@ const applyFilters = () => {
                         </select>
 
                         <div class="flex items-center gap-2">
-                            <button type="submit" class="ui-button-secondary !h-9 px-4 text-[12px]">Filter</button>
+                            <button type="submit" class="ui-button-ghost !h-9 px-4 text-[12px]">Filter</button>
                             <button type="button" class="ui-button-ghost !h-9 px-4 text-[12px]" @click="filterForm.reset(); applyFilters();">
                                 Reset
                             </button>

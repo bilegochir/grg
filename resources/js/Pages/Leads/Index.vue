@@ -112,12 +112,12 @@ const submit = () => {
                         </select>
 
                         <div class="flex items-center gap-2">
-                            <PrimaryButton type="submit" class="!h-9 px-4 text-[12px]" @click="applyFilters">Filter</PrimaryButton>
+                            <button type="submit" class="ui-button-ghost !h-9 px-4 text-[12px]" @click="applyFilters">Filter</button>
                             <button type="button" class="ui-button-ghost !h-9 px-4 text-[12px]" @click="filterForm.reset(); applyFilters();">
                                 Reset
                             </button>
                             <div class="mx-1 h-4 w-px bg-slate-200"></div>
-                            <PrimaryButton type="button" class="!h-9 px-4 text-[12px] bg-emerald-600 hover:bg-emerald-700" @click="showCreate = true">
+                            <PrimaryButton type="button" class="!h-9 px-4 text-[12px]" @click="showCreate = true">
                                 Add New Lead
                             </PrimaryButton>
                         </div>
@@ -181,10 +181,10 @@ const submit = () => {
             </div>
         </div>
 
-        <SlideOver 
-            :show="showCreate" 
-            width="wide" 
-            title="Add New Lead" 
+        <SlideOver
+            :show="showCreate"
+            width="wide"
+            title="Add New Lead"
             description="Keep this lightweight now — you can always enrich the record after the first conversation."
             @close="showCreate = false"
         >
