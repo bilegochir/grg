@@ -42,6 +42,9 @@ const editingWorkflowStageId = ref(null);
 const editingTaskTemplateId = ref(null);
 const selectedVisaTypeId = ref(props.visaTypes[0]?.id ?? '');
 const activeTab = ref('business');
+const visaTypeSearch = ref('');
+const visaTypeCountryFilter = ref('all');
+const visaTypeServiceScopeFilter = ref('all');
 
 const businessForm = useForm({
     business_name: props.businessSetting.business_name ?? '',
@@ -65,6 +68,7 @@ const visaTypeForm = useForm({
     target_country_id: props.countries[0]?.id ?? '',
     name: '',
     code: '',
+    official_subclass: '',
     slug: '',
     is_active: true,
     submission_sla_days: '',
@@ -82,6 +86,9 @@ const visaTypeForm = useForm({
     financial_proof_required: false,
     checklist_intro: '',
     portal_guidance: '',
+    official_reference_url: '',
+    official_summary: '',
+    official_requirements_input: '',
     notes: '',
 });
 
@@ -137,6 +144,52 @@ const taskTemplateForm = useForm({
 });
 
 const selectedVisaType = computed(() => props.visaTypes.find((visaType) => visaType.id === Number(selectedVisaTypeId.value)) ?? null);
+const visaTypeCountries = computed(() => props.countries.filter((country) => country.visa_types_count > 0));
+const filteredVisaTypes = computed(() => {
+    const query = visaTypeSearch.value.trim().toLowerCase();
+
+    return [...props.visaTypes]
+        .filter((visaType) => {
+            if (visaTypeCountryFilter.value !== 'all' && String(visaType.country.id) !== visaTypeCountryFilter.value) {
+                return false;
+            }
+
+            if (visaTypeServiceScopeFilter.value !== 'all' && (visaType.service_scope ?? '') !== visaTypeServiceScopeFilter.value) {
+                return false;
+            }
+
+            if (!query) {
+                return true;
+            }
+
+            const haystack = [
+                visaType.name,
+                visaType.code,
+                visaType.slug,
+                visaType.official_subclass,
+                visaType.country?.name,
+                visaType.official_summary,
+                ...(visaType.official_requirements ?? []),
+            ]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase();
+
+            return haystack.includes(query);
+        })
+        .sort((left, right) => {
+            const countryCompare = (left.country?.name ?? '').localeCompare(right.country?.name ?? '');
+
+            if (countryCompare !== 0) {
+                return countryCompare;
+            }
+
+            return (left.official_subclass ?? left.name).localeCompare(right.official_subclass ?? right.name, undefined, {
+                numeric: true,
+                sensitivity: 'base',
+            });
+        });
+});
 const filteredTemplates = computed(() => props.documentTemplates.filter((template) => {
     if (!selectedVisaTypeId.value) {
         return true;
@@ -172,6 +225,7 @@ const resetVisaTypeForm = () => {
     visaTypeForm.reset();
     visaTypeForm.target_country_id = props.countries[0]?.id ?? '';
     visaTypeForm.code = '';
+    visaTypeForm.official_subclass = '';
     visaTypeForm.is_active = true;
     visaTypeForm.submission_sla_days = '';
     visaTypeForm.decision_sla_days = '';
@@ -188,6 +242,9 @@ const resetVisaTypeForm = () => {
     visaTypeForm.financial_proof_required = false;
     visaTypeForm.checklist_intro = '';
     visaTypeForm.portal_guidance = '';
+    visaTypeForm.official_reference_url = '';
+    visaTypeForm.official_summary = '';
+    visaTypeForm.official_requirements_input = '';
     visaTypeForm.notes = '';
 };
 
@@ -266,6 +323,7 @@ const openVisaTypeEdit = (visaType) => {
     visaTypeForm.target_country_id = visaType.country.id;
     visaTypeForm.name = visaType.name;
     visaTypeForm.code = visaType.code ?? '';
+    visaTypeForm.official_subclass = visaType.official_subclass ?? '';
     visaTypeForm.slug = visaType.slug;
     visaTypeForm.is_active = visaType.is_active;
     visaTypeForm.submission_sla_days = visaType.submission_sla_days ?? '';
@@ -283,6 +341,9 @@ const openVisaTypeEdit = (visaType) => {
     visaTypeForm.financial_proof_required = visaType.financial_proof_required;
     visaTypeForm.checklist_intro = visaType.checklist_intro ?? '';
     visaTypeForm.portal_guidance = visaType.portal_guidance ?? '';
+    visaTypeForm.official_reference_url = visaType.official_reference_url ?? '';
+    visaTypeForm.official_summary = visaType.official_summary ?? '';
+    visaTypeForm.official_requirements_input = (visaType.official_requirements ?? []).join('\n');
     visaTypeForm.notes = visaType.notes ?? '';
     showVisaType.value = true;
 };
@@ -411,6 +472,14 @@ const saveCountry = () => {
 };
 
 const saveVisaType = () => {
+    visaTypeForm.transform((data) => ({
+        ...data,
+        official_requirements: data.official_requirements_input
+            .split('\n')
+            .map((value) => value.trim())
+            .filter(Boolean),
+    }));
+
     if (editingVisaTypeId.value) {
         visaTypeForm.patch(route('settings.visa-types.update', editingVisaTypeId.value), {
             preserveScroll: true,
@@ -552,6 +621,27 @@ const templateRequirementSummary = (template) => {
     }
 
     return parts.join(' • ');
+};
+
+const visaTypeScopeLabel = (serviceScope) => {
+    const labels = {
+        new_application: 'New application',
+        renewal: 'Renewal',
+        extension: 'Extension',
+        multi_step_case: 'Multi-step case',
+    };
+
+    return labels[serviceScope] ?? 'General';
+};
+
+const openVisaTypeWorkflow = (visaType) => {
+    selectedVisaTypeId.value = visaType.id;
+    activeTab.value = 'workflow';
+};
+
+const openVisaTypeChecklist = (visaType) => {
+    selectedVisaTypeId.value = visaType.id;
+    activeTab.value = 'checklists';
 };
 
 const settingGroups = [
@@ -798,31 +888,108 @@ const settingGroups = [
                         <PrimaryButton icon="plus" @click="openVisaTypeCreate">Add visa type</PrimaryButton>
                     </div>
 
-                    <div class="grid gap-4 sm:grid-cols-2">
-                        <div
-                            v-for="visaType in visaTypes"
-                            :key="visaType.id"
-                            class="flex flex-col justify-between gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-card transition hover:border-slate-300"
-                        >
+                    <div class="mb-5 rounded-lg border border-slate-200 bg-white p-4 shadow-card">
+                        <div class="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
                             <div>
-                                <div class="flex items-center justify-between">
-                                    <p class="text-[14px] font-bold text-slate-900">{{ visaType.name }}</p>
-                                    <span :class="visaType.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-100 text-slate-600 border-slate-200'" class="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
-                                        {{ visaType.is_active ? 'Live' : 'Paused' }}
-                                    </span>
-                                </div>
-                                <p class="mt-1 text-[12px] text-slate-500">{{ visaType.country.name }}</p>
-                                
-                                <div class="mt-3 flex flex-wrap gap-1.5">
-                                    <span v-if="visaType.code" class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">{{ visaType.code }}</span>
-                                    <span v-if="visaType.submission_sla_days" class="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-600">{{ visaType.submission_sla_days }}d SLA</span>
-                                </div>
+                                <InputLabel for="visa_type_search" value="Search visas" />
+                                <input id="visa_type_search" v-model="visaTypeSearch" class="ui-input" placeholder="Search by name, subclass, code, country, or requirement" />
                             </div>
-                            <div class="flex items-center gap-1.5 border-t border-slate-50 pt-3">
-                                <button type="button" class="ui-button-ghost flex-1 h-8" @click.stop="openVisaTypeEdit(visaType)">Edit</button>
-                                <button type="button" class="ui-button-danger flex-1 h-8" @click.stop="destroyResource('settings.visa-types.destroy', visaType.id)">Remove</button>
+                            <div>
+                                <InputLabel for="visa_type_country_filter" value="Country" />
+                                <select id="visa_type_country_filter" v-model="visaTypeCountryFilter" class="ui-select">
+                                    <option value="all">All countries</option>
+                                    <option v-for="country in visaTypeCountries" :key="country.id" :value="String(country.id)">
+                                        {{ country.name }}
+                                    </option>
+                                </select>
+                            </div>
+                            <div>
+                                <InputLabel for="visa_type_scope_filter" value="Service scope" />
+                                <select id="visa_type_scope_filter" v-model="visaTypeServiceScopeFilter" class="ui-select">
+                                    <option value="all">All scopes</option>
+                                    <option value="new_application">New application</option>
+                                    <option value="renewal">Renewal</option>
+                                    <option value="extension">Extension</option>
+                                    <option value="multi_step_case">Multi-step case</option>
+                                </select>
                             </div>
                         </div>
+                        <div class="mt-4 flex flex-wrap items-center gap-2 text-[12px] text-slate-500">
+                            <span class="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-700">{{ filteredVisaTypes.length }} visas shown</span>
+                            <button
+                                v-if="visaTypeSearch || visaTypeCountryFilter !== 'all' || visaTypeServiceScopeFilter !== 'all'"
+                                type="button"
+                                class="ui-button-ghost h-8"
+                                @click="visaTypeSearch = ''; visaTypeCountryFilter = 'all'; visaTypeServiceScopeFilter = 'all'"
+                            >
+                                Reset filters
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3">
+                        <div
+                            v-for="visaType in filteredVisaTypes"
+                            :key="visaType.id"
+                            class="rounded-lg border border-slate-200 bg-white p-4 shadow-card transition hover:border-slate-300"
+                        >
+                            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <p class="text-[14px] font-bold text-slate-900">{{ visaType.name }}</p>
+                                        <span :class="visaType.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-100 text-slate-600 border-slate-200'" class="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                                            {{ visaType.is_active ? 'Live' : 'Paused' }}
+                                        </span>
+                                        <span v-if="visaType.official_subclass" class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Subclass {{ visaType.official_subclass }}</span>
+                                        <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">{{ visaType.country.name }}</span>
+                                        <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">{{ visaTypeScopeLabel(visaType.service_scope) }}</span>
+                                    </div>
+                                    <p v-if="visaType.official_summary" class="mt-2 text-[12px] leading-5 text-slate-600">
+                                        {{ visaType.official_summary }}
+                                    </p>
+                                    <div class="mt-3 flex flex-wrap gap-1.5">
+                                        <span v-if="visaType.code" class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">{{ visaType.code }}</span>
+                                        <span v-if="visaType.submission_sla_days" class="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-600">{{ visaType.submission_sla_days }}d submission SLA</span>
+                                        <span v-if="visaType.decision_sla_days" class="rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-bold text-violet-700">{{ visaType.decision_sla_days }}d decision SLA</span>
+                                        <span v-if="visaType.official_requirements?.length" class="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">{{ visaType.official_requirements.length }} requirements</span>
+                                    </div>
+                                    <div v-if="visaType.official_requirements?.length" class="mt-3 flex flex-wrap gap-2">
+                                        <span
+                                            v-for="requirement in visaType.official_requirements.slice(0, 3)"
+                                            :key="requirement"
+                                            class="rounded-full bg-slate-50 px-2.5 py-1 text-[11px] leading-5 text-slate-600"
+                                        >
+                                            {{ requirement }}
+                                        </span>
+                                        <span v-if="visaType.official_requirements.length > 3" class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                                            +{{ visaType.official_requirements.length - 3 }} more
+                                        </span>
+                                    </div>
+                                    <div class="mt-4 flex flex-wrap gap-2">
+                                        <button type="button" class="ui-button-ghost h-8" @click.stop="openVisaTypeEdit(visaType)">Edit</button>
+                                        <button type="button" class="ui-button-ghost h-8" @click.stop="openVisaTypeWorkflow(visaType)">Workflow</button>
+                                        <button type="button" class="ui-button-ghost h-8" @click.stop="openVisaTypeChecklist(visaType)">Checklist</button>
+                                        <a
+                                            v-if="visaType.official_reference_url"
+                                            :href="visaType.official_reference_url"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            class="ui-button-ghost inline-flex h-8 items-center"
+                                        >
+                                            Official page
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1.5 border-t border-slate-100 pt-3 lg:border-t-0 lg:pt-0">
+                                    <button type="button" class="ui-button-danger h-8" @click.stop="destroyResource('settings.visa-types.destroy', visaType.id)">Remove</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div v-if="!filteredVisaTypes.length" class="rounded-lg border border-dashed border-slate-200 p-12 text-center">
+                        <p class="text-[14px] font-medium text-slate-600">No visa types match your current filters.</p>
+                        <p class="mt-1 text-[13px] text-slate-500">Try a broader search or reset the country and scope filters.</p>
                     </div>
 
                     <div v-if="!visaTypes.length" class="rounded-lg border border-dashed border-slate-200 p-12 text-center">
@@ -1056,9 +1223,36 @@ const settingGroups = [
                             <InputError :message="visaTypeForm.errors.code" />
                         </div>
                         <div>
+                            <InputLabel for="visa_type_official_subclass" value="Official subclass" />
+                            <input id="visa_type_official_subclass" v-model="visaTypeForm.official_subclass" class="ui-input" placeholder="e.g. 500" />
+                            <InputError :message="visaTypeForm.errors.official_subclass" />
+                        </div>
+                        <div>
                             <InputLabel for="visa_type_slug" value="Slug" />
                             <input id="visa_type_slug" v-model="visaTypeForm.slug" class="ui-input" placeholder="auto-generated if left blank" />
                             <InputError :message="visaTypeForm.errors.slug" />
+                        </div>
+                        <div class="xl:col-span-2">
+                            <InputLabel for="visa_type_official_reference_url" value="Official reference URL" />
+                            <input id="visa_type_official_reference_url" v-model="visaTypeForm.official_reference_url" class="ui-input" placeholder="https://immi.homeaffairs.gov.au/..." />
+                            <InputError :message="visaTypeForm.errors.official_reference_url" />
+                        </div>
+                    </div>
+
+                    <div class="rounded-2xl border border-brand-border bg-white px-4 py-4">
+                        <p class="text-sm font-semibold text-brand-text">Official visa information</p>
+                        <div class="mt-4 space-y-5">
+                            <div>
+                                <InputLabel for="visa_type_official_summary" value="Official summary" />
+                                <textarea id="visa_type_official_summary" v-model="visaTypeForm.official_summary" rows="4" class="ui-textarea" placeholder="Add a plain-language summary based on the official government visa page."></textarea>
+                                <InputError :message="visaTypeForm.errors.official_summary" />
+                            </div>
+                            <div>
+                                <InputLabel for="visa_type_official_requirements" value="Official requirements" />
+                                <textarea id="visa_type_official_requirements" v-model="visaTypeForm.official_requirements_input" rows="8" class="ui-textarea" placeholder="One requirement per line"></textarea>
+                                <p class="mt-2 text-[12px] text-brand-muted">Keep one requirement on each line so the app can store and display them cleanly.</p>
+                                <InputError :message="visaTypeForm.errors.official_requirements" />
+                            </div>
                         </div>
                     </div>
 

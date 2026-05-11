@@ -4,7 +4,7 @@ import AppIcon from '@/Components/AppIcon.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import FlashBanner from '@/Components/FlashBanner.vue';
-import { Link, router, usePage } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 
 const page = usePage();
 const sidebarOpen = ref(false);
@@ -21,17 +21,6 @@ const searchResults = ref([]);
 const searchLoading = ref(false);
 const searchInput = ref(null);
 let searchTimeout = null;
-const workspace = computed(() => page.props.workspace ?? { can_switch_branches: false, selected_branch_id: null, branches: [] });
-
-const switchBranch = (branchId) => {
-    router.post(route('workspace.branch.update'), {
-        branch_id: branchId,
-    }, {
-        preserveScroll: true,
-        preserveState: true,
-        replace: true,
-    });
-};
 
 const notificationTone = (event) => {
     if (!event) {
@@ -249,36 +238,15 @@ onUnmounted(() => {
                 class="fixed inset-y-0 left-0 z-50 flex flex-col bg-brand-sidebar transition-all duration-200 ease-in-out lg:sticky lg:top-0 lg:h-screen lg:shrink-0"
             >
                 <div class="px-3 py-3">
-                    <Dropdown placement="bottom" align="left" width="60">
-                        <template #trigger>
-                            <button
-                                class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-slate-200/50"
-                                :class="sidebarCollapsed ? 'justify-center px-0' : ''"
-                            >
-                                <div class="h-5 w-5 shrink-0 rounded bg-brand-primary flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
-                                    {{ workspace.name ? workspace.name.charAt(0) : 'G' }}
-                                </div>
-                                <template v-if="!sidebarCollapsed">
-                                    <span class="truncate text-[13px] font-bold text-slate-900">{{ workspace.name || 'Gereg' }}</span>
-                                    <AppIcon name="chevronDown" :size="12" class="ml-auto text-slate-400" />
-                                </template>
-                            </button>
-                        </template>
-
-                        <template #content>
-                            <div class="px-3 py-2 border-b border-slate-100">
-                                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Workspaces</p>
-                            </div>
-                            <DropdownLink href="#" class="font-bold">
-                                {{ workspace.name || 'Gereg' }} (Current)
-                            </DropdownLink>
-                            <div class="mt-1 border-t border-slate-100">
-                                <DropdownLink href="#" class="text-slate-500">
-                                    Add new workspace
-                                </DropdownLink>
-                            </div>
-                        </template>
-                    </Dropdown>
+                    <div
+                        class="flex w-full items-center gap-2 rounded-md px-2 py-1.5"
+                        :class="sidebarCollapsed ? 'justify-center px-0' : ''"
+                    >
+                        <div class="h-5 w-5 shrink-0 rounded bg-brand-primary flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
+                            G
+                        </div>
+                        <span v-if="!sidebarCollapsed" class="truncate text-[13px] font-bold text-slate-900">Gereg</span>
+                    </div>
                 </div>
 
                 <div class="px-3 mb-4">
@@ -408,37 +376,6 @@ onUnmounted(() => {
                         </div>
 
                         <div class="flex items-center gap-3">
-                            <Dropdown v-if="workspace.can_switch_branches" placement="bottom" align="right" width="56">
-                                <template #trigger>
-                                    <button class="inline-flex h-7 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 text-[12px] font-bold text-slate-600 transition-all hover:border-slate-300 hover:bg-slate-50 shadow-sm">
-                                        <span class="truncate max-w-[120px]">
-                                            {{
-                                                workspace.selected_branch_id
-                                                    ? (workspace.branches.find((branch) => branch.id === workspace.selected_branch_id)?.name ?? 'Branch')
-                                                    : 'All branches'
-                                            }}
-                                        </span>
-                                        <AppIcon name="chevronDown" :size="10" class="text-slate-400" />
-                                    </button>
-                                </template>
-
-                                <template #content>
-                                    <div class="px-3 py-2 border-b border-slate-100">
-                                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Switch Branch</p>
-                                    </div>
-                                    <div class="py-1">
-                                        <button
-                                            v-for="branch in workspace.branches"
-                                            :key="branch.id"
-                                            class="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
-                                            @click="switchBranch(branch.id)"
-                                        >
-                                            {{ branch.name }}
-                                        </button>
-                                    </div>
-                                </template>
-                            </Dropdown>
-                            
                             <Dropdown placement="bottom" align="right" width="80" content-classes="p-0 overflow-hidden" @open-change="markNotificationsSeen">
                                 <template #trigger>
                                     <button class="relative inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600">

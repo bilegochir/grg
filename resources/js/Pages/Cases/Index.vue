@@ -93,48 +93,10 @@ const submit = () => {
                         Track every visa application from initial review to final decision. See ownership, stage, and urgency at a glance.
                     </p>
                 </div>
-                <div class="flex shrink-0 items-center gap-3">
-                    <PrimaryButton @click="showCreate = true">Create Case</PrimaryButton>
-                </div>
             </div>
         </template>
 
         <div class="ui-page-body space-y-6">
-            <div class="rounded-lg border border-brand-primary/20 bg-brand-primary/5 p-4 shadow-sm">
-                <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div>
-                        <p class="text-[11px] font-bold uppercase tracking-widest text-brand-primary">Quick Action</p>
-                        <h2 class="mt-1 text-[18px] font-bold text-slate-900">Need to open a new visa case?</h2>
-                        <p class="mt-1 text-[13px] text-slate-600">
-                            Start by choosing an applicant and visa type, then the system will create the case and open it for you.
-                        </p>
-                    </div>
-                    <PrimaryButton class="!h-11 px-5" @click="showCreate = true">Create Case</PrimaryButton>
-                </div>
-            </div>
-
-            <!-- Case Metrics -->
-            <div class="flex flex-wrap divide-x divide-slate-100 rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
-                <div class="flex-1 min-w-[140px] p-4 hover:bg-slate-50/50 transition-colors">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Cases</p>
-                    <p class="mt-2 text-2xl font-bold text-slate-900 leading-none">{{ cases.total }}</p>
-                </div>
-                <div class="flex-1 min-w-[140px] p-4 hover:bg-slate-50/50 transition-colors">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Urgent</p>
-                    <p class="mt-2 text-2xl font-bold text-rose-600 leading-none">
-                        {{ cases.data.filter(c => c.priority.value === 'high').length }}
-                    </p>
-                </div>
-                <div class="flex-1 min-w-[140px] p-4 hover:bg-slate-50/50 transition-colors">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Countries</p>
-                    <p class="mt-2 text-2xl font-bold text-slate-900 leading-none">{{ countries.length }}</p>
-                </div>
-                <div class="flex-1 min-w-[140px] p-4 hover:bg-slate-50/50 transition-colors">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Branches</p>
-                    <p class="mt-2 text-2xl font-bold text-slate-900 leading-none">{{ caseMeta.branches.length }}</p>
-                </div>
-            </div>
-
             <!-- Filters & Table -->
             <div class="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
                 <div class="border-b border-slate-100 bg-slate-50/30 p-4">
@@ -165,6 +127,10 @@ const submit = () => {
                             <button type="button" class="ui-button-ghost !h-9 px-4 text-[12px]" @click="filterForm.reset(); applyFilters();">
                                 Reset
                             </button>
+                            <div class="mx-1 h-4 w-px bg-slate-200"></div>
+                            <PrimaryButton type="button" class="!h-9 px-4 text-[12px] bg-emerald-600 hover:bg-emerald-700" @click="showCreate = true">
+                                Create Case
+                            </PrimaryButton>
                         </div>
                     </form>
                 </div>

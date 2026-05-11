@@ -57,6 +57,7 @@ class SettingsController extends Controller
                 'id' => $visaType->id,
                 'name' => $visaType->name,
                 'code' => $visaType->code,
+                'official_subclass' => $visaType->official_subclass,
                 'slug' => $visaType->slug,
                 'is_active' => $visaType->is_active,
                 'country' => [
@@ -79,6 +80,9 @@ class SettingsController extends Controller
                 'checklist_intro' => $visaType->checklist_intro,
                 'portal_guidance' => $visaType->portal_guidance,
                 'notes' => $visaType->notes,
+                'official_reference_url' => $visaType->official_reference_url,
+                'official_summary' => $visaType->official_summary,
+                'official_requirements' => $visaType->official_requirements ?? [],
                 'workflow_stages_count' => $visaType->workflow_stages_count,
                 'document_templates_count' => $visaType->document_templates_count,
                 'task_templates_count' => $visaType->task_templates_count,
@@ -330,6 +334,7 @@ class SettingsController extends Controller
                 'target_country_id' => $request->integer('target_country_id'),
                 'name' => $name,
                 'code' => $request->string('code')->toString() ?: null,
+                'official_subclass' => $request->string('official_subclass')->toString() ?: null,
                 'slug' => $this->uniqueVisaTypeSlug(
                     $request->integer('target_country_id'),
                     $request->string('slug')->toString() ?: $name,
@@ -351,6 +356,9 @@ class SettingsController extends Controller
                 'checklist_intro' => $request->string('checklist_intro')->toString() ?: null,
                 'portal_guidance' => $request->string('portal_guidance')->toString() ?: null,
                 'notes' => $request->string('notes')->toString() ?: null,
+                'official_reference_url' => $request->string('official_reference_url')->toString() ?: null,
+                'official_summary' => $request->string('official_summary')->toString() ?: null,
+                'official_requirements' => $request->input('official_requirements', []),
             ]);
 
             $provisionDefaults->execute($visaType);
@@ -369,6 +377,7 @@ class SettingsController extends Controller
             'target_country_id' => $request->integer('target_country_id'),
             'name' => $name,
             'code' => $request->string('code')->toString() ?: null,
+            'official_subclass' => $request->string('official_subclass')->toString() ?: null,
             'slug' => $this->uniqueVisaTypeSlug(
                 $request->integer('target_country_id'),
                 $request->string('slug')->toString() ?: $name,
@@ -391,6 +400,9 @@ class SettingsController extends Controller
             'checklist_intro' => $request->string('checklist_intro')->toString() ?: null,
             'portal_guidance' => $request->string('portal_guidance')->toString() ?: null,
             'notes' => $request->string('notes')->toString() ?: null,
+            'official_reference_url' => $request->string('official_reference_url')->toString() ?: null,
+            'official_summary' => $request->string('official_summary')->toString() ?: null,
+            'official_requirements' => $request->input('official_requirements', []),
         ]);
 
         return back()->with('success', 'Visa type updated.');

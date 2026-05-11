@@ -16,6 +16,7 @@ class VisaType extends Model
         'target_country_id',
         'name',
         'code',
+        'official_subclass',
         'slug',
         'is_active',
         'submission_sla_days',
@@ -34,6 +35,9 @@ class VisaType extends Model
         'checklist_intro',
         'portal_guidance',
         'notes',
+        'official_reference_url',
+        'official_summary',
+        'official_requirements',
     ];
 
     protected function casts(): array
@@ -51,6 +55,7 @@ class VisaType extends Model
             'medical_required' => 'boolean',
             'police_clearance_required' => 'boolean',
             'financial_proof_required' => 'boolean',
+            'official_requirements' => 'array',
         ];
     }
 

@@ -241,26 +241,22 @@ class DatabaseSeeder extends Seeder
             ]);
         });
 
-        $australia = TargetCountry::query()->firstOrCreate(
-            ['slug' => 'australia'],
-            ['name' => 'Australia', 'is_active' => true],
-        );
+        $this->call([
+            AustralianVisaCatalogSeeder::class,
+            AdditionalVisaCatalogSeeder::class,
+        ]);
 
-        $studentVisa = VisaType::query()->firstOrCreate(
-            ['target_country_id' => $australia->id, 'slug' => 'student'],
-            ['name' => 'Student', 'is_active' => true],
-        );
+        $australia = TargetCountry::query()->firstWhere('slug', 'australia');
+        $studentVisa = VisaType::query()
+            ->where('target_country_id', $australia?->id)
+            ->firstWhere('slug', 'student-500');
 
-        $workflow = collect([
-            ['name' => 'Documents Pending', 'slug' => 'documents-pending', 'position' => 1, 'color' => 'amber', 'is_default' => true, 'is_closed' => false],
-            ['name' => 'Under Review', 'slug' => 'under-review', 'position' => 2, 'color' => 'blue', 'is_default' => false, 'is_closed' => false],
-            ['name' => 'Submitted to Embassy', 'slug' => 'submitted-to-embassy', 'position' => 3, 'color' => 'violet', 'is_default' => false, 'is_closed' => false],
-            ['name' => 'Decision', 'slug' => 'decision', 'position' => 4, 'color' => 'emerald', 'is_default' => false, 'is_closed' => false],
-            ['name' => 'Closed', 'slug' => 'closed', 'position' => 5, 'color' => 'slate', 'is_default' => false, 'is_closed' => true],
-        ])->map(fn (array $stage) => VisaWorkflowStage::query()->firstOrCreate(
-            ['visa_type_id' => $studentVisa->id, 'slug' => $stage['slug']],
-            $stage,
-        ));
+        abort_if($australia === null || $studentVisa === null, 500, 'Australian visa seed data was not created as expected.');
+
+        $workflow = VisaWorkflowStage::query()
+            ->where('visa_type_id', $studentVisa->id)
+            ->orderBy('position')
+            ->get();
 
         collect([
             [

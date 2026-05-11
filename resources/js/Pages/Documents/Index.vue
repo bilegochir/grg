@@ -2,10 +2,9 @@
 import AppIcon from '@/Components/AppIcon.vue';
 import EmptyState from '@/Components/EmptyState.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import StatusBadge from '@/Components/StatusBadge.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { computed, reactive, ref } from 'vue';
+import { reactive, ref } from 'vue';
 
 const props = defineProps({
     documents: Object,
@@ -39,14 +38,6 @@ const documentForms = reactive(
 );
 
 const fileInputs = ref({});
-
-const summaryCards = computed(() => [
-    { label: 'All documents', value: props.summary.total, tone: 'border-slate-200' },
-    { label: 'Waiting on applicant', value: props.summary.pending, tone: 'border-amber-200' },
-    { label: 'Ready to review', value: props.summary.uploaded, tone: 'border-blue-200' },
-    { label: 'Verified', value: props.summary.verified, tone: 'border-emerald-200' },
-    { label: 'Expiring soon', value: props.summary.expiring_soon, tone: 'border-rose-200' },
-]);
 
 const humanFileSize = (size) => {
     if (!size) return null;
@@ -140,14 +131,6 @@ const uploadDocument = (document, event) => {
         </template>
 
         <div class="ui-page-body space-y-6">
-            <!-- Metrics Bar -->
-            <div class="flex flex-wrap divide-x divide-slate-100 rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
-                <div v-for="card in summaryCards" :key="card.label" class="flex-1 min-w-[140px] p-4 hover:bg-slate-50/50 transition-colors">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ card.label }}</p>
-                    <p class="mt-2 text-2xl font-bold text-slate-900 leading-none">{{ card.value }}</p>
-                </div>
-            </div>
-
             <!-- Filters & List -->
             <div class="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
                 <div class="border-b border-slate-100 bg-slate-50/30 p-4">

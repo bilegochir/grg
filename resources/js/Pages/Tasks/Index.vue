@@ -1,10 +1,9 @@
 <script setup>
 import EmptyState from '@/Components/EmptyState.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import StatusBadge from '@/Components/StatusBadge.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { computed, reactive } from 'vue';
+import { reactive } from 'vue';
 
 const props = defineProps({
     tasks: Object,
@@ -34,26 +33,12 @@ const taskForms = reactive(
     ),
 );
 
-const statusTone = (status) => ({
-    pending: 'slate',
-    in_progress: 'blue',
-    completed: 'emerald',
-    skipped: 'amber',
-}[status] ?? 'slate');
-
 const statusLabel = (status) => ({
     pending: 'Pending',
     in_progress: 'In progress',
     completed: 'Completed',
     skipped: 'Skipped',
 }[status] ?? status);
-
-const summaryCards = computed(() => [
-    { label: 'All tasks', value: props.summary.total, tone: 'border-slate-200' },
-    { label: 'Open now', value: props.summary.open, tone: 'border-blue-200' },
-    { label: 'Overdue', value: props.summary.overdue, tone: 'border-amber-200' },
-    { label: 'Done', value: props.summary.completed, tone: 'border-emerald-200' },
-]);
 
 const applyFilters = () => {
     filtersForm.get(route('tasks.index'), {
@@ -106,14 +91,6 @@ const markDone = (task) => {
         </template>
 
         <div class="ui-page-body space-y-6">
-            <!-- Metrics Bar -->
-            <div class="flex flex-wrap divide-x divide-slate-100 rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
-                <div v-for="card in summaryCards" :key="card.label" class="flex-1 min-w-[140px] p-4 hover:bg-slate-50/50 transition-colors">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ card.label }}</p>
-                    <p class="mt-2 text-2xl font-bold text-slate-900 leading-none">{{ card.value }}</p>
-                </div>
-            </div>
-
             <!-- Filters & List -->
             <div class="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
                 <div class="border-b border-slate-100 bg-slate-50/30 p-4">
