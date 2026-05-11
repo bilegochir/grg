@@ -9,7 +9,6 @@ use App\Enums\VisaCasePriority;
 use App\Models\Branch;
 use App\Models\BusinessSetting;
 use App\Models\CommunicationTemplate;
-use App\Models\DocumentTemplate;
 use App\Models\Lead;
 use App\Models\Permission;
 use App\Models\Role;
@@ -244,6 +243,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             AustralianVisaCatalogSeeder::class,
             AdditionalVisaCatalogSeeder::class,
+            VisaDocumentTemplateSeeder::class,
         ]);
 
         $australia = TargetCountry::query()->firstWhere('slug', 'australia');
@@ -257,63 +257,6 @@ class DatabaseSeeder extends Seeder
             ->where('visa_type_id', $studentVisa->id)
             ->orderBy('position')
             ->get();
-
-        collect([
-            [
-                'name' => 'Passport Copy',
-                'slug' => 'passport-copy',
-                'description' => 'Clear scan of the passport bio page.',
-                'category' => 'Identity',
-                'client_instructions' => 'Upload the bio page in full colour with all four corners visible.',
-                'agent_guidance' => 'Check passport number, date of birth, and at least six months validity.',
-                'sample_hint' => 'One colour PDF is best.',
-                'accepted_file_types' => ['pdf', 'jpg', 'png'],
-                'max_files' => 1,
-                'max_file_size_mb' => 10,
-                'due_days' => 2,
-                'is_repeatable' => false,
-                'position' => 1,
-                'is_required' => true,
-                'tracks_expiry' => true,
-            ],
-            [
-                'name' => 'Bank Statement',
-                'slug' => 'bank-statement',
-                'description' => 'Recent bank statements that show financial capacity.',
-                'category' => 'Finance',
-                'client_instructions' => 'Upload statements from the last 3 months with your name and account balance visible.',
-                'agent_guidance' => 'Confirm the statement window and that balances meet the visa threshold.',
-                'sample_hint' => 'You can combine multiple monthly PDFs into one upload.',
-                'accepted_file_types' => ['pdf'],
-                'max_files' => 3,
-                'max_file_size_mb' => 15,
-                'due_days' => 5,
-                'is_repeatable' => true,
-                'position' => 2,
-                'is_required' => true,
-                'tracks_expiry' => false,
-            ],
-            [
-                'name' => 'Police Clearance',
-                'slug' => 'police-clearance',
-                'description' => 'Latest police clearance certificate if required.',
-                'category' => 'Compliance',
-                'client_instructions' => 'Upload the most recent certificate issued by the correct authority.',
-                'agent_guidance' => 'Reject if it is outside the embassy validity window or missing translation.',
-                'sample_hint' => 'Include the original plus translation if applicable.',
-                'accepted_file_types' => ['pdf', 'jpg'],
-                'max_files' => 2,
-                'max_file_size_mb' => 10,
-                'due_days' => 10,
-                'is_repeatable' => false,
-                'position' => 3,
-                'is_required' => false,
-                'tracks_expiry' => true,
-            ],
-        ])->each(fn (array $template) => DocumentTemplate::query()->firstOrCreate(
-            ['visa_type_id' => $studentVisa->id, 'slug' => $template['slug']],
-            $template,
-        ));
 
         $applicant = $leads->first()?->applicant;
 

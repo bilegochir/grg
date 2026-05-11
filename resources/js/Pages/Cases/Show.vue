@@ -20,6 +20,7 @@ const showTaskSlideOver = ref(false);
 const showMessageSlideOver = ref(false);
 const showAppointmentSlideOver = ref(false);
 const showInvoiceSlideOver = ref(false);
+const showGroupSlideOver = ref(false);
 
 const selectedFiles = reactive({});
 const uploading = reactive({});
@@ -350,6 +351,30 @@ const documentRequirementSummary = (document) => {
 };
 
 const formatMoney = (currency, amount) => `${currency} ${amount}`;
+
+const groupForm = useForm({
+    name: '',
+    notes: '',
+    primary_case_id: caseRecord.id,
+});
+
+const submitCreateGroup = () => {
+    groupForm.post(route('case-groups.store'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            groupForm.reset();
+            groupForm.primary_case_id = caseRecord.id;
+            showGroupSlideOver.value = false;
+        },
+    });
+};
+
+const removeFromGroup = () => {
+    router.delete(
+        route('case-groups.members.destroy', { group: caseRecord.group?.id, case: caseRecord.id }),
+        { preserveScroll: true },
+    );
+};
 </script>
 
 <template>
@@ -649,8 +674,71 @@ const formatMoney = (currency, amount) => `${currency} ${amount}`;
                         </Link>
                     </template>
                 </AppCard>
+
+                <!-- Family / Group Panel -->
+                <AppCard title="Family group" subtitle="Link related applications to process them together.">
+                    <template #action>
+                        <button v-if="!caseRecord.group" type="button" class="text-sm font-medium text-brand-primary hover:underline" @click="showGroupSlideOver = true">Create group</button>
+                        <button v-else type="button" class="text-sm font-medium text-red-500 hover:underline" @click="removeFromGroup">Leave group</button>
+                    </template>
+
+                    <div v-if="caseRecord.group">
+                        <p class="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">{{ caseRecord.group.name }}</p>
+                        <div class="space-y-2">
+                            <Link
+                                v-for="member in caseRecord.group_members"
+                                :key="member.id"
+                                :href="route('cases.show', member.id)"
+                                class="flex items-center justify-between rounded-lg border border-brand-border px-3 py-2.5 transition hover:bg-slate-50"
+                            >
+                                <div>
+                                    <p class="text-[13px] font-semibold text-slate-900">{{ member.applicant_name }}</p>
+                                    <p class="text-[11px] text-slate-500">{{ member.visa_type }} • {{ member.reference_code }}</p>
+                                </div>
+                                <span v-if="member.is_group_primary" class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">Primary</span>
+                            </Link>
+                        </div>
+                    </div>
+                    <EmptyState v-else icon="users" title="No group yet" description="Create a group to link family members sharing this application journey." />
+                </AppCard>
+
+                <!-- PDF Forms Panel -->
+                <AppCard v-if="caseRecord.form_templates?.length" title="Government forms" subtitle="Pre-filled PDF forms ready to download for this visa type.">
+                    <div class="space-y-2">
+                        <a
+                            v-for="form in caseRecord.form_templates"
+                            :key="form.id"
+                            :href="route('cases.form-templates.generate', { case: caseRecord.id, formTemplate: form.id })"
+                            target="_blank"
+                            class="flex items-center justify-between rounded-lg border border-brand-border px-3 py-2.5 transition hover:bg-slate-50"
+                        >
+                            <div>
+                                <p class="text-[13px] font-semibold text-slate-900">{{ form.name }}</p>
+                                <p v-if="form.description" class="text-[11px] text-slate-500">{{ form.description }}</p>
+                            </div>
+                            <AppIcon name="externalLink" :size="14" class="text-slate-400" />
+                        </a>
+                    </div>
+                </AppCard>
             </div>
         </div>
+
+        <SlideOver :show="showGroupSlideOver" title="Create family group" description="Link this case with related applications e.g. spouse, child." @close="showGroupSlideOver = false">
+            <form id="case-group-form" class="space-y-6" @submit.prevent="submitCreateGroup">
+                <div>
+                    <InputLabel value="Group name" />
+                    <input v-model="groupForm.name" class="ui-input" placeholder="e.g. Smith Family" />
+                    <InputError :message="groupForm.errors.name" />
+                </div>
+                <div>
+                    <InputLabel value="Notes" />
+                    <textarea v-model="groupForm.notes" class="ui-textarea" rows="3" placeholder="Shared context or instructions for the group…" />
+                </div>
+            </form>
+            <template #footer>
+                <PrimaryButton form="case-group-form" type="submit" class="w-full" :loading="groupForm.processing">Create group</PrimaryButton>
+            </template>
+        </SlideOver>
 
         <SlideOver :show="showTaskSlideOver" title="Create task" description="Add the next action your team needs to complete for this case." @close="showTaskSlideOver = false">
             <form id="case-task-form" class="space-y-6" @submit.prevent="submitTask">

@@ -15,6 +15,8 @@ use App\Models\TargetCountry;
 use App\Models\User;
 use App\Models\VisaCase;
 use App\Models\VisaCaseDocument;
+use App\Models\VisaCaseGroup;
+use App\Models\VisaFormTemplate;
 use App\Models\VisaType;
 use App\Models\VisaWorkflowStage;
 use App\Support\VisaCaseDocumentUrlGenerator;
@@ -132,7 +134,16 @@ class VisaCaseController extends Controller
             'stageHistories.fromStage:id,name',
             'stageHistories.toStage:id,name,color',
             'stageHistories.user:id,name',
+            'group',
+            'groupMembers.applicant:id,first_name,last_name',
+            'groupMembers.visaType:id,name',
         ]);
+
+        // PDF form templates for this visa type
+        $formTemplates = VisaFormTemplate::query()
+            ->where('visa_type_id', $case->visa_type_id)
+            ->where('is_active', true)
+            ->get(['id', 'name', 'description']);
 
         return Inertia::render('Cases/Show', [
             'case' => [
@@ -316,6 +327,24 @@ class VisaCaseController extends Controller
                     'completed',
                     'skipped',
                 ],
+                'group' => $case->group ? [
+                    'id'   => $case->group->id,
+                    'name' => $case->group->name,
+                ] : null,
+                'group_members' => $case->groupMembers
+                    ->where('id', '!=', $case->id)
+                    ->map(fn (VisaCase $member): array => [
+                        'id'             => $member->id,
+                        'reference_code' => $member->reference_code,
+                        'applicant_name' => $member->applicant->full_name,
+                        'visa_type'      => $member->visaType->name,
+                        'is_group_primary' => $member->is_group_primary,
+                    ])->values(),
+                'form_templates' => $formTemplates->map(fn ($t): array => [
+                    'id'          => $t->id,
+                    'name'        => $t->name,
+                    'description' => $t->description,
+                ])->values(),
             ],
         ]);
     }

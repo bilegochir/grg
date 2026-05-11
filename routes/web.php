@@ -23,9 +23,11 @@ use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TeamInvitationController;
 use App\Http\Controllers\VisaCaseController;
 use App\Http\Controllers\VisaCaseDocumentController;
+use App\Http\Controllers\VisaCaseGroupController;
 use App\Http\Controllers\VisaCaseMessageController;
 use App\Http\Controllers\VisaCaseNoteController;
 use App\Http\Controllers\VisaCaseTaskController;
+use App\Http\Controllers\VisaFormTemplateController;
 use App\Http\Controllers\WorkspaceBranchController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -71,6 +73,18 @@ Route::middleware('auth')->group(function () {
     Route::post('/cases/{case}/documents/{document}/upload', [VisaCaseDocumentController::class, 'upload'])->middleware('permission:cases.update')->name('cases.documents.upload');
     Route::patch('/cases/{case}/documents/{document}/status', [VisaCaseDocumentController::class, 'updateStatus'])->middleware('permission:documents.review')->name('cases.documents.status.update');
     Route::get('/cases/{case}/documents/download-zip', [VisaCaseDocumentController::class, 'downloadZip'])->middleware('permission:cases.view')->name('cases.documents.zip');
+
+    // Case Groups
+    Route::post('/case-groups', [VisaCaseGroupController::class, 'store'])->middleware('permission:cases.update')->name('case-groups.store');
+    Route::post('/case-groups/{group}/members', [VisaCaseGroupController::class, 'addMember'])->middleware('permission:cases.update')->name('case-groups.members.store');
+    Route::delete('/case-groups/{group}/members/{case}', [VisaCaseGroupController::class, 'removeMember'])->middleware('permission:cases.update')->name('case-groups.members.destroy');
+    Route::delete('/case-groups/{group}', [VisaCaseGroupController::class, 'destroy'])->middleware('permission:cases.update')->name('case-groups.destroy');
+
+    // PDF Form Templates
+    Route::post('/settings/form-templates', [VisaFormTemplateController::class, 'store'])->middleware('permission:settings.manage')->name('settings.form-templates.store');
+    Route::patch('/settings/form-templates/{formTemplate}', [VisaFormTemplateController::class, 'update'])->middleware('permission:settings.manage')->name('settings.form-templates.update');
+    Route::delete('/settings/form-templates/{formTemplate}', [VisaFormTemplateController::class, 'destroy'])->middleware('permission:settings.manage')->name('settings.form-templates.destroy');
+    Route::get('/cases/{case}/form-templates/{formTemplate}/generate', [VisaFormTemplateController::class, 'generate'])->middleware('permission:cases.view')->name('cases.form-templates.generate');
     Route::post('/notifications/mark-seen', [NotificationController::class, 'markSeen'])->name('notifications.mark-seen');
     Route::post('/workspace/branch', [WorkspaceBranchController::class, 'update'])->middleware('permission:dashboard.view')->name('workspace.branch.update');
     Route::get('/appointments', [AppointmentController::class, 'index'])->middleware('permission:cases.view')->name('appointments.index');
@@ -82,7 +96,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/invoices/{invoice}/payments', [InvoiceController::class, 'recordPayment'])->middleware('permission:finance.view')->name('invoices.payments.store');
     Route::post('/invoices/{invoice}/remind', [InvoiceController::class, 'remind'])->middleware('permission:communications.manage')->name('invoices.remind');
 
-    Route::get('/settings', [SettingsController::class, 'index'])->middleware('permission:settings.manage')->name('settings.index');
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::patch('/settings/business', [SettingsController::class, 'updateBusiness'])->middleware('permission:settings.manage')->name('settings.business.update');
     Route::post('/settings/countries', [SettingsController::class, 'storeCountry'])->middleware('permission:settings.manage')->name('settings.countries.store');
     Route::patch('/settings/countries/{country}', [SettingsController::class, 'updateCountry'])->middleware('permission:settings.manage')->name('settings.countries.update');

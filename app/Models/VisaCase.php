@@ -19,6 +19,8 @@ class VisaCase extends Model
         'visa_type_id',
         'target_country_id',
         'branch_id',
+        'visa_case_group_id',
+        'is_group_primary',
         'assigned_to_user_id',
         'current_stage_id',
         'priority',
@@ -32,6 +34,7 @@ class VisaCase extends Model
     {
         return [
             'priority' => VisaCasePriority::class,
+            'is_group_primary' => 'boolean',
             'expected_submission_at' => 'date',
             'expected_decision_at' => 'date',
             'closed_at' => 'datetime',
@@ -41,6 +44,17 @@ class VisaCase extends Model
     public function applicant(): BelongsTo
     {
         return $this->belongsTo(Applicant::class);
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(VisaCaseGroup::class, 'visa_case_group_id');
+    }
+
+    public function groupMembers(): HasMany
+    {
+        // All sibling cases within the same group, excluding self
+        return $this->hasMany(VisaCase::class, 'visa_case_group_id', 'visa_case_group_id');
     }
 
     public function visaType(): BelongsTo

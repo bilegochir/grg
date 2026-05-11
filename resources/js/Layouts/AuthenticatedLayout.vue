@@ -98,7 +98,6 @@ const sections = [
         items: [
             { name: 'Staff', href: route('staff.index'), current: 'staff.*', icon: 'users', permission: 'staff.manage' },
             { name: 'Reports', href: route('reports.index'), current: 'reports.*', icon: 'dashboard', permission: 'dashboard.view' },
-            { name: 'Settings', href: route('settings.index'), current: 'settings.*', icon: 'settings', permission: 'settings.manage' },
         ],
     },
 ];
@@ -263,45 +262,49 @@ onUnmounted(() => {
                 </div>
 
                 <nav class="flex-1 overflow-y-auto px-1 pb-6">
-                    <div
-                        v-for="section in visibleSections"
-                        :key="section.label"
-                        class="mb-4 last:mb-0"
-                    >
-                        <p
-                            v-if="!sidebarCollapsed"
-                            class="app-sidebar-section-label"
+                    <slot v-if="$slots.sidebar" name="sidebar" />
+                    
+                    <template v-else>
+                        <div
+                            v-for="section in visibleSections"
+                            :key="section.label"
+                            class="mb-4 last:mb-0"
                         >
-                            {{ section.label }}
-                        </p>
+                            <p
+                                v-if="!sidebarCollapsed"
+                                class="app-sidebar-section-label"
+                            >
+                                {{ section.label }}
+                            </p>
 
-                        <div class="app-sidebar-nav-group">
-                            <template v-for="item in section.items" :key="item.name">
-                                <Link
-                                    v-if="!item.disabled"
-                                    :href="item.href"
-                                    class="app-sidebar-item"
-                                    :class="[
-                                        { 'app-sidebar-item-active': route().current(item.current) },
-                                        sidebarCollapsed ? 'justify-center px-0 mx-2' : '',
-                                    ]"
-                                    :title="sidebarCollapsed ? item.name : null"
-                                >
-                                    <AppIcon :name="item.icon" :size="16" class="shrink-0" />
-                                    <span v-if="!sidebarCollapsed">{{ item.name }}</span>
-                                </Link>
-                                <span
-                                    v-else
-                                    class="app-sidebar-item cursor-not-allowed opacity-40"
-                                    :class="sidebarCollapsed ? 'justify-center px-0 mx-2' : ''"
-                                    :title="sidebarCollapsed ? item.name : null"
-                                >
-                                    <AppIcon :name="item.icon" :size="16" class="shrink-0" />
-                                    <span v-if="!sidebarCollapsed">{{ item.name }}</span>
-                                </span>
-                            </template>
+                            <div class="app-sidebar-nav-group">
+                                <template v-for="item in section.items" :key="item.name">
+                                    <Link
+                                        v-if="!item.disabled"
+                                        :href="item.href"
+                                        class="app-sidebar-item"
+                                        :class="[
+                                            { 'app-sidebar-item-active': route().current(item.current) },
+                                            sidebarCollapsed ? 'justify-center px-0 mx-2' : '',
+                                        ]"
+                                        :title="sidebarCollapsed ? item.name : null"
+                                    >
+                                        <AppIcon :name="item.icon" :size="16" class="shrink-0" />
+                                        <span v-if="!sidebarCollapsed">{{ item.name }}</span>
+                                    </Link>
+                                    <span
+                                        v-else
+                                        class="app-sidebar-item cursor-not-allowed opacity-40"
+                                        :class="sidebarCollapsed ? 'justify-center px-0 mx-2' : ''"
+                                        :title="sidebarCollapsed ? item.name : null"
+                                    >
+                                        <AppIcon :name="item.icon" :size="16" class="shrink-0" />
+                                        <span v-if="!sidebarCollapsed">{{ item.name }}</span>
+                                    </span>
+                                </template>
+                            </div>
                         </div>
-                    </div>
+                    </template>
                 </nav>
 
                 <div class="mt-auto p-3 space-y-0.5">
@@ -346,8 +349,8 @@ onUnmounted(() => {
                                 <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Account</p>
                             </div>
                             <div class="py-1">
-                                <DropdownLink :href="route('profile.edit')">
-                                    Profile Settings
+                                <DropdownLink :href="route('settings.index')">
+                                    Settings
                                 </DropdownLink>
                                 <Link :href="route('logout')" method="post" as="button" class="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-red-600 transition hover:bg-red-50 hover:text-red-700">
                                     Log out

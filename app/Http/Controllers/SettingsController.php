@@ -21,7 +21,9 @@ use App\Models\DocumentTemplate;
 use App\Models\TargetCountry;
 use App\Models\VisaType;
 use App\Models\VisaTaskTemplate;
+use App\Models\VisaFormTemplate;
 use App\Models\VisaWorkflowStage;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -212,6 +214,21 @@ class SettingsController extends Controller
             'taskTemplates' => $taskTemplates,
             'documentTemplates' => $documentTemplates,
             'communicationTemplates' => $communicationTemplates,
+            'formTemplates' => VisaFormTemplate::query()
+                ->with('visaType:id,name')
+                ->latest()
+                ->get()
+                ->map(fn (VisaFormTemplate $ft): array => [
+                    'id'              => $ft->id,
+                    'visa_type_id'    => $ft->visa_type_id,
+                    'visa_type_name'  => $ft->visaType?->name ?? '—',
+                    'name'            => $ft->name,
+                    'description'     => $ft->description,
+                    'original_filename' => $ft->original_filename,
+                    'field_mapping'   => $ft->field_mapping ?? [],
+                    'is_active'       => $ft->is_active,
+                ])->values(),
+            'availableFields' => VisaFormTemplate::availableFields(),
             'branches' => $branches,
             'locales' => [
                 ['value' => 'en', 'label' => 'English'],
@@ -225,6 +242,8 @@ class SettingsController extends Controller
                 ['value' => 'local_gateway', 'label' => 'Local gateway'],
             ],
             'appLocale' => app()->getLocale(),
+            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
+            'status' => session('status'),
         ]);
     }
 

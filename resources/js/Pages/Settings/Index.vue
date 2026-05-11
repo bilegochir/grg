@@ -8,7 +8,10 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SlideOver from '@/Components/SlideOver.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { useLocale } from '@/lib/i18n';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import DeleteUserForm from '../Profile/Partials/DeleteUserForm.vue';
+import UpdatePasswordForm from '../Profile/Partials/UpdatePasswordForm.vue';
+import UpdateProfileInformationForm from '../Profile/Partials/UpdateProfileInformationForm.vue';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 const props = defineProps({
@@ -19,10 +22,14 @@ const props = defineProps({
     taskTemplates: Array,
     documentTemplates: Array,
     communicationTemplates: Array,
+    formTemplates: Array,
+    availableFields: Object,
     branches: Array,
     locales: Array,
     smsProviders: Array,
     appLocale: String,
+    mustVerifyEmail: Boolean,
+    status: String,
 });
 
 const { t } = useLocale(props.appLocale ?? 'en');
@@ -33,18 +40,30 @@ const showTemplate = ref(false);
 const showMessageTemplate = ref(false);
 const showWorkflowStage = ref(false);
 const showTaskTemplate = ref(false);
+const showFormTemplate = ref(false);
 
 const editingCountryId = ref(null);
 const editingVisaTypeId = ref(null);
 const editingTemplateId = ref(null);
 const editingMessageTemplateId = ref(null);
+const editingFormTemplateId = ref(null);
 const editingWorkflowStageId = ref(null);
 const editingTaskTemplateId = ref(null);
 const selectedVisaTypeId = ref(props.visaTypes[0]?.id ?? '');
-const activeTab = ref('business');
+const canManage = computed(() => usePage().props.auth.user.permissions.includes('settings.manage'));
+const activeTab = ref(new URLSearchParams(window.location.search).get('tab') || (canManage.value ? 'business' : 'profile'));
 const visaTypeSearch = ref('');
 const visaTypeCountryFilter = ref('all');
 const visaTypeServiceScopeFilter = ref('all');
+const expandedVisaTypes = ref([]);
+
+const toggleVisaTypeExpansion = (id) => {
+    if (expandedVisaTypes.value.includes(id)) {
+        expandedVisaTypes.value = expandedVisaTypes.value.filter(i => i !== id);
+    } else {
+        expandedVisaTypes.value.push(id);
+    }
+};
 
 const businessForm = useForm({
     business_name: props.businessSetting.business_name ?? '',
@@ -190,6 +209,22 @@ const filteredVisaTypes = computed(() => {
             });
         });
 });
+
+const visaTypesByCountry = computed(() => {
+    const groups = [];
+    filteredVisaTypes.value.forEach((visaType) => {
+        let group = groups.find(g => g.country.id === visaType.country.id);
+        if (!group) {
+            group = {
+                country: visaType.country,
+                items: []
+            };
+            groups.push(group);
+        }
+        group.items.push(visaType);
+    });
+    return groups;
+});
 const filteredTemplates = computed(() => props.documentTemplates.filter((template) => {
     if (!selectedVisaTypeId.value) {
         return true;
@@ -296,13 +331,13 @@ const resetTaskTemplateForm = () => {
 };
 
 const openCountryCreate = () => {
-    activeTab.value = 'destinations';
+    activeTab.value = 'countries';
     resetCountryForm();
     showCountry.value = true;
 };
 
 const openCountryEdit = (country) => {
-    activeTab.value = 'destinations';
+    activeTab.value = 'countries';
     editingCountryId.value = country.id;
     countryForm.name = country.name;
     countryForm.slug = country.slug;
@@ -311,13 +346,13 @@ const openCountryEdit = (country) => {
 };
 
 const openVisaTypeCreate = () => {
-    activeTab.value = 'destinations';
+    activeTab.value = 'visa-types';
     resetVisaTypeForm();
     showVisaType.value = true;
 };
 
 const openVisaTypeEdit = (visaType) => {
-    activeTab.value = 'destinations';
+    activeTab.value = 'visa-types';
     selectedVisaTypeId.value = visaType.id;
     editingVisaTypeId.value = visaType.id;
     visaTypeForm.target_country_id = visaType.country.id;
@@ -655,87 +690,238 @@ const settingGroups = [
                 description: 'Brand and contact',
             },
             {
-                key: 'destinations',
-                label: 'Destinations',
+                key: 'visa-types',
+                label: 'Visa Types',
+                icon: 'document',
+            },
+            {
+                key: 'countries',
+                label: 'Countries',
                 icon: 'map',
-                description: 'Countries and visa types',
             },
         ],
     },
     {
-        label: 'Automations',
+        label: 'Account',
+        items: [
+            {
+                key: 'profile',
+                label: 'Profile',
+                icon: 'users',
+            },
+        ],
+    },
+    {
+        label: 'Infrastructure',
         items: [
             {
                 key: 'workflow',
-                label: 'Workflow',
+                label: 'Workflows',
                 icon: 'tasks',
-                description: 'Stages and tasks',
+                description: 'Automation stages',
             },
             {
                 key: 'checklists',
                 label: 'Checklists',
                 icon: 'document',
-                description: 'Requirements',
+                description: 'Document requirements',
+            },
+            {
+                key: 'forms',
+                label: 'Gov. Forms',
+                icon: 'document',
+                description: 'PDF form templates',
             },
             {
                 key: 'messaging',
                 label: 'Messaging',
-                icon: 'bell',
-                description: 'Templates',
+                icon: 'mail',
+                description: 'Email & SMS templates',
             },
         ],
     },
 ];
+
+const visibleSettingGroups = computed(() => {
+    return settingGroups.filter(group => {
+        if (group.label === 'Workspace' && !canManage.value) return false;
+        if (group.label === 'Infrastructure' && !canManage.value) return false;
+        return true;
+    });
+});
+
+// ── Form Templates ────────────────────────────────────────────────────────────
+const formTemplateForm = useForm({
+    visa_type_id: props.visaTypes[0]?.id ?? '',
+    name: '',
+    description: '',
+    pdf: null,
+    field_mapping: {},
+    _method: 'POST',
+});
+
+const editingFormTemplate = ref(null);
+const formTemplateEditForm = useForm({
+    name: '',
+    description: '',
+    field_mapping: {},
+    is_active: true,
+});
+
+const formTemplateVisaFilter = ref(props.visaTypes[0]?.id ?? '');
+
+const filteredFormTemplates = computed(() =>
+    props.formTemplates?.filter(t =>
+        !formTemplateVisaFilter.value || t.visa_type_id === formTemplateVisaFilter.value
+    ) ?? []
+);
+
+const openFormTemplateCreate = () => {
+    editingFormTemplateId.value = null;
+    formTemplateForm.reset();
+    formTemplateForm.visa_type_id = props.visaTypes[0]?.id ?? '';
+    showFormTemplate.value = true;
+};
+
+const openFormTemplateEdit = (template) => {
+    editingFormTemplateId.value = template.id;
+    editingFormTemplate.value = template;
+    formTemplateEditForm.name = template.name;
+    formTemplateEditForm.description = template.description ?? '';
+    formTemplateEditForm.field_mapping = { ...template.field_mapping };
+    formTemplateEditForm.is_active = template.is_active;
+    showFormTemplate.value = true;
+};
+
+const addMappingRow = () => {
+    formTemplateForm.field_mapping = { ...formTemplateForm.field_mapping, '': '' };
+};
+
+const addEditMappingRow = () => {
+    formTemplateEditForm.field_mapping = { ...formTemplateEditForm.field_mapping, '': '' };
+};
+
+const updateMappingKey = (form, oldKey, newKey) => {
+    const val = form.field_mapping[oldKey];
+    const updated = {};
+    Object.keys(form.field_mapping).forEach(k => {
+        updated[k === oldKey ? newKey : k] = form.field_mapping[k];
+    });
+    form.field_mapping = updated;
+};
+
+const removeMappingRow = (form, key) => {
+    const updated = { ...form.field_mapping };
+    delete updated[key];
+    form.field_mapping = updated;
+};
+
+const saveFormTemplate = () => {
+    if (editingFormTemplateId.value) {
+        formTemplateEditForm.patch(
+            route('settings.form-templates.update', editingFormTemplateId.value),
+            { preserveScroll: true, onSuccess: () => { showFormTemplate.value = false; } },
+        );
+    } else {
+        formTemplateForm.post(route('settings.form-templates.store'), {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => { showFormTemplate.value = false; formTemplateForm.reset(); },
+        });
+    }
+};
 </script>
 
 <template>
     <Head title="Settings" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <div class="mb-6">
-                <h1 class="text-[24px] font-semibold text-slate-900 tracking-tight">Settings</h1>
-            </div>
-        </template>
+        <template #sidebar>
+            <div class="px-3 py-3">
+                <Link
+                    :href="route('dashboard')"
+                    class="flex items-center gap-2 text-[13px] font-medium text-slate-500 hover:text-slate-900 transition-colors mb-6"
+                >
+                    <AppIcon name="chevronLeft" :size="14" />
+                    Back to app
+                </Link>
 
-        <div class="flex flex-col gap-12 lg:flex-row lg:items-start">
-            <aside class="w-full lg:w-56 lg:shrink-0">
-                <nav class="space-y-6">
-                    <div v-for="group in settingGroups" :key="group.label">
-                        <p class="px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                <nav class="space-y-7">
+                    <div v-for="group in visibleSettingGroups" :key="group.label">
+                        <p class="px-1 text-[10px] font-bold uppercase tracking-[0.05em] text-slate-400/80">
                             {{ group.label }}
                         </p>
-                        <div class="mt-2 space-y-0.5">
+                        <div class="mt-2.5 space-y-0.5">
                             <button
                                 v-for="tab in group.items"
                                 :key="tab.key"
                                 type="button"
-                                class="flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left transition-all duration-200"
-                                :class="activeTab === tab.key 
-                                    ? 'bg-slate-200/60 text-slate-900 font-bold' 
+                                class="group flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-all duration-200"
+                                :class="activeTab === tab.key
+                                    ? 'bg-slate-200/50 text-slate-900 font-semibold shadow-sm'
                                     : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 font-medium'"
                                 @click="activeTab = tab.key"
                             >
-                                <AppIcon :name="tab.icon" :size="14" :class="activeTab === tab.key ? 'text-brand-primary' : 'text-slate-400'" />
+                                <AppIcon
+                                    :name="tab.icon"
+                                    :size="14"
+                                    :class="activeTab === tab.key ? 'text-slate-900' : 'text-slate-400 group-hover:text-slate-600'"
+                                />
                                 <span class="text-[13px]">{{ tab.label }}</span>
                             </button>
                         </div>
                     </div>
                 </nav>
 
-                <div class="mt-12 px-3">
-                    <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Help & Support</p>
-                    <div class="mt-4 space-y-3">
-                        <a href="#" class="block text-[13px] text-slate-500 hover:text-slate-900 transition-colors">Documentation</a>
-                        <a href="#" class="block text-[13px] text-slate-500 hover:text-slate-900 transition-colors">API Reference</a>
-                        <a href="#" class="block text-[13px] text-slate-500 hover:text-slate-900 transition-colors">Contact Support</a>
+                <div class="mt-12 pt-8 border-t border-slate-100">
+                    <p class="px-1 text-[10px] font-bold uppercase tracking-[0.05em] text-slate-400/80">Help & Support</p>
+                    <div class="mt-4 space-y-2">
+                        <a href="#" class="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all">
+                            <AppIcon name="document" :size="14" class="text-slate-400" />
+                            Documentation
+                        </a>
+                        <a href="#" class="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all">
+                            <AppIcon name="sparkle" :size="14" class="text-slate-400" />
+                            API Reference
+                        </a>
+                        <a href="#" class="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-[13px] text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition-all">
+                            <AppIcon name="mail" :size="14" class="text-slate-400" />
+                            Contact Support
+                        </a>
                     </div>
                 </div>
-            </aside>
+            </div>
+        </template>
 
+        <div class="max-w-5xl mx-auto w-full">
             <div class="min-w-0 flex-1">
 
-            <div v-if="activeTab === 'business'" class="max-w-4xl">
+            <div v-if="activeTab === 'profile'">
+                <div class="mb-10">
+                    <h2 class="text-[20px] font-semibold text-slate-900">Profile Settings</h2>
+                    <p class="mt-1 text-[13px] text-slate-500">Manage your personal information, security, and account preferences.</p>
+                </div>
+
+                <div class="space-y-12">
+                    <AppCard title="Profile information" subtitle="The basics your workspace uses to identify and reach you.">
+                        <UpdateProfileInformationForm
+                            :must-verify-email="mustVerifyEmail"
+                            :status="status"
+                            class="max-w-2xl"
+                        />
+                    </AppCard>
+
+                    <AppCard title="Password and security" subtitle="Use a strong password that is hard to guess and easy to rotate when needed.">
+                        <UpdatePasswordForm class="max-w-2xl" />
+                    </AppCard>
+
+                    <AppCard title="Danger zone" subtitle="Low-frequency actions that should stay visible but separate from everyday account edits.">
+                        <DeleteUserForm class="max-w-2xl" />
+                    </AppCard>
+                </div>
+            </div>
+
+            <div v-if="activeTab === 'business'">
                 <div class="mb-10">
                     <h2 class="text-[20px] font-semibold text-slate-900">General Settings</h2>
                     <p class="mt-1 text-[13px] text-slate-500">Manage your business profile, contact information, and localization preferences.</p>
@@ -846,80 +1032,45 @@ const settingGroups = [
                 </form>
             </div>
 
-            <div v-if="activeTab === 'destinations'" class="max-w-4xl space-y-12">
-                <div>
-                    <div class="mb-6 flex items-center justify-between">
-                        <div>
-                            <h2 class="text-[20px] font-semibold text-slate-900">Target Countries</h2>
-                            <p class="mt-1 text-[13px] text-slate-500">Define the countries where you provide visa services.</p>
-                        </div>
-                        <PrimaryButton icon="plus" @click="openCountryCreate">Add country</PrimaryButton>
+            <div v-if="activeTab === 'visa-types'" class="max-w-5xl">
+                <div class="mb-8 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-[20px] font-semibold text-slate-900">Visa Types</h2>
+                        <p class="mt-1 text-[13px] text-slate-500">Manage specific visa categories and their requirements by country.</p>
                     </div>
-
-                    <div class="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white shadow-card">
-                        <div v-for="country in countries" :key="country.id" class="flex items-center justify-between gap-4 px-4 py-3.5 transition hover:bg-slate-50/50">
-                            <div>
-                                <div class="flex items-center gap-3">
-                                    <p class="text-[14px] font-bold text-slate-900">{{ country.name }}</p>
-                                    <span :class="country.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-100 text-slate-600 border-slate-200'" class="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
-                                        {{ country.is_active ? 'Live' : 'Paused' }}
-                                    </span>
-                                </div>
-                                <p class="mt-1 text-[12px] text-slate-500">{{ country.slug }} • {{ country.visa_types_count }} visa types</p>
-                            </div>
-                            <div class="flex items-center gap-1.5">
-                                <button type="button" class="ui-button-ghost h-8" @click="openCountryEdit(country)">Edit</button>
-                                <button type="button" class="ui-button-danger h-8" @click="destroyResource('settings.countries.destroy', country.id)">Remove</button>
-                            </div>
-                        </div>
-
-                        <div v-if="!countries.length" class="px-6 py-10 text-center">
-                            <p class="text-[13px] text-slate-500">No countries defined yet.</p>
-                        </div>
-                    </div>
+                    <PrimaryButton icon="plus" @click="openVisaTypeCreate">Add visa type</PrimaryButton>
                 </div>
 
-                <div>
-                    <div class="mb-6 flex items-center justify-between">
-                        <div>
-                            <h2 class="text-[20px] font-semibold text-slate-900">Visa Types</h2>
-                            <p class="mt-1 text-[13px] text-slate-500">Manage specific visa categories and their requirements by country.</p>
+                <div class="space-y-6">
+                    <div class="sticky top-0 z-10 -mx-4 mb-6 rounded-xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur-md sm:mx-0">
+                        <div class="grid gap-4 md:grid-cols-[1fr,200px,200px]">
+                            <div class="relative">
+                                <AppIcon name="search" :size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    v-model="visaTypeSearch"
+                                    class="ui-input !pl-9"
+                                    placeholder="Search by name, code, or requirement..."
+                                />
+                            </div>
+                            <select v-model="visaTypeCountryFilter" class="ui-select">
+                                <option value="all">All countries</option>
+                                <option v-for="country in visaTypeCountries" :key="country.id" :value="String(country.id)">
+                                    {{ country.name }}
+                                </option>
+                            </select>
+                            <select v-model="visaTypeServiceScopeFilter" class="ui-select">
+                                <option value="all">All scopes</option>
+                                <option value="new_application">New application</option>
+                                <option value="renewal">Renewal</option>
+                                <option value="extension">Extension</option>
+                                <option value="multi_step_case">Multi-step case</option>
+                            </select>
                         </div>
-                        <PrimaryButton icon="plus" @click="openVisaTypeCreate">Add visa type</PrimaryButton>
-                    </div>
-
-                    <div class="mb-5 rounded-lg border border-slate-200 bg-white p-4 shadow-card">
-                        <div class="grid gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
-                            <div>
-                                <InputLabel for="visa_type_search" value="Search visas" />
-                                <input id="visa_type_search" v-model="visaTypeSearch" class="ui-input" placeholder="Search by name, subclass, code, country, or requirement" />
-                            </div>
-                            <div>
-                                <InputLabel for="visa_type_country_filter" value="Country" />
-                                <select id="visa_type_country_filter" v-model="visaTypeCountryFilter" class="ui-select">
-                                    <option value="all">All countries</option>
-                                    <option v-for="country in visaTypeCountries" :key="country.id" :value="String(country.id)">
-                                        {{ country.name }}
-                                    </option>
-                                </select>
-                            </div>
-                            <div>
-                                <InputLabel for="visa_type_scope_filter" value="Service scope" />
-                                <select id="visa_type_scope_filter" v-model="visaTypeServiceScopeFilter" class="ui-select">
-                                    <option value="all">All scopes</option>
-                                    <option value="new_application">New application</option>
-                                    <option value="renewal">Renewal</option>
-                                    <option value="extension">Extension</option>
-                                    <option value="multi_step_case">Multi-step case</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="mt-4 flex flex-wrap items-center gap-2 text-[12px] text-slate-500">
-                            <span class="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-700">{{ filteredVisaTypes.length }} visas shown</span>
+                        <div v-if="visaTypeSearch || visaTypeCountryFilter !== 'all' || visaTypeServiceScopeFilter !== 'all'" class="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
+                            <span class="text-[12px] text-slate-500">{{ filteredVisaTypes.length }} results found</span>
                             <button
-                                v-if="visaTypeSearch || visaTypeCountryFilter !== 'all' || visaTypeServiceScopeFilter !== 'all'"
                                 type="button"
-                                class="ui-button-ghost h-8"
+                                class="text-[12px] font-semibold text-brand-primary hover:underline"
                                 @click="visaTypeSearch = ''; visaTypeCountryFilter = 'all'; visaTypeServiceScopeFilter = 'all'"
                             >
                                 Reset filters
@@ -927,79 +1078,147 @@ const settingGroups = [
                         </div>
                     </div>
 
-                    <div class="space-y-3">
-                        <div
-                            v-for="visaType in filteredVisaTypes"
-                            :key="visaType.id"
-                            class="rounded-lg border border-slate-200 bg-white p-4 shadow-card transition hover:border-slate-300"
-                        >
-                            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                                <div class="min-w-0 flex-1">
-                                    <div class="flex flex-wrap items-center gap-2">
-                                        <p class="text-[14px] font-bold text-slate-900">{{ visaType.name }}</p>
-                                        <span :class="visaType.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-100 text-slate-600 border-slate-200'" class="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
-                                            {{ visaType.is_active ? 'Live' : 'Paused' }}
-                                        </span>
-                                        <span v-if="visaType.official_subclass" class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Subclass {{ visaType.official_subclass }}</span>
-                                        <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">{{ visaType.country.name }}</span>
-                                        <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">{{ visaTypeScopeLabel(visaType.service_scope) }}</span>
+                    <div v-if="visaTypesByCountry.length" class="space-y-10">
+                        <div v-for="group in visaTypesByCountry" :key="group.country.id" class="space-y-4">
+                            <div class="flex items-center gap-3 px-1">
+                                <h3 class="text-[14px] font-bold uppercase tracking-widest text-slate-400">{{ group.country.name }}</h3>
+                                <div class="h-px flex-1 bg-slate-100"></div>
+                                <span class="text-[11px] font-bold text-slate-400">{{ group.items.length }} types</span>
+                            </div>
+
+                            <div class="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                                <div v-for="visaType in group.items" :key="visaType.id" class="group">
+                                    <div class="flex items-center justify-between gap-4 px-5 py-4 transition hover:bg-slate-50/50">
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex items-center gap-3">
+                                                <button
+                                                    type="button"
+                                                    class="flex items-center gap-2.5 text-left transition-colors"
+                                                    @click="toggleVisaTypeExpansion(visaType.id)"
+                                                >
+                                                    <AppIcon
+                                                        name="chevronRight"
+                                                        :size="12"
+                                                        class="transition-transform duration-200 text-slate-400"
+                                                        :class="{ 'rotate-90': expandedVisaTypes.includes(visaType.id) }"
+                                                    />
+                                                    <p class="text-[14px] font-bold text-slate-900">{{ visaType.name }}</p>
+                                                </button>
+                                                <span v-if="visaType.official_subclass" class="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Subclass {{ visaType.official_subclass }}</span>
+                                                <span v-if="visaType.code" class="text-[11px] font-mono font-bold text-slate-400">{{ visaType.code }}</span>
+                                                <span :class="visaType.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'" class="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+                                                    {{ visaType.is_active ? 'Live' : 'Paused' }}
+                                                </span>
+                                            </div>
+                                            <div class="mt-1 flex items-center gap-4 text-[12px] text-slate-500">
+                                                <span>{{ visaTypeScopeLabel(visaType.service_scope) }}</span>
+                                                <span v-if="visaType.submission_sla_days">• {{ visaType.submission_sla_days }}d SLA</span>
+                                                <span v-if="visaType.official_requirements?.length">• {{ visaType.official_requirements.length }} requirements</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button type="button" class="ui-button-ghost h-8 px-2.5" title="Edit details" @click="openVisaTypeEdit(visaType)">
+                                                <AppIcon name="edit" :size="14" />
+                                            </button>
+                                            <button type="button" class="ui-button-ghost h-8 px-2.5" title="Workflow" @click="openVisaTypeWorkflow(visaType)">
+                                                <AppIcon name="tasks" :size="14" />
+                                            </button>
+                                            <button type="button" class="ui-button-ghost h-8 px-2.5" title="Checklist" @click="openVisaTypeChecklist(visaType)">
+                                                <AppIcon name="document" :size="14" />
+                                            </button>
+                                            <a v-if="visaType.official_reference_url" :href="visaType.official_reference_url" target="_blank" class="ui-button-ghost h-8 px-2.5" title="Official page">
+                                                <AppIcon name="externalLink" :size="14" />
+                                            </a>
+                                            <button type="button" class="ui-button-danger h-8 px-2.5" title="Delete" @click="destroyResource('settings.visa-types.destroy', visaType.id)">
+                                                <AppIcon name="trash" :size="14" />
+                                            </button>
+                                        </div>
                                     </div>
-                                    <p v-if="visaType.official_summary" class="mt-2 text-[12px] leading-5 text-slate-600">
-                                        {{ visaType.official_summary }}
-                                    </p>
-                                    <div class="mt-3 flex flex-wrap gap-1.5">
-                                        <span v-if="visaType.code" class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600">{{ visaType.code }}</span>
-                                        <span v-if="visaType.submission_sla_days" class="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-600">{{ visaType.submission_sla_days }}d submission SLA</span>
-                                        <span v-if="visaType.decision_sla_days" class="rounded bg-violet-50 px-1.5 py-0.5 text-[10px] font-bold text-violet-700">{{ visaType.decision_sla_days }}d decision SLA</span>
-                                        <span v-if="visaType.official_requirements?.length" class="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">{{ visaType.official_requirements.length }} requirements</span>
+
+                                    <div v-if="expandedVisaTypes.includes(visaType.id)" class="border-t border-slate-50 bg-slate-50/30 px-12 py-5">
+                                        <div class="grid gap-8 lg:grid-cols-2">
+                                            <div v-if="visaType.official_summary">
+                                                <h4 class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Official Summary</h4>
+                                                <p class="mt-2 text-[13px] leading-relaxed text-slate-600">{{ visaType.official_summary }}</p>
+                                            </div>
+                                            <div v-if="visaType.official_requirements?.length">
+                                                <h4 class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Key Requirements</h4>
+                                                <ul class="mt-3 space-y-2">
+                                                    <li v-for="req in visaType.official_requirements" :key="req" class="flex items-start gap-2.5 text-[12px] text-slate-600">
+                                                        <AppIcon name="checkCircle" :size="14" class="mt-0.5 text-emerald-500" />
+                                                        {{ req }}
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        <div class="mt-6 flex flex-wrap gap-4 pt-4 border-t border-slate-100">
+                                            <div v-if="visaType.decision_sla_days" class="flex flex-col">
+                                                <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Decision SLA</span>
+                                                <span class="text-[13px] font-medium text-slate-700">{{ visaType.decision_sla_days }} days</span>
+                                            </div>
+                                            <div v-if="visaType.stay_duration_days" class="flex flex-col">
+                                                <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Stay Duration</span>
+                                                <span class="text-[13px] font-medium text-slate-700">{{ visaType.stay_duration_days }} days</span>
+                                            </div>
+                                            <div v-if="visaType.validity_months" class="flex flex-col">
+                                                <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Typical Validity</span>
+                                                <span class="text-[13px] font-medium text-slate-700">{{ visaType.validity_months }} months</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div v-if="visaType.official_requirements?.length" class="mt-3 flex flex-wrap gap-2">
-                                        <span
-                                            v-for="requirement in visaType.official_requirements.slice(0, 3)"
-                                            :key="requirement"
-                                            class="rounded-full bg-slate-50 px-2.5 py-1 text-[11px] leading-5 text-slate-600"
-                                        >
-                                            {{ requirement }}
-                                        </span>
-                                        <span v-if="visaType.official_requirements.length > 3" class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
-                                            +{{ visaType.official_requirements.length - 3 }} more
-                                        </span>
-                                    </div>
-                                    <div class="mt-4 flex flex-wrap gap-2">
-                                        <button type="button" class="ui-button-ghost h-8" @click.stop="openVisaTypeEdit(visaType)">Edit</button>
-                                        <button type="button" class="ui-button-ghost h-8" @click.stop="openVisaTypeWorkflow(visaType)">Workflow</button>
-                                        <button type="button" class="ui-button-ghost h-8" @click.stop="openVisaTypeChecklist(visaType)">Checklist</button>
-                                        <a
-                                            v-if="visaType.official_reference_url"
-                                            :href="visaType.official_reference_url"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            class="ui-button-ghost inline-flex h-8 items-center"
-                                        >
-                                            Official page
-                                        </a>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-1.5 border-t border-slate-100 pt-3 lg:border-t-0 lg:pt-0">
-                                    <button type="button" class="ui-button-danger h-8" @click.stop="destroyResource('settings.visa-types.destroy', visaType.id)">Remove</button>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div v-if="!filteredVisaTypes.length" class="rounded-lg border border-dashed border-slate-200 p-12 text-center">
-                        <p class="text-[14px] font-medium text-slate-600">No visa types match your current filters.</p>
-                        <p class="mt-1 text-[13px] text-slate-500">Try a broader search or reset the country and scope filters.</p>
+                    <div v-else-if="!visaTypes.length" class="rounded-xl border border-dashed border-slate-200 p-12 text-center">
+                        <AppIcon name="sparkle" :size="32" class="mx-auto mb-4 text-slate-300" />
+                        <p class="text-[14px] font-medium text-slate-900">No visa types configured</p>
+                        <p class="mt-1 text-[13px] text-slate-500">Start by adding a visa type for your active countries.</p>
                     </div>
 
-                    <div v-if="!visaTypes.length" class="rounded-lg border border-dashed border-slate-200 p-12 text-center">
-                        <p class="text-[14px] font-medium text-slate-600">No visa types configured.</p>
-                        <p class="mt-1 text-[13px] text-slate-500">Start by adding a visa type for your active countries.</p>
+                    <div v-else class="rounded-xl border border-dashed border-slate-200 p-12 text-center">
+                        <p class="text-[14px] font-medium text-slate-900">No matching visa types</p>
+                        <p class="mt-1 text-[13px] text-slate-500">Try adjusting your filters or search terms.</p>
                     </div>
                 </div>
             </div>
 
-            <div v-if="activeTab === 'workflow'" class="max-w-4xl space-y-12">
+            <div v-if="activeTab === 'countries'" class="max-w-5xl">
+                <div class="mb-8 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-[20px] font-semibold text-slate-900">Target Countries</h2>
+                        <p class="mt-1 text-[13px] text-slate-500">Define the countries where you provide visa services.</p>
+                    </div>
+                    <PrimaryButton icon="plus" @click="openCountryCreate">Add country</PrimaryButton>
+                </div>
+
+                <div class="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+                    <div v-for="country in countries" :key="country.id" class="flex items-center justify-between gap-4 px-5 py-4 transition hover:bg-slate-50/50">
+                        <div>
+                            <div class="flex items-center gap-3">
+                                <p class="text-[14px] font-bold text-slate-900">{{ country.name }}</p>
+                                <span :class="country.is_active ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-100 text-slate-600 border-slate-200'" class="rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
+                                    {{ country.is_active ? 'Live' : 'Paused' }}
+                                </span>
+                            </div>
+                            <p class="mt-1 text-[12px] text-slate-500">{{ country.slug }} • {{ country.visa_types_count }} visa types</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button type="button" class="ui-button-ghost h-8" @click="openCountryEdit(country)">Edit</button>
+                            <button type="button" class="ui-button-danger h-8" @click="destroyResource('settings.countries.destroy', country.id)">Remove</button>
+                        </div>
+                    </div>
+
+                    <div v-if="!countries.length" class="px-6 py-12 text-center">
+                        <AppIcon name="map" :size="32" class="mx-auto mb-4 text-slate-300" />
+                        <p class="text-[14px] font-medium text-slate-900">No countries defined yet</p>
+                        <p class="mt-1 text-[13px] text-slate-500">Add a country to start configuring visa types.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="activeTab === 'workflow'" class="space-y-12">
                 <div>
                     <div class="mb-6 flex items-center justify-between">
                         <div>
@@ -1070,7 +1289,7 @@ const settingGroups = [
                 </div>
             </div>
 
-            <div v-if="activeTab === 'checklists'" class="max-w-4xl">
+            <div v-if="activeTab === 'checklists'">
                 <div class="mb-6 flex items-center justify-between">
                     <div>
                         <h2 class="text-[20px] font-semibold text-slate-900">Document Requirements</h2>
@@ -1110,7 +1329,7 @@ const settingGroups = [
                 </div>
             </div>
 
-            <div v-if="activeTab === 'messaging'" class="max-w-4xl">
+            <div v-if="activeTab === 'messaging'">
                 <div class="mb-6 flex items-center justify-between">
                     <div>
                         <h2 class="text-[20px] font-semibold text-slate-900">Communication Templates</h2>
@@ -1144,6 +1363,48 @@ const settingGroups = [
                         <p class="text-[14px] font-medium text-slate-600">No message templates found.</p>
                         <p class="mt-1 text-[13px] text-slate-500">Templates help you send consistent messages across all case interactions.</p>
                     </div>
+                </div>
+            </div>
+
+            <!-- ── Gov. Forms tab ──────────────────────────────────────── -->
+            <div v-if="activeTab === 'forms'">
+                <div class="mb-6 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-[20px] font-semibold text-slate-900">Government Form Templates</h2>
+                        <p class="mt-1 text-[13px] text-slate-500">Upload official PDF forms and map their fields to CRM data. Agents can then download pre-filled forms from any case.</p>
+                    </div>
+                    <PrimaryButton icon="plus" @click="openFormTemplateCreate">Upload form</PrimaryButton>
+                </div>
+
+                <!-- Visa type filter -->
+                <div class="mb-5 flex items-center gap-3">
+                    <select v-model="formTemplateVisaFilter" class="ui-select h-8 min-w-[220px]">
+                        <option value="">All visa types</option>
+                        <option v-for="v in visaTypes" :key="v.id" :value="v.id">{{ v.country.name }} • {{ v.name }}</option>
+                    </select>
+                </div>
+
+                <div v-if="filteredFormTemplates.length" class="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white shadow-card overflow-hidden">
+                    <div v-for="ft in filteredFormTemplates" :key="ft.id" class="flex items-start justify-between gap-4 px-4 py-4 transition hover:bg-slate-50/50">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <p class="text-[14px] font-bold text-slate-900">{{ ft.name }}</p>
+                                <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 uppercase tracking-wider">{{ ft.visa_type_name }}</span>
+                                <span v-if="!ft.is_active" class="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-600 uppercase tracking-wider">Inactive</span>
+                            </div>
+                            <p class="mt-1 text-[12px] text-slate-500">{{ ft.original_filename }}</p>
+                            <p v-if="ft.description" class="mt-1 text-[12px] text-slate-400">{{ ft.description }}</p>
+                            <p class="mt-1 text-[11px] text-slate-400">{{ Object.keys(ft.field_mapping ?? {}).length }} field mappings</p>
+                        </div>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <button type="button" class="ui-button-ghost h-8" @click="openFormTemplateEdit(ft)">Edit</button>
+                            <button type="button" class="ui-button-danger h-8" @click="destroyResource('settings.form-templates.destroy', ft.id)">Remove</button>
+                        </div>
+                    </div>
+                </div>
+                <div v-else class="rounded-lg border border-dashed border-slate-200 p-12 text-center">
+                    <p class="text-[14px] font-medium text-slate-600">No form templates yet.</p>
+                    <p class="mt-1 text-[13px] text-slate-500">Upload a government PDF form to get started.</p>
                 </div>
             </div>
 
@@ -1709,6 +1970,123 @@ const settingGroups = [
                     <div class="sticky bottom-0 flex justify-end gap-3 border-t border-brand-border bg-white py-5">
                         <button type="button" class="ui-button-ghost" @click="showMessageTemplate = false">Never mind</button>
                         <PrimaryButton :loading="messageTemplateForm.processing">{{ editingMessageTemplateId ? 'Save template' : 'Add template' }}</PrimaryButton>
+                    </div>
+                </form>
+            </div>
+        </SlideOver>
+
+        <!-- ── Government Form Template SlideOver ─────────────────────────── -->
+        <SlideOver :show="showFormTemplate" width="wide" @close="showFormTemplate = false">
+            <div class="flex h-full flex-col">
+                <div class="sticky top-0 border-b border-brand-border bg-white px-6 py-5">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="ui-kicker">Gov. Forms</p>
+                            <h2 class="mt-2 text-2xl">{{ editingFormTemplateId ? 'Edit form template' : 'Upload form template' }}</h2>
+                        </div>
+                        <button class="rounded-md p-2 text-brand-muted hover:bg-brand-neutral" @click="showFormTemplate = false">
+                            <AppIcon name="close" :size="18" />
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Create mode: upload PDF -->
+                <form v-if="!editingFormTemplateId" class="flex-1 space-y-5 overflow-y-auto px-6 py-6" @submit.prevent="saveFormTemplate">
+                    <div>
+                        <InputLabel for="ft_visa_type" value="Visa type" />
+                        <select id="ft_visa_type" v-model="formTemplateForm.visa_type_id" class="ui-select">
+                            <option v-for="v in visaTypes" :key="v.id" :value="v.id">{{ v.country.name }} • {{ v.name }}</option>
+                        </select>
+                        <InputError :message="formTemplateForm.errors.visa_type_id" />
+                    </div>
+                    <div>
+                        <InputLabel for="ft_name" value="Template name" />
+                        <input id="ft_name" v-model="formTemplateForm.name" class="ui-input" placeholder="e.g. Form 80 – Personal History" />
+                        <InputError :message="formTemplateForm.errors.name" />
+                    </div>
+                    <div>
+                        <InputLabel for="ft_desc" value="Description (optional)" />
+                        <input id="ft_desc" v-model="formTemplateForm.description" class="ui-input" placeholder="Short note about this form" />
+                    </div>
+                    <div>
+                        <InputLabel for="ft_pdf" value="PDF file" />
+                        <input
+                            id="ft_pdf"
+                            type="file"
+                            accept="application/pdf"
+                            class="block w-full text-[13px] text-slate-700 file:mr-4 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-1.5 file:text-[12px] file:font-medium"
+                            @change="e => formTemplateForm.pdf = e.target.files[0]"
+                        />
+                        <p class="mt-1 text-[11px] text-slate-400">Upload an AcroForm PDF (government forms with fillable fields). Max 10 MB.</p>
+                        <InputError :message="formTemplateForm.errors.pdf" />
+                    </div>
+
+                    <div class="sticky bottom-0 flex justify-end gap-3 border-t border-brand-border bg-white py-5">
+                        <button type="button" class="ui-button-ghost" @click="showFormTemplate = false">Cancel</button>
+                        <PrimaryButton :loading="formTemplateForm.processing">Upload & continue</PrimaryButton>
+                    </div>
+                </form>
+
+                <!-- Edit mode: map fields -->
+                <form v-else class="flex-1 space-y-5 overflow-y-auto px-6 py-6" @submit.prevent="saveFormTemplate">
+                    <div>
+                        <InputLabel for="ft_edit_name" value="Template name" />
+                        <input id="ft_edit_name" v-model="formTemplateEditForm.name" class="ui-input" />
+                        <InputError :message="formTemplateEditForm.errors.name" />
+                    </div>
+                    <div>
+                        <InputLabel for="ft_edit_desc" value="Description" />
+                        <input id="ft_edit_desc" v-model="formTemplateEditForm.description" class="ui-input" />
+                    </div>
+                    <label class="flex items-center gap-3">
+                        <input v-model="formTemplateEditForm.is_active" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-brand-primary" />
+                        <span class="text-sm text-brand-text">Template is active</span>
+                    </label>
+
+                    <!-- Field mapper -->
+                    <div>
+                        <div class="mb-2 flex items-center justify-between">
+                            <InputLabel value="Field mappings" />
+                            <button type="button" class="text-[12px] font-medium text-brand-primary hover:underline" @click="addEditMappingRow">+ Add row</button>
+                        </div>
+                        <p class="mb-3 text-[11px] text-slate-400 leading-relaxed">
+                            Left column: exact PDF field name (from the form's AcroForm fields).<br />
+                            Right column: the CRM data path to fill it with.
+                        </p>
+
+                        <div v-if="Object.keys(formTemplateEditForm.field_mapping).length" class="space-y-2">
+                            <div v-for="(crmPath, pdfField) in formTemplateEditForm.field_mapping" :key="pdfField" class="grid grid-cols-[1fr_1fr_auto] items-center gap-2">
+                                <input
+                                    :value="pdfField"
+                                    class="ui-input font-mono text-[12px]"
+                                    placeholder="PDF field name"
+                                    @change="updateMappingKey(formTemplateEditForm, pdfField, $event.target.value)"
+                                />
+                                <select
+                                    :value="crmPath"
+                                    class="ui-select text-[12px]"
+                                    @change="formTemplateEditForm.field_mapping[pdfField] = $event.target.value"
+                                >
+                                    <option value="">— Select CRM field —</option>
+                                    <template v-for="(fields, group) in availableFields" :key="group">
+                                        <optgroup :label="group.charAt(0).toUpperCase() + group.slice(1)">
+                                            <option v-for="(label, path) in fields" :key="path" :value="path">{{ label }}</option>
+                                        </optgroup>
+                                    </template>
+                                </select>
+                                <button type="button" class="rounded p-1 text-slate-400 hover:text-red-500 transition" @click="removeMappingRow(formTemplateEditForm, pdfField)">
+                                    <AppIcon name="trash" :size="14" />
+                                </button>
+                            </div>
+                        </div>
+                        <div v-else class="rounded-lg border border-dashed border-slate-200 p-6 text-center">
+                            <p class="text-[13px] text-slate-500">No mappings yet. Click "+ Add row" to map PDF fields to CRM data.</p>
+                        </div>
+                    </div>
+
+                    <div class="sticky bottom-0 flex justify-end gap-3 border-t border-brand-border bg-white py-5">
+                        <button type="button" class="ui-button-ghost" @click="showFormTemplate = false">Cancel</button>
+                        <PrimaryButton :loading="formTemplateEditForm.processing">Save mappings</PrimaryButton>
                     </div>
                 </form>
             </div>
