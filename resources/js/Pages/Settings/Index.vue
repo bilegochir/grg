@@ -56,6 +56,7 @@ const visaTypeSearch = ref('');
 const visaTypeCountryFilter = ref('all');
 const visaTypeServiceScopeFilter = ref('all');
 const expandedVisaTypes = ref([]);
+const logoPreviewUrl = ref(props.businessSetting.logo_url ?? null);
 
 const toggleVisaTypeExpansion = (id) => {
     if (expandedVisaTypes.value.includes(id)) {
@@ -482,7 +483,24 @@ const saveBusinessSettings = () => {
         .post(route('settings.business.update'), {
             forceFormData: true,
             preserveScroll: true,
+            onSuccess: () => {
+                logoPreviewUrl.value = usePage().props.businessSetting?.logo_url ?? logoPreviewUrl.value;
+                businessForm.logo = null;
+            },
         });
+};
+
+const updateLogoPreview = (event) => {
+    const file = event.target.files?.[0] ?? null;
+
+    businessForm.logo = file;
+
+    if (!file) {
+        logoPreviewUrl.value = props.businessSetting.logo_url ?? null;
+        return;
+    }
+
+    logoPreviewUrl.value = URL.createObjectURL(file);
 };
 
 const saveCountry = () => {
@@ -989,8 +1007,8 @@ const saveFormTemplate = () => {
                                 <div class="mt-3 flex items-center gap-4">
                                     <div class="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-brand-border bg-white">
                                         <img
-                                            v-if="businessSetting.logo_url"
-                                            :src="businessSetting.logo_url"
+                                            v-if="logoPreviewUrl"
+                                            :src="logoPreviewUrl"
                                             alt="Business logo"
                                             class="h-full w-full object-cover"
                                         />
@@ -1001,21 +1019,11 @@ const saveFormTemplate = () => {
                                         type="file"
                                         accept="image/*"
                                         class="block w-full text-sm text-brand-muted file:mr-4 file:rounded-md file:border-0 file:bg-white file:px-4 file:py-2 file:text-sm file:font-medium file:text-brand-text"
-                                        @input="businessForm.logo = $event.target.files[0]"
+                                        @change="updateLogoPreview"
                                     />
                                 </div>
                                 <InputError :message="businessForm.errors.logo" />
                             </div>
-
-                            <label class="flex items-start gap-3 rounded-xl border border-brand-border bg-white px-4 py-4">
-                                <input v-model="businessForm.multi_branch_enabled" type="checkbox" class="mt-1 h-4 w-4 rounded border-slate-300 text-brand-primary focus:ring-brand-primary/20" />
-                                <div>
-                                    <p class="text-sm font-medium text-brand-text">Prepare for multi-branch support</p>
-                                    <p class="mt-1 text-sm leading-6 text-brand-muted">
-                                        The data model is ready for branch expansion later. Turn this on when you want the team to start planning branch-aware workflows.
-                                    </p>
-                                </div>
-                            </label>
 
                             <div class="rounded-xl border border-dashed border-brand-border bg-slate-50/50 px-4 py-4">
                                 <p class="text-sm font-medium text-brand-text">Localization-ready Vue structure</p>

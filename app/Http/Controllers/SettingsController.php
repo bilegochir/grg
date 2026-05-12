@@ -269,6 +269,21 @@ class SettingsController extends Controller
         return back()->with('success', 'Business settings updated.');
     }
 
+    public function logo()
+    {
+        $businessSetting = BusinessSetting::current();
+
+        abort_unless(
+            $businessSetting->logo_path !== null
+            && Storage::disk('public')->exists($businessSetting->logo_path),
+            404,
+        );
+
+        return Storage::disk('public')->response($businessSetting->logo_path, headers: [
+            'Cache-Control' => 'public, max-age=3600',
+        ]);
+    }
+
     public function storeCountry(StoreTargetCountryRequest $request): RedirectResponse
     {
         $name = $request->string('name')->toString();

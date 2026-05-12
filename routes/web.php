@@ -42,6 +42,8 @@ Route::get('/', function () {
     ]);
 });
 
+Route::get('/branding/logo', [SettingsController::class, 'logo'])->name('branding.logo');
+
 Route::get('/dashboard', DashboardController::class)->middleware(['auth', 'verified', 'permission:dashboard.view'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {

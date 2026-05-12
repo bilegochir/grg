@@ -49,6 +49,8 @@ class BusinessSetting extends Model
             return null;
         }
 
-        return Storage::disk('public')->url($this->logo_path);
+        return route('branding.logo', [
+            'v' => $this->updated_at?->timestamp,
+        ]);
     }
 }

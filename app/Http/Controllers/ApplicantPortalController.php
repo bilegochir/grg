@@ -153,6 +153,7 @@ class ApplicantPortalController extends Controller
 
         return [
             'name' => $business->business_name,
+            'logo_url' => $business->logoUrl(),
             'email' => $business->contact_email,
             'phone' => $business->contact_phone,
         ];
