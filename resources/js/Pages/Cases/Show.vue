@@ -24,6 +24,7 @@ const showGroupSlideOver = ref(false);
 const showAddGroupMemberSlideOver = ref(false);
 const showActivityComposer = ref(false);
 const expandedDocumentReview = reactive({});
+const expandedDocumentUpload = reactive({});
 const memberCaseSearch = ref('');
 
 const selectedFiles = reactive({});
@@ -390,6 +391,10 @@ const documentStatusTone = (status) => {
     return 'bg-slate-100 text-slate-600';
 };
 
+const toggleDocumentUpload = (documentId) => {
+    expandedDocumentUpload[documentId] = !expandedDocumentUpload[documentId];
+};
+
 const isTaskOverdue = (task) => {
     if (!task.due_at || task.status === 'completed') return false;
 
@@ -659,46 +664,50 @@ const removeFromGroup = () => {
                         </div>
                     </template>
 
-                    <div class="mb-5 grid gap-4 md:grid-cols-4">
-                        <div class="rounded-lg bg-brand-neutral px-4 py-4">
+                    <div class="mb-5 grid gap-3 md:grid-cols-4">
+                        <div class="rounded-lg bg-brand-neutral px-3.5 py-3">
                             <p class="ui-kicker">Completion</p>
-                            <p class="mt-2 text-2xl font-bold text-brand-text">{{ documentCompletion }}%</p>
+                            <p class="mt-1.5 text-xl font-bold text-brand-text">{{ documentCompletion }}%</p>
                         </div>
-                        <div class="rounded-lg bg-brand-neutral px-4 py-4">
+                        <div class="rounded-lg bg-brand-neutral px-3.5 py-3">
                             <p class="ui-kicker">Pending</p>
-                            <p class="mt-2 text-2xl font-bold text-brand-text">{{ pendingDocumentCount }}</p>
+                            <p class="mt-1.5 text-xl font-bold text-brand-text">{{ pendingDocumentCount }}</p>
                         </div>
-                        <div class="rounded-lg bg-brand-neutral px-4 py-4">
+                        <div class="rounded-lg bg-brand-neutral px-3.5 py-3">
                             <p class="ui-kicker">Verified</p>
-                            <p class="mt-2 text-2xl font-bold text-brand-text">{{ verifiedDocumentCount }}</p>
+                            <p class="mt-1.5 text-xl font-bold text-brand-text">{{ verifiedDocumentCount }}</p>
                         </div>
-                        <div class="rounded-lg bg-brand-neutral px-4 py-4">
+                        <div class="rounded-lg bg-brand-neutral px-3.5 py-3">
                             <p class="ui-kicker">Uploaded</p>
-                            <p class="mt-2 text-2xl font-bold text-brand-text">{{ uploadedDocumentCount }}</p>
+                            <p class="mt-1.5 text-xl font-bold text-brand-text">{{ uploadedDocumentCount }}</p>
                         </div>
                     </div>
 
-                    <div class="mb-5 flex flex-wrap gap-2">
-                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">Pending documents first</span>
-                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">Upload area inside each row</span>
-                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">Review controls collapsed by default</span>
-                    </div>
-
-                    <div v-if="caseRecord.documents.length" class="space-y-4">
-                        <div v-for="document in orderedDocuments" :key="document.id" class="rounded-lg border border-brand-border p-4">
-                            <div class="flex flex-wrap items-start justify-between gap-4">
-                                <div class="min-w-0 flex-1">
+                    <div v-if="caseRecord.documents.length" class="space-y-3">
+                        <div v-for="document in orderedDocuments" :key="document.id" class="rounded-lg border border-brand-border p-3.5">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div class="min-w-0 flex-1 space-y-2">
                                     <div class="flex flex-wrap items-center gap-2">
                                         <p class="font-medium text-brand-text">{{ document.name }}</p>
                                         <span class="rounded-full px-2 py-0.5 text-[11px] font-medium" :class="documentStatusTone(document.status.value)">{{ document.status.label }}</span>
+                                        <span v-if="document.is_required" class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">Required</span>
                                     </div>
-                                    <p class="mt-1 text-sm text-brand-muted">{{ documentRequirementSummary(document) }}</p>
-                                    <p v-if="document.latest_version" class="mt-2 text-sm text-brand-muted">
-                                        Latest file: {{ document.latest_version.original_name }} (v{{ document.latest_version.version_number }})
-                                    </p>
-                                    <p v-else class="mt-2 text-sm text-brand-muted">No file uploaded yet.</p>
+
+                                    <p class="text-sm text-brand-muted">{{ documentRequirementSummary(document) }}</p>
+
+                                    <div class="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-brand-muted">
+                                        <span v-if="document.latest_version">
+                                            Latest: {{ document.latest_version.original_name }} (v{{ document.latest_version.version_number }})
+                                        </span>
+                                        <span v-else>No file uploaded yet</span>
+                                        <span>{{ document.max_file_size_mb }}MB max</span>
+                                    </div>
                                 </div>
+
                                 <div class="flex flex-wrap items-center gap-2">
+                                    <button type="button" class="ui-button-secondary !h-8 px-3 text-[12px]" @click="toggleDocumentUpload(document.id)">
+                                        {{ expandedDocumentUpload[document.id] ? 'Hide upload' : (document.latest_version ? 'Replace file' : 'Upload file') }}
+                                    </button>
                                     <button type="button" class="ui-button-ghost !h-8 px-3 text-[12px]" @click="expandedDocumentReview[document.id] = !expandedDocumentReview[document.id]">
                                         {{ expandedDocumentReview[document.id] ? 'Hide review' : 'Review details' }}
                                     </button>
@@ -707,9 +716,15 @@ const removeFromGroup = () => {
                             </div>
 
                             <input type="file" :id="`file-${document.id}`" class="sr-only" @change="onFileChange(document.id, $event)" />
-                            <label :for="`file-${document.id}`" class="mt-4 block cursor-pointer rounded-lg border border-dashed border-brand-border bg-brand-neutral px-4 py-4" @dragover.prevent @drop="onDropFile(document.id, $event)">
+                            <label
+                                v-if="expandedDocumentUpload[document.id]"
+                                :for="`file-${document.id}`"
+                                class="mt-3 block cursor-pointer rounded-lg border border-dashed border-brand-border bg-brand-neutral px-4 py-3.5"
+                                @dragover.prevent
+                                @drop="onDropFile(document.id, $event)"
+                            >
                                 <div class="flex flex-col gap-3 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
-                                    <div>
+                                    <div class="min-w-0">
                                         <p class="font-medium text-brand-text">{{ document.latest_version ? 'Upload new version' : 'Upload document' }}</p>
                                         <p class="mt-1 text-sm text-brand-muted">Click to browse or drag a file here.</p>
                                     </div>
@@ -720,7 +735,7 @@ const removeFromGroup = () => {
                                 <p v-if="uploading[document.id]" aria-live="polite" class="mt-3 text-sm font-medium text-brand-primary">Uploading...</p>
                             </label>
 
-                            <form v-if="expandedDocumentReview[document.id]" class="mt-4 rounded-lg border border-brand-border bg-white p-4" @submit.prevent="updateDocumentStatus(document.id)">
+                            <form v-if="expandedDocumentReview[document.id]" class="mt-3 rounded-lg border border-brand-border bg-white p-4" @submit.prevent="updateDocumentStatus(document.id)">
                                 <div class="grid gap-4 md:grid-cols-2">
                                     <div>
                                         <InputLabel value="Status" />
