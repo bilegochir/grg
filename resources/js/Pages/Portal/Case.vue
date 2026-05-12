@@ -51,16 +51,21 @@ const uploadDocument = (documentId) => {
     );
 };
 
-const tabs = [
-    { key: 'overview', label: 'Overview' },
-    { key: 'documents', label: 'Documents' },
-    { key: 'billing', label: 'Billing' },
-    { key: 'messages', label: 'Messages' },
-];
-
 const openTasks = computed(() => portalCase.tasks.filter((task) => task.status !== 'completed'));
 const completedTasks = computed(() => portalCase.tasks.filter((task) => task.status === 'completed'));
 const totalPaid = computed(() => portalCase.invoices.reduce((sum, invoice) => sum + Number(invoice.paid_amount), 0).toFixed(2));
+const orderedDocuments = computed(() => [
+    ...portalCase.documents.filter((document) => document.status_value !== 'verified'),
+    ...portalCase.documents.filter((document) => document.status_value === 'verified'),
+]);
+const nextAttentionCount = computed(() => openTasks.value.length + portalCase.summary.documents_waiting_count);
+const latestMessages = computed(() => [...portalCase.messages].sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()));
+const tabs = computed(() => [
+    { key: 'overview', label: 'Overview' },
+    { key: 'documents', label: `Documents (${portalCase.summary.documents_waiting_count})` },
+    { key: 'billing', label: `Billing (${portalCase.invoices.length})` },
+    { key: 'messages', label: `Messages (${portalCase.messages.length})` },
+]);
 
 const workflowStateClasses = (state) => {
     if (state === 'completed') return 'border-green-200 bg-green-50 text-green-700';
@@ -100,6 +105,10 @@ const timelineIcon = (type) => {
 
     return 'sparkle';
 };
+
+const clearSelectedFile = (documentId) => {
+    selectedFiles[documentId] = null;
+};
 </script>
 
 <template>
@@ -117,6 +126,14 @@ const timelineIcon = (type) => {
                     <p class="mt-2 text-sm text-brand-muted">{{ portalCase.country }} • {{ portalCase.visa_type }}</p>
                     <p class="mt-4 max-w-3xl text-base leading-7 text-brand-text">{{ portalCase.stage_copy }}</p>
                     <p class="mt-3 text-sm font-medium text-brand-text">{{ portalCase.next_step_copy }}</p>
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        <span v-if="nextAttentionCount" class="rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
+                            {{ nextAttentionCount }} item{{ nextAttentionCount === 1 ? '' : 's' }} may need your attention
+                        </span>
+                        <span v-if="portalCase.summary.next_appointment_at" class="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
+                            Next appointment: {{ portalCase.summary.next_appointment_at }}
+                        </span>
+                    </div>
                 </div>
 
                 <Link :href="route('portal.dashboard')" class="ui-button-secondary">Back to overview</Link>
@@ -175,9 +192,10 @@ const timelineIcon = (type) => {
 
                 <div v-if="activeTab === 'overview'" class="space-y-6">
                     <AppCard title="Checklist">
-                        <div v-if="portalCase.tasks.length" class="space-y-3">
+                        <div v-if="openTasks.length" class="space-y-3">
+                            <p class="text-sm text-brand-muted">{{ openTasks.length }} open item{{ openTasks.length === 1 ? '' : 's' }} to keep this case moving.</p>
                             <div
-                                v-for="task in portalCase.tasks"
+                                v-for="task in openTasks"
                                 :key="task.id"
                                 class="rounded-2xl border border-slate-200 px-4 py-4"
                             >
@@ -200,6 +218,30 @@ const timelineIcon = (type) => {
                                     </span>
                                 </div>
                             </div>
+                            <details v-if="completedTasks.length" class="rounded-2xl border border-slate-200 px-4 py-4">
+                                <summary class="cursor-pointer list-none text-sm font-medium text-brand-text">
+                                    {{ completedTasks.length }} completed item{{ completedTasks.length === 1 ? '' : 's' }}
+                                </summary>
+                                <div class="mt-4 space-y-3">
+                                    <div
+                                        v-for="task in completedTasks"
+                                        :key="`completed-${task.id}`"
+                                        class="rounded-2xl bg-slate-50 px-4 py-4"
+                                    >
+                                        <div class="flex flex-wrap items-start justify-between gap-3">
+                                            <div>
+                                                <div class="flex flex-wrap items-center gap-3">
+                                                    <p class="font-medium text-brand-text">{{ task.name }}</p>
+                                                    <span class="rounded-full px-3 py-1 text-xs font-medium" :class="taskStatusClasses(task.status)">
+                                                        {{ task.status_label }}
+                                                    </span>
+                                                </div>
+                                                <p v-if="task.description" class="mt-2 text-sm leading-6 text-brand-text">{{ task.description }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </details>
                         </div>
                         <EmptyState
                             v-else
@@ -270,7 +312,7 @@ const timelineIcon = (type) => {
 
                         <div v-if="portalCase.documents.length" class="space-y-4">
                             <div
-                                v-for="document in portalCase.documents"
+                                v-for="document in orderedDocuments"
                                 :key="document.id"
                                 class="rounded-[20px] border border-slate-200 bg-white px-4 py-4"
                             >
@@ -330,16 +372,30 @@ const timelineIcon = (type) => {
                                             <button
                                                 type="button"
                                                 class="ui-button-primary"
-                                                :disabled="uploading[document.id]"
+                                                :disabled="uploading[document.id] || !selectedFiles[document.id]"
                                                 @click="uploadDocument(document.id)"
                                             >
                                                 {{ uploading[document.id] ? 'Uploading...' : 'Send file' }}
+                                            </button>
+                                            <button
+                                                v-if="selectedFiles[document.id] && !uploading[document.id]"
+                                                type="button"
+                                                class="ui-button-ghost"
+                                                @click="clearSelectedFile(document.id)"
+                                            >
+                                                Clear
                                             </button>
                                             <a v-if="document.latest_version" :href="document.latest_version.download_url" class="ui-button-secondary">
                                                 View file
                                             </a>
                                         </div>
                                     </div>
+                                    <p v-if="selectedFiles[document.id]" class="mt-3 text-sm text-brand-muted">
+                                        Ready to send: {{ selectedFiles[document.id].name }}
+                                    </p>
+                                    <p v-if="uploading[document.id]" aria-live="polite" class="mt-3 text-sm font-medium text-brand-text">
+                                        Uploading your file...
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -438,9 +494,9 @@ const timelineIcon = (type) => {
                             <PrimaryButton :loading="messageForm.processing">Send message</PrimaryButton>
                         </form>
 
-                        <div v-if="portalCase.messages.length" class="mt-6 space-y-3">
+                        <div v-if="latestMessages.length" class="mt-6 space-y-3">
                             <div
-                                v-for="message in portalCase.messages"
+                                v-for="message in latestMessages"
                                 :key="message.id"
                                 class="rounded-2xl px-4 py-4"
                                 :class="message.direction === 'inbound' ? 'bg-orange-50' : 'bg-slate-50'"
@@ -466,6 +522,10 @@ const timelineIcon = (type) => {
             <div class="space-y-6 xl:sticky xl:top-8 xl:self-start">
                 <AppCard title="At a glance">
                     <div class="space-y-4 text-sm">
+                        <div class="rounded-xl bg-slate-50 px-4 py-4">
+                            <p class="text-brand-muted">What needs your attention</p>
+                            <p class="mt-1 font-medium text-brand-text">{{ nextAttentionCount }} item{{ nextAttentionCount === 1 ? '' : 's' }}</p>
+                        </div>
                         <div class="rounded-xl bg-slate-50 px-4 py-4">
                             <p class="text-brand-muted">Current stage</p>
                             <p class="mt-1 font-medium text-brand-text">{{ portalCase.stage || 'In progress' }}</p>

@@ -118,6 +118,8 @@ class LeadController extends Controller
                 ...$this->leadSummary($lead),
                 'country_of_citizenship' => $lead->country_of_citizenship,
                 'interested_visa_type' => $lead->interested_visa_type,
+                'education_history' => collect($lead->education_history ?? [])->values(),
+                'work_experience' => collect($lead->work_experience ?? [])->values(),
                 'assigned_to' => $lead->assignedTo ? [
                     'id' => $lead->assignedTo->id,
                     'name' => $lead->assignedTo->name,
@@ -211,6 +213,8 @@ class LeadController extends Controller
                 'color' => $lead->status->color(),
             ],
             'interested_visa_type' => $lead->interested_visa_type,
+            'education_history_count' => count($lead->education_history ?? []),
+            'work_experience_count' => count($lead->work_experience ?? []),
             'converted_at' => $lead->converted_at?->toDateTimeString(),
             'created_at' => $lead->created_at?->toDateTimeString(),
             'applicant_id' => $lead->converted_to_applicant_id,

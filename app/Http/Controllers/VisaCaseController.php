@@ -145,6 +145,26 @@ class VisaCaseController extends Controller
             ->where('is_active', true)
             ->get(['id', 'name', 'description']);
 
+        $memberCaseOptions = $this->workspace()->scopeCases(VisaCase::query(), request()->user())
+            ->with(['applicant:id,first_name,last_name', 'visaType:id,name', 'group:id,name'])
+            ->whereKeyNot($case->id)
+            ->when($case->group, function ($query) use ($case) {
+                $query->where(function ($inner) use ($case) {
+                    $inner
+                        ->whereNull('visa_case_group_id')
+                        ->orWhere('visa_case_group_id', '!=', $case->group->id);
+                });
+            })
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn (VisaCase $candidate): array => [
+                'id' => $candidate->id,
+                'reference_code' => $candidate->reference_code,
+                'applicant_name' => $candidate->applicant->full_name,
+                'visa_type' => $candidate->visaType->name,
+                'group_name' => $candidate->group?->name,
+            ])->values();
+
         return Inertia::render('Cases/Show', [
             'case' => [
                 ...$this->caseSummary($case),
@@ -340,6 +360,7 @@ class VisaCaseController extends Controller
                         'visa_type'      => $member->visaType->name,
                         'is_group_primary' => $member->is_group_primary,
                     ])->values(),
+                'member_case_options' => $memberCaseOptions,
                 'form_templates' => $formTemplates->map(fn ($t): array => [
                     'id'          => $t->id,
                     'name'        => $t->name,

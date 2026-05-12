@@ -26,6 +26,8 @@ class Lead extends Model
         'status',
         'country_of_citizenship',
         'interested_visa_type',
+        'education_history',
+        'work_experience',
         'assigned_to_user_id',
         'converted_at',
         'converted_to_applicant_id',
@@ -36,6 +38,8 @@ class Lead extends Model
         return [
             'source' => LeadSource::class,
             'status' => LeadStatus::class,
+            'education_history' => 'array',
+            'work_experience' => 'array',
             'converted_at' => 'datetime',
         ];
     }

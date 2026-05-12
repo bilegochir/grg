@@ -22,6 +22,25 @@ const props = defineProps({
 
 const showEdit = ref(false);
 
+const blankEducation = () => ({
+    institution: '',
+    degree: '',
+    field_of_study: '',
+    start_date: '',
+    end_date: '',
+    notes: '',
+});
+
+const blankExperience = () => ({
+    company: '',
+    title: '',
+    location: '',
+    start_date: '',
+    end_date: '',
+    is_current: false,
+    notes: '',
+});
+
 const editForm = useForm({
     first_name: props.lead.name.split(' ')[0] ?? '',
     last_name: props.lead.name.split(' ').slice(1).join(' '),
@@ -30,8 +49,41 @@ const editForm = useForm({
     source: props.lead.source.value,
     country_of_citizenship: props.lead.country_of_citizenship ?? '',
     interested_visa_type: props.lead.interested_visa_type ?? '',
+    education_history: props.lead.education_history?.length ? props.lead.education_history.map((item) => ({
+        institution: item.institution ?? '',
+        degree: item.degree ?? '',
+        field_of_study: item.field_of_study ?? '',
+        start_date: item.start_date ?? '',
+        end_date: item.end_date ?? '',
+        notes: item.notes ?? '',
+    })) : [],
+    work_experience: props.lead.work_experience?.length ? props.lead.work_experience.map((item) => ({
+        company: item.company ?? '',
+        title: item.title ?? '',
+        location: item.location ?? '',
+        start_date: item.start_date ?? '',
+        end_date: item.end_date ?? '',
+        is_current: Boolean(item.is_current),
+        notes: item.notes ?? '',
+    })) : [],
     tag_ids: props.lead.tags.map(t => t.id),
 });
+
+const addEducation = () => {
+    editForm.education_history.push(blankEducation());
+};
+
+const removeEducation = (index) => {
+    editForm.education_history.splice(index, 1);
+};
+
+const addExperience = () => {
+    editForm.work_experience.push(blankExperience());
+};
+
+const removeExperience = (index) => {
+    editForm.work_experience.splice(index, 1);
+};
 
 const submitEdit = () => {
     editForm.patch(route('leads.update', props.lead.id), {
@@ -72,6 +124,13 @@ const prefilledCount = computed(() => {
     ];
     return fields.filter(Boolean).length;
 });
+
+const formatDateRange = (start, end, current = false) => {
+    if (!start && !end && !current) return 'Dates not added';
+    if (start && current) return `${start} - Present`;
+    if (start && end) return `${start} - ${end}`;
+    return start || end || 'Dates not added';
+};
 
 // ── Status form ────────────────────────────────────────────────────────────
 const statusForm = useForm({
@@ -227,6 +286,48 @@ const passportAny = computed(() =>
                                 <p>{{ lead.interested_visa_type || 'Visa type still to be confirmed' }}</p>
                                 <p>{{ lead.country_of_citizenship || 'Citizenship not captured yet' }}</p>
                             </div>
+                        </div>
+                    </div>
+                </AppCard>
+
+                <AppCard title="Background" subtitle="Education and work history captured while qualifying the lead.">
+                    <div class="grid gap-6 lg:grid-cols-2">
+                        <div>
+                            <div class="mb-3 flex items-center justify-between gap-3">
+                                <p class="ui-kicker !mb-0">Education</p>
+                                <span class="text-xs text-brand-muted">{{ lead.education_history?.length || 0 }} entries</span>
+                            </div>
+                            <div v-if="lead.education_history?.length" class="space-y-3">
+                                <div v-for="(item, index) in lead.education_history" :key="`education-view-${index}`" class="rounded-lg border border-brand-border px-4 py-4">
+                                    <p class="font-medium text-brand-text">{{ item.institution || 'Institution not added' }}</p>
+                                    <p class="mt-1 text-sm text-brand-muted">
+                                        {{ item.degree || 'Degree not added' }}
+                                        <span v-if="item.field_of_study">• {{ item.field_of_study }}</span>
+                                    </p>
+                                    <p class="mt-2 text-sm text-brand-muted">{{ formatDateRange(item.start_date, item.end_date) }}</p>
+                                    <p v-if="item.notes" class="mt-2 text-sm leading-6 text-brand-text">{{ item.notes }}</p>
+                                </div>
+                            </div>
+                            <EmptyState v-else icon="document" title="No education added" description="Add school or university background when it matters for this pathway." />
+                        </div>
+
+                        <div>
+                            <div class="mb-3 flex items-center justify-between gap-3">
+                                <p class="ui-kicker !mb-0">Work Experience</p>
+                                <span class="text-xs text-brand-muted">{{ lead.work_experience?.length || 0 }} entries</span>
+                            </div>
+                            <div v-if="lead.work_experience?.length" class="space-y-3">
+                                <div v-for="(item, index) in lead.work_experience" :key="`experience-view-${index}`" class="rounded-lg border border-brand-border px-4 py-4">
+                                    <p class="font-medium text-brand-text">{{ item.company || 'Company not added' }}</p>
+                                    <p class="mt-1 text-sm text-brand-muted">
+                                        {{ item.title || 'Role not added' }}
+                                        <span v-if="item.location">• {{ item.location }}</span>
+                                    </p>
+                                    <p class="mt-2 text-sm text-brand-muted">{{ formatDateRange(item.start_date, item.end_date, item.is_current) }}</p>
+                                    <p v-if="item.notes" class="mt-2 text-sm leading-6 text-brand-text">{{ item.notes }}</p>
+                                </div>
+                            </div>
+                            <EmptyState v-else icon="document" title="No work history added" description="Add employer background when it helps assess fit or eligibility." />
                         </div>
                     </div>
                 </AppCard>
@@ -470,6 +571,108 @@ const passportAny = computed(() =>
                         <InputLabel for="edit_interested_visa_type" value="Interested visa type" />
                         <TextInput id="edit_interested_visa_type" v-model="editForm.interested_visa_type" />
                         <InputError :message="editForm.errors.interested_visa_type" />
+                    </div>
+
+                    <div class="space-y-4 rounded-xl border border-brand-border bg-brand-neutral/50 p-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-medium text-brand-text">Education</p>
+                                <p class="mt-1 text-sm text-brand-muted">Capture school, degree, and study details while qualifying the lead.</p>
+                            </div>
+                            <button type="button" class="ui-button-ghost !h-8 px-3 text-[12px]" @click="addEducation">Add education</button>
+                        </div>
+
+                        <div v-if="editForm.education_history.length" class="space-y-4">
+                            <div v-for="(item, index) in editForm.education_history" :key="`edit-education-${index}`" class="rounded-lg border border-brand-border bg-white p-4">
+                                <div class="mb-4 flex items-center justify-between gap-3">
+                                    <p class="text-sm font-medium text-brand-text">Education {{ index + 1 }}</p>
+                                    <button type="button" class="ui-button-ghost !h-8 px-3 text-[12px]" @click="removeEducation(index)">Remove</button>
+                                </div>
+                                <div class="grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <InputLabel :for="`edit_education_institution_${index}`" value="Institution" />
+                                        <TextInput :id="`edit_education_institution_${index}`" v-model="item.institution" />
+                                    </div>
+                                    <div>
+                                        <InputLabel :for="`edit_education_degree_${index}`" value="Degree" />
+                                        <TextInput :id="`edit_education_degree_${index}`" v-model="item.degree" />
+                                    </div>
+                                </div>
+                                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <InputLabel :for="`edit_education_field_${index}`" value="Field of study" />
+                                        <TextInput :id="`edit_education_field_${index}`" v-model="item.field_of_study" />
+                                    </div>
+                                    <div class="grid gap-4 sm:grid-cols-2">
+                                        <div>
+                                            <InputLabel :for="`edit_education_start_${index}`" value="Start date" />
+                                            <TextInput :id="`edit_education_start_${index}`" v-model="item.start_date" type="date" />
+                                        </div>
+                                        <div>
+                                            <InputLabel :for="`edit_education_end_${index}`" value="End date" />
+                                            <TextInput :id="`edit_education_end_${index}`" v-model="item.end_date" type="date" />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <InputLabel :for="`edit_education_notes_${index}`" value="Notes" />
+                                    <textarea :id="`edit_education_notes_${index}`" v-model="item.notes" rows="3" class="ui-textarea" placeholder="Achievements, graduation status, or relevant details."></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-4 rounded-xl border border-brand-border bg-brand-neutral/50 p-4">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <p class="text-sm font-medium text-brand-text">Work experience</p>
+                                <p class="mt-1 text-sm text-brand-muted">Capture current and past roles that help assess pathway fit.</p>
+                            </div>
+                            <button type="button" class="ui-button-ghost !h-8 px-3 text-[12px]" @click="addExperience">Add experience</button>
+                        </div>
+
+                        <div v-if="editForm.work_experience.length" class="space-y-4">
+                            <div v-for="(item, index) in editForm.work_experience" :key="`edit-experience-${index}`" class="rounded-lg border border-brand-border bg-white p-4">
+                                <div class="mb-4 flex items-center justify-between gap-3">
+                                    <p class="text-sm font-medium text-brand-text">Experience {{ index + 1 }}</p>
+                                    <button type="button" class="ui-button-ghost !h-8 px-3 text-[12px]" @click="removeExperience(index)">Remove</button>
+                                </div>
+                                <div class="grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <InputLabel :for="`edit_experience_company_${index}`" value="Company" />
+                                        <TextInput :id="`edit_experience_company_${index}`" v-model="item.company" />
+                                    </div>
+                                    <div>
+                                        <InputLabel :for="`edit_experience_title_${index}`" value="Job title" />
+                                        <TextInput :id="`edit_experience_title_${index}`" v-model="item.title" />
+                                    </div>
+                                </div>
+                                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <InputLabel :for="`edit_experience_location_${index}`" value="Location" />
+                                        <TextInput :id="`edit_experience_location_${index}`" v-model="item.location" />
+                                    </div>
+                                    <label class="flex items-center gap-2 rounded-lg border border-brand-border px-3 py-2 text-sm text-brand-text">
+                                        <input v-model="item.is_current" type="checkbox" class="rounded border-brand-border text-brand-primary focus:ring-brand-primary" />
+                                        Current role
+                                    </label>
+                                </div>
+                                <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <InputLabel :for="`edit_experience_start_${index}`" value="Start date" />
+                                        <TextInput :id="`edit_experience_start_${index}`" v-model="item.start_date" type="date" />
+                                    </div>
+                                    <div>
+                                        <InputLabel :for="`edit_experience_end_${index}`" value="End date" />
+                                        <TextInput :id="`edit_experience_end_${index}`" v-model="item.end_date" :disabled="item.is_current" type="date" />
+                                    </div>
+                                </div>
+                                <div class="mt-4">
+                                    <InputLabel :for="`edit_experience_notes_${index}`" value="Notes" />
+                                    <textarea :id="`edit_experience_notes_${index}`" v-model="item.notes" rows="3" class="ui-textarea" placeholder="Responsibilities, accomplishments, or relevance to the planned visa route."></textarea>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div>

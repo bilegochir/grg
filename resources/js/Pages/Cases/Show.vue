@@ -21,6 +21,10 @@ const showMessageSlideOver = ref(false);
 const showAppointmentSlideOver = ref(false);
 const showInvoiceSlideOver = ref(false);
 const showGroupSlideOver = ref(false);
+const showAddGroupMemberSlideOver = ref(false);
+const showActivityComposer = ref(false);
+const expandedDocumentReview = reactive({});
+const memberCaseSearch = ref('');
 
 const selectedFiles = reactive({});
 const uploading = reactive({});
@@ -130,6 +134,11 @@ const documentCompletion = computed(() =>
         ? Math.round((verifiedDocumentCount.value / caseRecord.documents.length) * 100)
         : 0);
 
+const uploadedDocumentCount = computed(() => caseRecord.documents.filter((document) => document.latest_version).length);
+const documentsNeedingReviewCount = computed(() =>
+    caseRecord.documents.filter((document) => ['uploaded', 'rejected'].includes(document.status.value)).length,
+);
+
 const unifiedThread = computed(() => {
     const messages = (caseRecord.messages || []).map((message) => ({
         id: `message-${message.id}`,
@@ -174,6 +183,12 @@ const unifiedThread = computed(() => {
     return [...messages, ...internalNotes, ...clientNotes, ...activities].sort((a, b) => b._ts - a._ts);
 });
 
+const activitySummary = computed(() => ({
+    messages: (caseRecord.messages || []).length,
+    notes: (caseRecord.internal_notes || []).length + (caseRecord.client_notes || []).length,
+    updates: (caseRecord.activities || []).length,
+}));
+
 const submitStage = () => {
     stageForm.patch(route('cases.stage.update', caseRecord.id), {
         preserveScroll: true,
@@ -191,7 +206,10 @@ const markTaskDone = (taskId) => {
 const submitInternalNote = () => {
     internalNoteForm.post(route('cases.notes.store', caseRecord.id), {
         preserveScroll: true,
-        onSuccess: () => internalNoteForm.reset(),
+        onSuccess: () => {
+            internalNoteForm.reset();
+            showActivityComposer.value = false;
+        },
     });
 };
 
@@ -364,6 +382,14 @@ const documentRequirementSummary = (document) => {
 
 const formatMoney = (currency, amount) => `${currency} ${amount}`;
 
+const documentStatusTone = (status) => {
+    if (status === 'verified') return 'bg-emerald-50 text-emerald-700';
+    if (status === 'uploaded') return 'bg-blue-50 text-blue-700';
+    if (status === 'rejected') return 'bg-rose-50 text-rose-700';
+
+    return 'bg-slate-100 text-slate-600';
+};
+
 const isTaskOverdue = (task) => {
     if (!task.due_at || task.status === 'completed') return false;
 
@@ -383,6 +409,30 @@ const groupForm = useForm({
     primary_case_id: caseRecord.id,
 });
 
+const addGroupMemberForm = useForm({
+    case_id: '',
+    is_group_primary: false,
+});
+
+const filteredMemberCaseOptions = computed(() => {
+    const query = memberCaseSearch.value.trim().toLowerCase();
+
+    return (caseRecord.member_case_options || []).filter((candidate) => {
+        if (!query) return true;
+
+        return [
+            candidate.reference_code,
+            candidate.applicant_name,
+            candidate.visa_type,
+            candidate.group_name,
+        ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase()
+            .includes(query);
+    });
+});
+
 const submitCreateGroup = () => {
     groupForm.post(route('case-groups.store'), {
         preserveScroll: true,
@@ -390,6 +440,17 @@ const submitCreateGroup = () => {
             groupForm.reset();
             groupForm.primary_case_id = caseRecord.id;
             showGroupSlideOver.value = false;
+        },
+    });
+};
+
+const submitAddGroupMember = () => {
+    addGroupMemberForm.post(route('case-groups.members.store', caseRecord.group.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            addGroupMemberForm.reset();
+            memberCaseSearch.value = '';
+            showAddGroupMemberSlideOver.value = false;
         },
     });
 };
@@ -483,13 +544,25 @@ const removeFromGroup = () => {
 
                 <AppCard title="Activity" subtitle="The main working thread for this case: notes, messages, uploads, and system updates.">
                     <template #action>
-                        <button type="button" class="ui-button-secondary" @click="showMessageSlideOver = true">Message client</button>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="button" class="ui-button-ghost !h-8 px-3 text-[12px]" @click="showActivityComposer = !showActivityComposer">
+                                {{ showActivityComposer ? 'Close note' : 'Add note' }}
+                            </button>
+                            <button type="button" class="ui-button-secondary" @click="showMessageSlideOver = true">Message client</button>
+                        </div>
                     </template>
 
-                    <form class="mb-5 space-y-3" @submit.prevent="submitInternalNote">
+                    <div class="mb-5 flex flex-wrap items-center gap-2">
+                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">{{ unifiedThread.length }} total</span>
+                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">{{ activitySummary.messages }} messages</span>
+                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">{{ activitySummary.notes }} notes</span>
+                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">{{ activitySummary.updates }} updates</span>
+                    </div>
+
+                    <form v-if="showActivityComposer" class="mb-5 rounded-lg border border-brand-border bg-brand-neutral/40 p-4 space-y-3" @submit.prevent="submitInternalNote">
                         <div>
                             <InputLabel value="Add note" />
-                            <textarea v-model="internalNoteForm.body" rows="4" class="ui-textarea" placeholder="Capture what changed, what was promised, or what still needs follow-up."></textarea>
+                            <textarea v-model="internalNoteForm.body" rows="3" class="ui-textarea" placeholder="Capture what changed, what was promised, or what still needs follow-up."></textarea>
                             <InputError :message="internalNoteForm.errors.body" />
                         </div>
                         <div class="flex flex-wrap items-center justify-between gap-3">
@@ -497,23 +570,26 @@ const removeFromGroup = () => {
                                 <input v-model="internalNoteForm.is_client_visible" type="checkbox" class="rounded text-brand-primary" />
                                 Client visible
                             </label>
-                            <PrimaryButton :loading="internalNoteForm.processing">Save note</PrimaryButton>
+                            <div class="flex items-center gap-2">
+                                <button type="button" class="ui-button-ghost !h-9 px-3 text-[12px]" @click="showActivityComposer = false">Cancel</button>
+                                <PrimaryButton :loading="internalNoteForm.processing">Save note</PrimaryButton>
+                            </div>
                         </div>
                     </form>
 
-                    <div v-if="unifiedThread.length" class="space-y-4">
-                        <p class="text-sm text-brand-muted">{{ unifiedThread.length }} updates on this case, newest first.</p>
-                        <div v-for="item in unifiedThread" :key="item.id" class="flex items-start gap-4 rounded-lg border border-brand-border px-4 py-4">
-                            <div class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-neutral text-brand-muted">
-                                <AppIcon :name="item.icon" :size="18" />
+                    <div v-if="unifiedThread.length" class="space-y-3">
+                        <p class="text-sm text-brand-muted">Newest first.</p>
+                        <div v-for="item in unifiedThread" :key="item.id" class="flex items-start gap-3 rounded-lg border border-brand-border px-4 py-3">
+                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-neutral text-brand-muted">
+                                <AppIcon :name="item.icon" :size="16" />
                             </div>
                             <div class="min-w-0 flex-1">
-                                <div class="flex flex-wrap items-center gap-2">
+                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
                                     <p class="font-medium text-brand-text">{{ item.actor }}</p>
-                                    <span class="text-sm text-brand-muted">• {{ item.kind }}</span>
-                                    <span class="text-sm text-brand-muted">• {{ formatTimestamp(item.timestamp) }}</span>
+                                    <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{{ item.kind }}</span>
+                                    <span class="text-xs text-brand-muted">{{ formatTimestamp(item.timestamp) }}</span>
                                 </div>
-                                <p class="mt-2 whitespace-pre-line text-sm leading-relaxed text-brand-text">{{ item.body }}</p>
+                                <p class="mt-1 whitespace-pre-line text-sm leading-6 text-brand-text">{{ item.body }}</p>
                             </div>
                         </div>
                     </div>
@@ -575,7 +651,12 @@ const removeFromGroup = () => {
 
                 <AppCard title="Documents" subtitle="Keep uploads and review simple: one row per requirement, one place to act.">
                     <template #action>
-                        <Link :href="route('cases.documents.zip', caseRecord.id)" class="ui-button-secondary">Download All</Link>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span v-if="documentsNeedingReviewCount" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                                {{ documentsNeedingReviewCount }} need review
+                            </span>
+                            <Link :href="route('cases.documents.zip', caseRecord.id)" class="ui-button-secondary">Download All</Link>
+                        </div>
                     </template>
 
                     <div class="mb-5 grid gap-4 md:grid-cols-4">
@@ -593,8 +674,14 @@ const removeFromGroup = () => {
                         </div>
                         <div class="rounded-lg bg-brand-neutral px-4 py-4">
                             <p class="ui-kicker">Uploaded</p>
-                            <p class="mt-2 text-2xl font-bold text-brand-text">{{ caseRecord.documents.filter((document) => document.latest_version).length }}</p>
+                            <p class="mt-2 text-2xl font-bold text-brand-text">{{ uploadedDocumentCount }}</p>
                         </div>
+                    </div>
+
+                    <div class="mb-5 flex flex-wrap gap-2">
+                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">Pending documents first</span>
+                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">Upload area inside each row</span>
+                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">Review controls collapsed by default</span>
                     </div>
 
                     <div v-if="caseRecord.documents.length" class="space-y-4">
@@ -603,7 +690,7 @@ const removeFromGroup = () => {
                                 <div class="min-w-0 flex-1">
                                     <div class="flex flex-wrap items-center gap-2">
                                         <p class="font-medium text-brand-text">{{ document.name }}</p>
-                                        <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{{ document.status.label }}</span>
+                                        <span class="rounded-full px-2 py-0.5 text-[11px] font-medium" :class="documentStatusTone(document.status.value)">{{ document.status.label }}</span>
                                     </div>
                                     <p class="mt-1 text-sm text-brand-muted">{{ documentRequirementSummary(document) }}</p>
                                     <p v-if="document.latest_version" class="mt-2 text-sm text-brand-muted">
@@ -612,33 +699,46 @@ const removeFromGroup = () => {
                                     <p v-else class="mt-2 text-sm text-brand-muted">No file uploaded yet.</p>
                                 </div>
                                 <div class="flex flex-wrap items-center gap-2">
+                                    <button type="button" class="ui-button-ghost !h-8 px-3 text-[12px]" @click="expandedDocumentReview[document.id] = !expandedDocumentReview[document.id]">
+                                        {{ expandedDocumentReview[document.id] ? 'Hide review' : 'Review details' }}
+                                    </button>
                                     <a v-if="document.latest_version" :href="document.latest_version.download_url" class="ui-button-ghost !h-8 px-3 text-[12px]">Download</a>
                                 </div>
                             </div>
 
                             <input type="file" :id="`file-${document.id}`" class="sr-only" @change="onFileChange(document.id, $event)" />
-                            <label :for="`file-${document.id}`" class="mt-4 block cursor-pointer rounded-lg border border-dashed border-brand-border bg-brand-neutral px-4 py-5 text-center" @dragover.prevent @drop="onDropFile(document.id, $event)">
-                                <p class="font-medium text-brand-text">{{ document.latest_version ? 'Upload new version' : 'Upload document' }}</p>
-                                <p class="mt-1 text-sm text-brand-muted">Click to browse or drag a file here.</p>
-                                <p v-if="uploading[document.id]" aria-live="polite" class="mt-2 text-sm font-medium text-brand-primary">Uploading...</p>
+                            <label :for="`file-${document.id}`" class="mt-4 block cursor-pointer rounded-lg border border-dashed border-brand-border bg-brand-neutral px-4 py-4" @dragover.prevent @drop="onDropFile(document.id, $event)">
+                                <div class="flex flex-col gap-3 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
+                                    <div>
+                                        <p class="font-medium text-brand-text">{{ document.latest_version ? 'Upload new version' : 'Upload document' }}</p>
+                                        <p class="mt-1 text-sm text-brand-muted">Click to browse or drag a file here.</p>
+                                    </div>
+                                    <span class="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-700">
+                                        {{ document.max_file_size_mb }}MB max
+                                    </span>
+                                </div>
+                                <p v-if="uploading[document.id]" aria-live="polite" class="mt-3 text-sm font-medium text-brand-primary">Uploading...</p>
                             </label>
 
-                            <form class="mt-4 grid gap-4 md:grid-cols-2" @submit.prevent="updateDocumentStatus(document.id)">
-                                <div>
-                                    <InputLabel value="Status" />
-                                    <select v-model="documentStatusForms[document.id].status" class="ui-select">
-                                        <option v-for="status in caseRecord.document_statuses" :key="status.value" :value="status.value">{{ status.label }}</option>
-                                    </select>
+                            <form v-if="expandedDocumentReview[document.id]" class="mt-4 rounded-lg border border-brand-border bg-white p-4" @submit.prevent="updateDocumentStatus(document.id)">
+                                <div class="grid gap-4 md:grid-cols-2">
+                                    <div>
+                                        <InputLabel value="Status" />
+                                        <select v-model="documentStatusForms[document.id].status" class="ui-select">
+                                            <option v-for="status in caseRecord.document_statuses" :key="status.value" :value="status.value">{{ status.label }}</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <InputLabel value="Expiry date" />
+                                        <input v-model="documentStatusForms[document.id].expiry_date" type="date" class="ui-input" />
+                                    </div>
+                                    <div v-if="documentStatusForms[document.id].status === 'rejected'" class="md:col-span-2">
+                                        <InputLabel value="Rejection reason" />
+                                        <input v-model="documentStatusForms[document.id].rejection_reason" class="ui-input" />
+                                    </div>
                                 </div>
-                                <div>
-                                    <InputLabel value="Expiry date" />
-                                    <input v-model="documentStatusForms[document.id].expiry_date" type="date" class="ui-input" />
-                                </div>
-                                <div v-if="documentStatusForms[document.id].status === 'rejected'">
-                                    <InputLabel value="Rejection reason" />
-                                    <input v-model="documentStatusForms[document.id].rejection_reason" class="ui-input" />
-                                </div>
-                                <div class="md:col-span-2">
+                                <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+                                    <p class="text-sm text-brand-muted">Only open this when you need to review or correct document metadata.</p>
                                     <PrimaryButton class="!h-10 px-4" :loading="documentStatusForms[document.id].processing">Save document status</PrimaryButton>
                                 </div>
                             </form>
@@ -785,7 +885,10 @@ const removeFromGroup = () => {
                 <AppCard title="Family group" subtitle="Link related applications to process them together.">
                     <template #action>
                         <button v-if="!caseRecord.group" type="button" class="text-sm font-medium text-brand-primary hover:underline" @click="showGroupSlideOver = true">Create group</button>
-                        <button v-else type="button" class="text-sm font-medium text-red-500 hover:underline" @click="removeFromGroup">Leave group</button>
+                        <div v-else class="flex flex-wrap items-center gap-3">
+                            <button type="button" class="text-sm font-medium text-brand-primary hover:underline" @click="showAddGroupMemberSlideOver = true">Add member</button>
+                            <button type="button" class="text-sm font-medium text-red-500 hover:underline" @click="removeFromGroup">Leave group</button>
+                        </div>
                     </template>
 
                     <div v-if="caseRecord.group">
@@ -843,6 +946,36 @@ const removeFromGroup = () => {
             </form>
             <template #footer>
                 <PrimaryButton form="case-group-form" type="submit" class="w-full" :loading="groupForm.processing">Create group</PrimaryButton>
+            </template>
+        </SlideOver>
+
+        <SlideOver :show="showAddGroupMemberSlideOver" title="Add family group member" description="Select another case to link into this family group." @close="showAddGroupMemberSlideOver = false">
+            <form id="case-group-member-form" class="space-y-6" @submit.prevent="submitAddGroupMember">
+                <div>
+                    <InputLabel value="Search cases" />
+                    <input v-model="memberCaseSearch" class="ui-input" placeholder="Search by applicant, reference code, or visa type" />
+                </div>
+                <div>
+                    <InputLabel value="Select case" />
+                    <select v-model="addGroupMemberForm.case_id" class="ui-select">
+                        <option value="">Choose a case</option>
+                        <option v-for="candidate in filteredMemberCaseOptions" :key="candidate.id" :value="candidate.id">
+                            {{ candidate.applicant_name }} • {{ candidate.reference_code }} • {{ candidate.visa_type }}{{ candidate.group_name ? ` • In ${candidate.group_name}` : '' }}
+                        </option>
+                    </select>
+                    <InputError :message="addGroupMemberForm.errors.case_id" />
+                    <p v-if="!filteredMemberCaseOptions.length" class="mt-2 text-sm text-brand-muted">No matching cases found.</p>
+                </div>
+                <label class="flex items-start gap-3 rounded-lg border border-brand-border px-4 py-4">
+                    <input v-model="addGroupMemberForm.is_group_primary" type="checkbox" class="mt-1 rounded text-brand-primary" />
+                    <div>
+                        <p class="text-sm font-medium text-brand-text">Make this the primary case</p>
+                        <p class="mt-1 text-sm text-brand-muted">If selected, this case becomes the main record for the family group.</p>
+                    </div>
+                </label>
+            </form>
+            <template #footer>
+                <PrimaryButton form="case-group-member-form" type="submit" class="w-full" :loading="addGroupMemberForm.processing">Add member</PrimaryButton>
             </template>
         </SlideOver>
 

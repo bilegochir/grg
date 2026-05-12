@@ -17,6 +17,8 @@ const progressTone = (percent) => {
 
     return 'bg-orange-500';
 };
+
+const attentionCount = (item) => item.documents_waiting_count + item.open_tasks_count;
 </script>
 
 <template>
@@ -29,6 +31,14 @@ const progressTone = (percent) => {
                     <p class="mt-4 max-w-2xl text-base text-brand-muted">
                         We’ll keep this page simple. If your team needs something from you, it will show up clearly.
                     </p>
+                    <div class="mt-5 flex flex-wrap gap-3">
+                        <span class="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
+                            {{ summary.documents_waiting_count }} document{{ summary.documents_waiting_count === 1 ? '' : 's' }} waiting
+                        </span>
+                        <span class="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
+                            {{ summary.open_tasks_count }} checklist item{{ summary.open_tasks_count === 1 ? '' : 's' }} open
+                        </span>
+                    </div>
                 </div>
 
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
@@ -69,6 +79,14 @@ const progressTone = (percent) => {
                                 <p class="mt-2 text-sm text-brand-muted">{{ item.country }} • {{ item.visa_type }}</p>
                                 <p class="mt-4 max-w-2xl text-sm leading-6 text-brand-text">{{ item.stage_copy }}</p>
                                 <p class="mt-3 text-sm font-medium text-brand-text">{{ item.next_step }}</p>
+                                <div class="mt-4 flex flex-wrap gap-2">
+                                    <span v-if="attentionCount(item)" class="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+                                        {{ attentionCount(item) }} thing{{ attentionCount(item) === 1 ? '' : 's' }} needs attention
+                                    </span>
+                                    <span v-if="item.documents_waiting_count" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+                                        {{ item.documents_waiting_count }} document{{ item.documents_waiting_count === 1 ? '' : 's' }} waiting
+                                    </span>
+                                </div>
                             </div>
 
                             <div class="w-full max-w-sm space-y-4 lg:w-[340px]">
