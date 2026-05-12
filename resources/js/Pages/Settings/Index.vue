@@ -1226,12 +1226,17 @@ const saveFormTemplate = () => {
                             <p class="mt-1 text-[13px] text-slate-500">Define the operational path for cases of this visa type.</p>
                         </div>
                         <div class="flex items-center gap-3">
+                            <PrimaryButton icon="plus" @click="openWorkflowStageCreate">Add stage</PrimaryButton>
+                        </div>
+                    </div>
+
+                    <div class="mb-6 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
                             <select v-model="selectedVisaTypeId" class="ui-select h-8 min-w-[200px]">
                                 <option v-for="visaType in visaTypes" :key="visaType.id" :value="visaType.id">
                                     {{ visaType.country.name }} • {{ visaType.name }}
                                 </option>
                             </select>
-                            <PrimaryButton icon="plus" @click="openWorkflowStageCreate">Add stage</PrimaryButton>
                         </div>
                     </div>
 
@@ -1296,12 +1301,17 @@ const saveFormTemplate = () => {
                         <p class="mt-1 text-[13px] text-slate-500">Configure the checklist of documents required for this visa type.</p>
                     </div>
                     <div class="flex items-center gap-3">
+                        <PrimaryButton icon="plus" @click="openTemplateCreate">Add requirement</PrimaryButton>
+                    </div>
+                </div>
+
+                 <div class="mb-6 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
                         <select v-model="selectedVisaTypeId" class="ui-select h-8 min-w-[200px]">
                             <option v-for="visaType in visaTypes" :key="visaType.id" :value="visaType.id">
                                 {{ visaType.country.name }} • {{ visaType.name }}
                             </option>
                         </select>
-                        <PrimaryButton icon="plus" @click="openTemplateCreate">Add requirement</PrimaryButton>
                     </div>
                 </div>
 

@@ -110,8 +110,20 @@ const totalBalanceDue = computed(() =>
 
 const completedTaskCount = computed(() => caseRecord.tasks.filter((task) => task.status === 'completed').length);
 const openTaskCount = computed(() => caseRecord.tasks.filter((task) => task.status !== 'completed').length);
+const openTasks = computed(() => caseRecord.tasks.filter((task) => task.status !== 'completed'));
+const completedTasks = computed(() => caseRecord.tasks.filter((task) => task.status === 'completed'));
 const verifiedDocumentCount = computed(() => caseRecord.documents.filter((document) => document.status.value === 'verified').length);
 const pendingDocumentCount = computed(() => caseRecord.documents.filter((document) => document.status.value !== 'verified').length);
+const orderedDocuments = computed(() => [
+    ...caseRecord.documents.filter((document) => document.status.value !== 'verified'),
+    ...caseRecord.documents.filter((document) => document.status.value === 'verified'),
+]);
+const unpaidInvoiceCount = computed(() => caseRecord.invoices.filter((invoice) => Number(invoice.balance_due) > 0).length);
+const nextAppointment = computed(() =>
+    caseRecord.appointments
+        .filter((appointment) => appointment.starts_at)
+        .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())[0] ?? null,
+);
 
 const documentCompletion = computed(() =>
     caseRecord.documents.length
@@ -352,6 +364,19 @@ const documentRequirementSummary = (document) => {
 
 const formatMoney = (currency, amount) => `${currency} ${amount}`;
 
+const isTaskOverdue = (task) => {
+    if (!task.due_at || task.status === 'completed') return false;
+
+    const dueDate = new Date(task.due_at);
+
+    if (Number.isNaN(dueDate.getTime())) return false;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return dueDate < today;
+};
+
 const groupForm = useForm({
     name: '',
     notes: '',
@@ -386,7 +411,7 @@ const removeFromGroup = () => {
                 <div class="max-w-3xl">
                     <p class="ui-kicker">Case</p>
                     <h1 class="text-[32px] font-bold tracking-tight text-slate-900 leading-tight">{{ caseRecord.reference_code }}</h1>
-                    <div class="mt-3 flex flex-wrap items-center gap-2">
+                    <div class="mt-3 flex flex-wrap items-center gap-2 gap-y-3">
                         <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
                             {{ caseRecord.stage?.name || 'No stage' }}
                         </span>
@@ -395,6 +420,20 @@ const removeFromGroup = () => {
                         </span>
                         <span class="text-sm text-brand-muted">{{ caseRecord.country.name }} • {{ caseRecord.visa_type }}</span>
                         <span class="text-sm text-brand-muted">• {{ caseRecord.applicant.name }}</span>
+                    </div>
+                    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                        <div class="rounded-lg bg-brand-neutral px-4 py-3">
+                            <p class="ui-kicker">Next milestone</p>
+                            <p class="font-medium text-brand-text">{{ caseRecord.expected_submission_at || 'Not scheduled' }}</p>
+                        </div>
+                        <div class="rounded-lg bg-brand-neutral px-4 py-3">
+                            <p class="ui-kicker">Work queue</p>
+                            <p class="font-medium text-brand-text">{{ openTaskCount }} open tasks • {{ pendingDocumentCount }} pending docs</p>
+                        </div>
+                        <div class="rounded-lg bg-brand-neutral px-4 py-3">
+                            <p class="ui-kicker">Balance due</p>
+                            <p class="font-medium text-brand-text">{{ formatMoney('USD', totalBalanceDue) }}</p>
+                        </div>
                     </div>
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
@@ -425,7 +464,19 @@ const removeFromGroup = () => {
                         <div class="rounded-lg bg-brand-neutral px-4 py-4">
                             <p class="ui-kicker">Attention needed</p>
                             <p class="mt-2 font-medium text-brand-text">{{ openTaskCount }} open tasks</p>
-                            <p class="mt-1 text-sm text-brand-muted">{{ pendingDocumentCount }} pending documents</p>
+                            <p class="mt-1 text-sm text-brand-muted">{{ pendingDocumentCount }} pending documents • {{ unpaidInvoiceCount }} unpaid invoices</p>
+                        </div>
+                    </div>
+                    <div class="mt-5 rounded-lg border border-brand-border bg-white px-4 py-4">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <p class="ui-kicker">Document progress</p>
+                                <p class="text-sm text-brand-muted">{{ verifiedDocumentCount }} of {{ caseRecord.documents.length }} requirements verified</p>
+                            </div>
+                            <p class="text-lg font-semibold text-brand-text">{{ documentCompletion }}%</p>
+                        </div>
+                        <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+                            <div class="h-full rounded-full bg-brand-primary transition-all" :style="{ width: `${documentCompletion}%` }"></div>
                         </div>
                     </div>
                 </AppCard>
@@ -451,6 +502,7 @@ const removeFromGroup = () => {
                     </form>
 
                     <div v-if="unifiedThread.length" class="space-y-4">
+                        <p class="text-sm text-brand-muted">{{ unifiedThread.length }} updates on this case, newest first.</p>
                         <div v-for="item in unifiedThread" :key="item.id" class="flex items-start gap-4 rounded-lg border border-brand-border px-4 py-4">
                             <div class="flex h-10 w-10 items-center justify-center rounded-full bg-brand-neutral text-brand-muted">
                                 <AppIcon :name="item.icon" :size="18" />
@@ -461,7 +513,7 @@ const removeFromGroup = () => {
                                     <span class="text-sm text-brand-muted">• {{ item.kind }}</span>
                                     <span class="text-sm text-brand-muted">• {{ formatTimestamp(item.timestamp) }}</span>
                                 </div>
-                                <p class="mt-2 text-sm leading-relaxed text-brand-text">{{ item.body }}</p>
+                                <p class="mt-2 whitespace-pre-line text-sm leading-relaxed text-brand-text">{{ item.body }}</p>
                             </div>
                         </div>
                     </div>
@@ -474,20 +526,48 @@ const removeFromGroup = () => {
                     </template>
 
                     <div v-if="caseRecord.tasks.length" class="space-y-3">
-                        <div v-for="task in caseRecord.tasks" :key="task.id" class="flex items-start justify-between gap-4 rounded-lg border border-brand-border px-4 py-4">
-                            <div class="min-w-0 flex-1">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <p class="font-medium" :class="task.status === 'completed' ? 'text-brand-muted line-through' : 'text-brand-text'">{{ task.name }}</p>
-                                    <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{{ task.status.replaceAll('_', ' ') }}</span>
+                        <div v-if="openTasks.length" class="space-y-3">
+                            <p class="text-sm font-medium text-brand-text">Open tasks</p>
+                            <div v-for="task in openTasks" :key="task.id" class="flex items-start justify-between gap-4 rounded-lg border border-brand-border px-4 py-4">
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <p class="font-medium text-brand-text">{{ task.name }}</p>
+                                        <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{{ task.status.replaceAll('_', ' ') }}</span>
+                                        <span v-if="isTaskOverdue(task)" class="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700">Overdue</span>
+                                    </div>
+                                    <p v-if="task.description" class="mt-1 text-sm text-brand-muted">{{ task.description }}</p>
+                                    <p class="mt-2 text-sm text-brand-muted">
+                                        {{ task.assigned_to || 'Unassigned' }}
+                                        <span v-if="task.due_at">• Due {{ task.due_at }}</span>
+                                        <span v-if="task.stage_name">• {{ task.stage_name }}</span>
+                                    </p>
                                 </div>
-                                <p v-if="task.description" class="mt-1 text-sm text-brand-muted">{{ task.description }}</p>
-                                <p class="mt-2 text-sm text-brand-muted">
-                                    {{ task.assigned_to || 'Unassigned' }}
-                                    <span v-if="task.due_at">• Due {{ task.due_at }}</span>
-                                    <span v-if="task.stage_name">• {{ task.stage_name }}</span>
-                                </p>
+                                <PrimaryButton class="shrink-0 !h-9 px-4" @click="markTaskDone(task.id)">Mark done</PrimaryButton>
                             </div>
-                            <PrimaryButton v-if="task.status !== 'completed'" class="shrink-0 !h-9 px-4" @click="markTaskDone(task.id)">Mark done</PrimaryButton>
+                        </div>
+                        <details v-if="completedTasks.length" class="rounded-lg border border-brand-border px-4 py-4">
+                            <summary class="cursor-pointer list-none text-sm font-medium text-brand-text">
+                                {{ completedTasks.length }} completed task{{ completedTasks.length === 1 ? '' : 's' }}
+                            </summary>
+                            <div class="mt-4 space-y-3">
+                                <div v-for="task in completedTasks" :key="task.id" class="flex items-start justify-between gap-4 rounded-lg bg-brand-neutral px-4 py-4">
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <p class="font-medium text-brand-muted line-through">{{ task.name }}</p>
+                                            <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{{ task.status.replaceAll('_', ' ') }}</span>
+                                        </div>
+                                        <p v-if="task.description" class="mt-1 text-sm text-brand-muted">{{ task.description }}</p>
+                                        <p class="mt-2 text-sm text-brand-muted">
+                                            {{ task.assigned_to || 'Unassigned' }}
+                                            <span v-if="task.due_at">• Due {{ task.due_at }}</span>
+                                            <span v-if="task.stage_name">• {{ task.stage_name }}</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+                        <div v-else-if="caseRecord.tasks.length" class="rounded-lg bg-brand-neutral px-4 py-4 text-sm text-brand-muted">
+                            All current tasks are completed.
                         </div>
                     </div>
                     <EmptyState v-else icon="task" title="No tasks yet" description="Add a task to capture the next action for this case." />
@@ -498,7 +578,7 @@ const removeFromGroup = () => {
                         <Link :href="route('cases.documents.zip', caseRecord.id)" class="ui-button-secondary">Download All</Link>
                     </template>
 
-                    <div class="mb-5 grid gap-4 md:grid-cols-3">
+                    <div class="mb-5 grid gap-4 md:grid-cols-4">
                         <div class="rounded-lg bg-brand-neutral px-4 py-4">
                             <p class="ui-kicker">Completion</p>
                             <p class="mt-2 text-2xl font-bold text-brand-text">{{ documentCompletion }}%</p>
@@ -511,10 +591,14 @@ const removeFromGroup = () => {
                             <p class="ui-kicker">Verified</p>
                             <p class="mt-2 text-2xl font-bold text-brand-text">{{ verifiedDocumentCount }}</p>
                         </div>
+                        <div class="rounded-lg bg-brand-neutral px-4 py-4">
+                            <p class="ui-kicker">Uploaded</p>
+                            <p class="mt-2 text-2xl font-bold text-brand-text">{{ caseRecord.documents.filter((document) => document.latest_version).length }}</p>
+                        </div>
                     </div>
 
                     <div v-if="caseRecord.documents.length" class="space-y-4">
-                        <div v-for="document in caseRecord.documents" :key="document.id" class="rounded-lg border border-brand-border p-4">
+                        <div v-for="document in orderedDocuments" :key="document.id" class="rounded-lg border border-brand-border p-4">
                             <div class="flex flex-wrap items-start justify-between gap-4">
                                 <div class="min-w-0 flex-1">
                                     <div class="flex flex-wrap items-center gap-2">
@@ -525,6 +609,7 @@ const removeFromGroup = () => {
                                     <p v-if="document.latest_version" class="mt-2 text-sm text-brand-muted">
                                         Latest file: {{ document.latest_version.original_name }} (v{{ document.latest_version.version_number }})
                                     </p>
+                                    <p v-else class="mt-2 text-sm text-brand-muted">No file uploaded yet.</p>
                                 </div>
                                 <div class="flex flex-wrap items-center gap-2">
                                     <a v-if="document.latest_version" :href="document.latest_version.download_url" class="ui-button-ghost !h-8 px-3 text-[12px]">Download</a>
@@ -535,10 +620,10 @@ const removeFromGroup = () => {
                             <label :for="`file-${document.id}`" class="mt-4 block cursor-pointer rounded-lg border border-dashed border-brand-border bg-brand-neutral px-4 py-5 text-center" @dragover.prevent @drop="onDropFile(document.id, $event)">
                                 <p class="font-medium text-brand-text">{{ document.latest_version ? 'Upload new version' : 'Upload document' }}</p>
                                 <p class="mt-1 text-sm text-brand-muted">Click to browse or drag a file here.</p>
-                                <p v-if="uploading[document.id]" class="mt-2 text-sm font-medium text-brand-primary">Uploading...</p>
+                                <p v-if="uploading[document.id]" aria-live="polite" class="mt-2 text-sm font-medium text-brand-primary">Uploading...</p>
                             </label>
 
-                            <form class="mt-4 grid gap-4 md:grid-cols-3" @submit.prevent="updateDocumentStatus(document.id)">
+                            <form class="mt-4 grid gap-4 md:grid-cols-2" @submit.prevent="updateDocumentStatus(document.id)">
                                 <div>
                                     <InputLabel value="Status" />
                                     <select v-model="documentStatusForms[document.id].status" class="ui-select">
@@ -549,11 +634,11 @@ const removeFromGroup = () => {
                                     <InputLabel value="Expiry date" />
                                     <input v-model="documentStatusForms[document.id].expiry_date" type="date" class="ui-input" />
                                 </div>
-                                <div>
+                                <div v-if="documentStatusForms[document.id].status === 'rejected'">
                                     <InputLabel value="Rejection reason" />
                                     <input v-model="documentStatusForms[document.id].rejection_reason" class="ui-input" />
                                 </div>
-                                <div class="md:col-span-3">
+                                <div class="md:col-span-2">
                                     <PrimaryButton class="!h-10 px-4" :loading="documentStatusForms[document.id].processing">Save document status</PrimaryButton>
                                 </div>
                             </form>
@@ -563,7 +648,7 @@ const removeFromGroup = () => {
                 </AppCard>
             </div>
 
-            <div class="space-y-6">
+            <div class="space-y-6 ui-sidebar-sticky">
                 <AppCard title="Case details" subtitle="Editable metadata that supports the main workflow.">
                     <div class="space-y-4">
                         <div>
@@ -586,14 +671,21 @@ const removeFromGroup = () => {
                         <div class="rounded-lg bg-brand-neutral px-4 py-4">
                             <p class="ui-kicker">Open tasks</p>
                             <p class="mt-2 text-lg font-medium text-brand-text">{{ openTaskCount }}</p>
+                            <p class="mt-1 text-sm text-brand-muted">{{ completedTaskCount }} completed</p>
                         </div>
                         <div class="rounded-lg bg-brand-neutral px-4 py-4">
                             <p class="ui-kicker">Document progress</p>
                             <p class="mt-2 text-lg font-medium text-brand-text">{{ documentCompletion }}%</p>
+                            <p class="mt-1 text-sm text-brand-muted">{{ verifiedDocumentCount }} verified • {{ pendingDocumentCount }} pending</p>
                         </div>
                         <div class="rounded-lg bg-brand-neutral px-4 py-4">
                             <p class="ui-kicker">Outstanding balance</p>
                             <p class="mt-2 text-lg font-medium text-brand-text">{{ formatMoney('USD', totalBalanceDue) }}</p>
+                            <p class="mt-1 text-sm text-brand-muted">{{ unpaidInvoiceCount }} invoice{{ unpaidInvoiceCount === 1 ? '' : 's' }} unpaid</p>
+                        </div>
+                        <div class="rounded-lg bg-brand-neutral px-4 py-4">
+                            <p class="ui-kicker">Next appointment</p>
+                            <p class="mt-2 text-lg font-medium text-brand-text">{{ nextAppointment ? formatTimestamp(nextAppointment.starts_at) : 'Nothing scheduled' }}</p>
                         </div>
                     </div>
                 </AppCard>
@@ -602,6 +694,16 @@ const removeFromGroup = () => {
                     <template #action>
                         <button type="button" class="ui-button-secondary" @click="showInvoiceSlideOver = true">Create invoice</button>
                     </template>
+                    <div v-if="caseRecord.invoices.length" class="mb-4 grid gap-3 sm:grid-cols-2">
+                        <div class="rounded-lg bg-brand-neutral px-4 py-3">
+                            <p class="ui-kicker">Outstanding</p>
+                            <p class="font-medium text-brand-text">{{ formatMoney('USD', totalBalanceDue) }}</p>
+                        </div>
+                        <div class="rounded-lg bg-brand-neutral px-4 py-3">
+                            <p class="ui-kicker">Unpaid invoices</p>
+                            <p class="font-medium text-brand-text">{{ unpaidInvoiceCount }}</p>
+                        </div>
+                    </div>
                     <div v-if="caseRecord.invoices.length" class="space-y-4">
                         <div v-for="invoice in caseRecord.invoices" :key="invoice.id" class="rounded-lg border border-brand-border px-4 py-4">
                             <div class="flex items-start justify-between gap-4">
@@ -650,11 +752,15 @@ const removeFromGroup = () => {
                     </template>
                     <div v-if="caseRecord.appointments.length" class="space-y-3">
                         <div v-for="appointment in caseRecord.appointments" :key="appointment.id" class="rounded-lg border border-brand-border px-4 py-4">
-                            <p class="font-medium text-brand-text">{{ appointment.title }}</p>
-                            <p class="mt-1 text-sm text-brand-muted">{{ formatTimestamp(appointment.starts_at) }}</p>
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <p class="font-medium text-brand-text">{{ appointment.title }}</p>
+                                    <p class="mt-1 text-sm text-brand-muted">{{ formatTimestamp(appointment.starts_at) }}</p>
+                                </div>
+                                <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{{ appointment.status }}</span>
+                            </div>
                             <p class="mt-1 text-sm text-brand-muted">{{ appointment.location || appointment.meeting_link || 'Location not added yet' }}</p>
                             <div class="mt-3 flex flex-wrap items-center gap-2">
-                                <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{{ appointment.status }}</span>
                                 <button type="button" class="ui-button-ghost !h-8 px-3 text-[12px]" @click="sendAppointmentReminder(appointment.id)">Send reminder</button>
                             </div>
                         </div>
