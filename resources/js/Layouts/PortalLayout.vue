@@ -1,5 +1,6 @@
 <script setup>
 import FlashBanner from '@/Components/FlashBanner.vue';
+import { useLocale } from '@/lib/i18n';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 
 defineProps({
@@ -18,6 +19,7 @@ defineProps({
 });
 
 const page = usePage();
+const { t } = useLocale();
 </script>
 
 <template>
@@ -41,7 +43,7 @@ const page = usePage();
                     <div class="min-w-0">
                         <p class="text-lg font-semibold tracking-tight text-brand-text">{{ business.name }}</p>
                         <div class="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-brand-muted">
-                        <span>Applicant portal</span>
+                        <span>{{ t('pages.portal.portalLabel') }}</span>
                         <span v-if="business.email">{{ business.email }}</span>
                         <span v-if="business.phone">{{ business.phone }}</span>
                         </div>
@@ -52,8 +54,8 @@ const page = usePage();
                     <div class="rounded-full bg-orange-50 px-3 py-1 text-sm font-medium text-orange-700">
                         {{ applicant.name }}
                     </div>
-                    <Link :href="route('portal.dashboard')" class="ui-button-ghost">Overview</Link>
-                    <Link :href="route('portal.logout')" method="post" as="button" class="ui-button-secondary">Sign out</Link>
+                    <Link :href="route('portal.dashboard')" class="ui-button-ghost">{{ t('common.overview') }}</Link>
+                    <Link :href="route('portal.logout')" method="post" as="button" class="ui-button-secondary">{{ t('common.signOut') }}</Link>
                 </div>
             </div>
         </header>

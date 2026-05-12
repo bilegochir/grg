@@ -5,6 +5,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import Modal from '@/Components/Modal.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import { useLocale } from '@/lib/i18n';
 import { useForm } from '@inertiajs/vue3';
 import { nextTick, ref } from 'vue';
 
@@ -36,36 +37,38 @@ const closeModal = () => {
     form.clearErrors();
     form.reset();
 };
+
+const { t } = useLocale();
 </script>
 
 <template>
     <section class="space-y-6">
         <header>
             <h2 class="text-lg font-semibold text-brand-text">
-                Delete account
+                {{ t('profileForms.deleteTitle') }}
             </h2>
 
             <p class="mt-1 text-sm leading-6 text-brand-muted">
-                This permanently removes your account. Only do this when you are sure the workspace no longer needs it.
+                {{ t('profileForms.deleteDescription') }}
             </p>
         </header>
 
-        <DangerButton @click="confirmUserDeletion">Remove account</DangerButton>
+        <DangerButton @click="confirmUserDeletion">{{ t('profileForms.removeAccount') }}</DangerButton>
 
         <Modal :show="confirmingUserDeletion" @close="closeModal">
             <div class="p-6">
                 <h2 class="text-lg font-semibold text-brand-text">
-                    Remove your account?
+                    {{ t('profileForms.removeQuestion') }}
                 </h2>
 
                 <p class="mt-2 text-sm leading-6 text-brand-muted">
-                    This can’t be undone. Enter your password to confirm you want to permanently remove this account.
+                    {{ t('profileForms.removeWarning') }}
                 </p>
 
                 <div class="mt-6">
                     <InputLabel
                         for="password"
-                        value="Password"
+                        :value="t('common.password')"
                         class="sr-only"
                     />
 
@@ -75,7 +78,7 @@ const closeModal = () => {
                         v-model="form.password"
                         type="password"
                         class="mt-1 block w-3/4"
-                        placeholder="Password"
+                        :placeholder="t('common.password')"
                         @keyup.enter="deleteUser"
                     />
 
@@ -84,7 +87,7 @@ const closeModal = () => {
 
                 <div class="mt-6 flex justify-end">
                     <SecondaryButton @click="closeModal">
-                        Never mind
+                        {{ t('profileForms.neverMind') }}
                     </SecondaryButton>
 
                     <DangerButton
@@ -93,7 +96,7 @@ const closeModal = () => {
                         :disabled="form.processing"
                         @click="deleteUser"
                     >
-                        Remove account
+                        {{ t('profileForms.removeAccount') }}
                     </DangerButton>
                 </div>
             </div>

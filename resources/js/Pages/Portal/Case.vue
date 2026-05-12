@@ -6,6 +6,7 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import PortalLayout from '@/Layouts/PortalLayout.vue';
+import { useLocale } from '@/lib/i18n';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import { computed, reactive, ref } from 'vue';
 
@@ -61,10 +62,10 @@ const orderedDocuments = computed(() => [
 const nextAttentionCount = computed(() => openTasks.value.length + portalCase.summary.documents_waiting_count);
 const latestMessages = computed(() => [...portalCase.messages].sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()));
 const tabs = computed(() => [
-    { key: 'overview', label: 'Overview' },
-    { key: 'documents', label: `Documents (${portalCase.summary.documents_waiting_count})` },
-    { key: 'billing', label: `Billing (${portalCase.invoices.length})` },
-    { key: 'messages', label: `Messages (${portalCase.messages.length})` },
+    { key: 'overview', label: t('common.overview') },
+    { key: 'documents', label: `${t('common.documents')} (${portalCase.summary.documents_waiting_count})` },
+    { key: 'billing', label: `${t('common.billing')} (${portalCase.invoices.length})` },
+    { key: 'messages', label: `${t('common.messages')} (${portalCase.messages.length})` },
 ]);
 
 const workflowStateClasses = (state) => {
@@ -109,6 +110,8 @@ const timelineIcon = (type) => {
 const clearSelectedFile = (documentId) => {
     selectedFiles[documentId] = null;
 };
+
+const { t } = useLocale();
 </script>
 
 <template>
@@ -116,11 +119,11 @@ const clearSelectedFile = (documentId) => {
         <section class="rounded-[28px] border border-orange-100 bg-white px-6 py-6 shadow-[0_18px_40px_rgba(15,23,42,0.06)] sm:px-8">
             <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div class="min-w-0">
-                    <p class="ui-kicker text-orange-500">Your case</p>
+                    <p class="ui-kicker text-orange-500">{{ t('pages.portal.yourCase') }}</p>
                     <div class="mt-2 flex flex-wrap items-center gap-3">
                         <h1 class="text-[32px] leading-tight">{{ portalCase.reference_code }}</h1>
                         <span class="rounded-full bg-orange-50 px-3 py-1 text-sm font-medium text-orange-700">
-                            {{ portalCase.stage || 'In progress' }}
+                            {{ portalCase.stage || t('pages.portal.inProgress') }}
                         </span>
                     </div>
                     <p class="mt-2 text-sm text-brand-muted">{{ portalCase.country }} • {{ portalCase.visa_type }}</p>
@@ -136,24 +139,24 @@ const clearSelectedFile = (documentId) => {
                     </div>
                 </div>
 
-                <Link :href="route('portal.dashboard')" class="ui-button-secondary">Back to overview</Link>
+                <Link :href="route('portal.dashboard')" class="ui-button-secondary">{{ t('common.backToOverview') }}</Link>
             </div>
 
             <div class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                    <p class="text-sm text-brand-muted">Progress</p>
+                    <p class="text-sm text-brand-muted">{{ t('pages.portal.progress') }}</p>
                     <p class="mt-2 text-2xl font-semibold text-brand-text">{{ portalCase.progress_percent }}%</p>
                 </div>
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                    <p class="text-sm text-brand-muted">Documents</p>
+                    <p class="text-sm text-brand-muted">{{ t('common.documents') }}</p>
                     <p class="mt-2 text-2xl font-semibold text-brand-text">{{ portalCase.summary.documents_verified }}/{{ portalCase.summary.documents_total }}</p>
                 </div>
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                    <p class="text-sm text-brand-muted">Checklist</p>
+                    <p class="text-sm text-brand-muted">{{ t('common.checklist') }}</p>
                     <p class="mt-2 text-2xl font-semibold text-brand-text">{{ portalCase.summary.completed_tasks_count }}/{{ portalCase.tasks.length }}</p>
                 </div>
                 <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                    <p class="text-sm text-brand-muted">Balance due</p>
+                    <p class="text-sm text-brand-muted">{{ t('pages.portal.balanceDue') }}</p>
                     <p class="mt-2 text-2xl font-semibold text-brand-text">${{ portalCase.summary.balance_due }}</p>
                 </div>
             </div>
@@ -191,7 +194,7 @@ const clearSelectedFile = (documentId) => {
                 </div>
 
                 <div v-if="activeTab === 'overview'" class="space-y-6">
-                    <AppCard title="Checklist">
+                    <AppCard :title="t('common.checklist')">
                         <div v-if="openTasks.length" class="space-y-3">
                             <p class="text-sm text-brand-muted">{{ openTasks.length }} open item{{ openTasks.length === 1 ? '' : 's' }} to keep this case moving.</p>
                             <div
@@ -246,12 +249,12 @@ const clearSelectedFile = (documentId) => {
                         <EmptyState
                             v-else
                             icon="check"
-                            title="Nothing pending right now"
-                            description="Your team does not need any checklist items from you at the moment."
+                            :title="t('pages.portal.noPendingTitle')"
+                            :description="t('pages.portal.noPendingDescription')"
                         />
                     </AppCard>
 
-                    <AppCard title="Appointments">
+                    <AppCard :title="t('common.appointments')">
                         <div v-if="portalCase.appointments.length" class="space-y-3">
                             <div v-for="appointment in portalCase.appointments" :key="appointment.id" class="rounded-2xl border border-slate-200 px-4 py-4">
                                 <div class="flex flex-wrap items-start justify-between gap-3">
@@ -267,7 +270,7 @@ const clearSelectedFile = (documentId) => {
                                         target="_blank"
                                         class="ui-button-secondary"
                                     >
-                                        Join meeting
+                                        {{ t('pages.portal.joinMeeting') }}
                                     </a>
                                 </div>
                             </div>
@@ -275,12 +278,12 @@ const clearSelectedFile = (documentId) => {
                         <EmptyState
                             v-else
                             icon="clock"
-                            title="No appointments yet"
-                            description="If your team schedules a consultation or embassy step, it will show up here."
+                            :title="t('pages.portal.noAppointmentsTitle')"
+                            :description="t('pages.portal.noAppointmentsDescription')"
                         />
                     </AppCard>
 
-                    <AppCard title="Recent updates">
+                    <AppCard :title="t('pages.portal.recentUpdates')">
                         <div v-if="portalCase.timeline.length" class="space-y-4">
                             <div v-for="item in portalCase.timeline" :key="`${item.type}-${item.title}-${item.at}`" class="flex gap-4">
                                 <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-brand-muted">
@@ -296,14 +299,14 @@ const clearSelectedFile = (documentId) => {
                         <EmptyState
                             v-else
                             icon="sparkle"
-                            title="No updates yet"
-                            description="Progress updates will appear here as your case moves forward."
+                            :title="t('pages.portal.noUpdatesTitle')"
+                            :description="t('pages.portal.noUpdatesDescription')"
                         />
                     </AppCard>
                 </div>
 
                 <div v-else-if="activeTab === 'documents'" class="space-y-6">
-                    <AppCard title="Document checklist">
+                    <AppCard :title="t('pages.portal.documentChecklist')">
                         <template #action>
                             <div class="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
                                 {{ portalCase.summary.documents_verified }}/{{ portalCase.summary.documents_total }} verified

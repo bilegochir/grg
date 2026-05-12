@@ -32,7 +32,11 @@ const props = defineProps({
     status: String,
 });
 
-const { t } = useLocale(props.appLocale ?? 'en');
+const { t } = useLocale();
+const localeOptions = computed(() => props.locales.map((locale) => ({
+    ...locale,
+    label: locale.value === 'mn' ? t('common.mongolian') : t('common.english'),
+})));
 
 const showCountry = ref(false);
 const showVisaType = ref(false);
@@ -851,7 +855,7 @@ const saveFormTemplate = () => {
 </script>
 
 <template>
-    <Head title="Settings" />
+    <Head :title="t('pages.settings.title')" />
 
     <AuthenticatedLayout>
         <template #sidebar>
@@ -916,12 +920,12 @@ const saveFormTemplate = () => {
 
             <div v-if="activeTab === 'profile'">
                 <div class="mb-10">
-                    <h2 class="text-[20px] font-semibold text-slate-900">Profile Settings</h2>
-                    <p class="mt-1 text-[13px] text-slate-500">Manage your personal information, security, and account preferences.</p>
+                    <h2 class="text-[20px] font-semibold text-slate-900">{{ t('pages.settings.profileHeading') }}</h2>
+                    <p class="mt-1 text-[13px] text-slate-500">{{ t('pages.settings.profileDescription') }}</p>
                 </div>
 
-                <div class="space-y-12">
-                    <AppCard title="Profile information" subtitle="The basics your workspace uses to identify and reach you.">
+                <div class="max-w-5xl space-y-6">
+                    <AppCard>
                         <UpdateProfileInformationForm
                             :must-verify-email="mustVerifyEmail"
                             :status="status"
@@ -929,11 +933,11 @@ const saveFormTemplate = () => {
                         />
                     </AppCard>
 
-                    <AppCard title="Password and security" subtitle="Use a strong password that is hard to guess and easy to rotate when needed.">
+                    <AppCard :title="t('pages.profile.passwordCardTitle')">
                         <UpdatePasswordForm class="max-w-2xl" />
                     </AppCard>
 
-                    <AppCard title="Danger zone" subtitle="Low-frequency actions that should stay visible but separate from everyday account edits.">
+                    <AppCard :title="t('pages.profile.dangerCardTitle')">
                         <DeleteUserForm class="max-w-2xl" />
                     </AppCard>
                 </div>
@@ -941,101 +945,80 @@ const saveFormTemplate = () => {
 
             <div v-if="activeTab === 'business'">
                 <div class="mb-10">
-                    <h2 class="text-[20px] font-semibold text-slate-900">General Settings</h2>
-                    <p class="mt-1 text-[13px] text-slate-500">Manage your business profile, contact information, and localization preferences.</p>
+                    <h2 class="text-[20px] font-semibold text-slate-900">{{ t('pages.settings.generalHeading') }}</h2>
+                    <p class="mt-1 text-[13px] text-slate-500">{{ t('pages.settings.generalDescription') }}</p>
                 </div>
                 <form class="space-y-6" @submit.prevent="saveBusinessSettings">
-                    <div class="grid gap-5 lg:grid-cols-[1.1fr,0.9fr]">
-                        <div class="space-y-5">
-                            <div class="grid gap-4 sm:grid-cols-2">
-                                <div>
-                                    <InputLabel for="business_name" value="Business name" />
-                                    <input id="business_name" v-model="businessForm.business_name" class="ui-input" />
-                                    <InputError :message="businessForm.errors.business_name" />
+                    <div class="max-w-3xl">
+                        <AppCard :title="t('settings.business.title')">
+                            <div class="space-y-5">
+                                <div class="grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <InputLabel for="business_name" :value="t('pages.settings.businessName')" />
+                                        <input id="business_name" v-model="businessForm.business_name" class="ui-input" />
+                                        <InputError :message="businessForm.errors.business_name" />
+                                    </div>
+                                    <div>
+                                        <InputLabel for="default_locale" :value="t('pages.settings.defaultLanguage')" />
+                                        <select id="default_locale" v-model="businessForm.default_locale" class="ui-select">
+                                            <option v-for="locale in localeOptions" :key="locale.value" :value="locale.value">
+                                                {{ locale.label }}
+                                            </option>
+                                        </select>
+                                        <InputError :message="businessForm.errors.default_locale" />
+                                    </div>
                                 </div>
-                                <div>
-                                    <InputLabel for="default_locale" value="Default locale" />
-                                    <select id="default_locale" v-model="businessForm.default_locale" class="ui-select">
-                                        <option v-for="locale in locales" :key="locale.value" :value="locale.value">
-                                            {{ locale.label }}
-                                        </option>
-                                    </select>
-                                    <InputError :message="businessForm.errors.default_locale" />
-                                </div>
-                            </div>
 
-                            <div class="grid gap-4 sm:grid-cols-2">
-                                <div>
-                                    <InputLabel for="contact_email" value="Contact email" />
-                                    <input id="contact_email" v-model="businessForm.contact_email" type="email" class="ui-input" />
-                                    <InputError :message="businessForm.errors.contact_email" />
+                                <div class="grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <InputLabel for="contact_email" :value="t('pages.settings.businessEmail')" />
+                                        <input id="contact_email" v-model="businessForm.contact_email" type="email" class="ui-input" />
+                                        <InputError :message="businessForm.errors.contact_email" />
+                                    </div>
+                                    <div>
+                                        <InputLabel for="contact_phone" :value="t('pages.settings.businessPhone')" />
+                                        <input id="contact_phone" v-model="businessForm.contact_phone" class="ui-input" />
+                                        <InputError :message="businessForm.errors.contact_phone" />
+                                    </div>
                                 </div>
-                                <div>
-                                    <InputLabel for="contact_phone" value="Contact phone" />
-                                    <input id="contact_phone" v-model="businessForm.contact_phone" class="ui-input" />
-                                    <InputError :message="businessForm.errors.contact_phone" />
-                                </div>
-                            </div>
 
-                            <div class="grid gap-4 sm:grid-cols-2">
                                 <div>
-                                    <InputLabel for="sms_provider" value="SMS provider" />
-                                    <select id="sms_provider" v-model="businessForm.sms_provider" class="ui-select">
-                                        <option v-for="provider in smsProviders" :key="provider.value" :value="provider.value">
-                                            {{ provider.label }}
-                                        </option>
-                                    </select>
-                                    <InputError :message="businessForm.errors.sms_provider" />
+                                    <InputLabel for="contact_address" :value="t('pages.settings.businessAddress')" />
+                                    <textarea id="contact_address" v-model="businessForm.contact_address" rows="3" class="ui-textarea"></textarea>
+                                    <InputError :message="businessForm.errors.contact_address" />
                                 </div>
+
                                 <div>
-                                    <InputLabel for="sms_sender" value="SMS sender label" />
-                                    <input id="sms_sender" v-model="businessForm.sms_sender" class="ui-input" placeholder="Agency" />
-                                    <InputError :message="businessForm.errors.sms_sender" />
-                                </div>
-                            </div>
-
-                            <div>
-                                <InputLabel for="contact_address" value="Office address" />
-                                <textarea id="contact_address" v-model="businessForm.contact_address" rows="3" class="ui-textarea"></textarea>
-                                <InputError :message="businessForm.errors.contact_address" />
-                            </div>
-                        </div>
-
-                        <div class="space-y-5 rounded-2xl border border-brand-border bg-brand-neutral p-5">
-                            <div>
-                                <InputLabel for="logo" value="Business logo" />
-                                <div class="mt-3 flex items-center gap-4">
-                                    <div class="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-brand-border bg-white">
-                                        <img
-                                            v-if="logoPreviewUrl"
-                                            :src="logoPreviewUrl"
-                                            alt="Business logo"
-                                            class="h-full w-full object-cover"
-                                        />
-                                        <AppIcon v-else name="sparkle" :size="22" class="text-brand-primary" />
+                                    <InputLabel for="logo" :value="t('pages.settings.businessLogo')" />
+                                    <div class="mt-3 flex items-center gap-4">
+                                        <div class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-brand-border bg-white">
+                                            <img
+                                                v-if="logoPreviewUrl"
+                                                :src="logoPreviewUrl"
+                                                :alt="t('pages.settings.businessLogo')"
+                                                class="h-auto w-full object-cover"
+                                            />
+                                            <AppIcon v-else name="sparkle" :size="24" class="text-brand-primary" />
+                                        </div>
+                                        <div class="min-w-0">
+                                            <p class="font-medium text-brand-text">{{ businessForm.business_name || t('pages.settings.businessLogo') }}</p>
+                                        </div>
                                     </div>
                                     <input
                                         id="logo"
                                         type="file"
                                         accept="image/*"
-                                        class="block w-full text-sm text-brand-muted file:mr-4 file:rounded-md file:border-0 file:bg-white file:px-4 file:py-2 file:text-sm file:font-medium file:text-brand-text"
+                                        class="mt-3 block w-full text-sm text-brand-muted file:mr-4 file:rounded-md file:border-0 file:bg-white file:px-4 file:py-2 file:text-sm file:font-medium file:text-brand-text"
                                         @change="updateLogoPreview"
                                     />
+                                    <InputError :message="businessForm.errors.logo" />
                                 </div>
-                                <InputError :message="businessForm.errors.logo" />
                             </div>
-
-                            <div class="rounded-xl border border-dashed border-brand-border bg-slate-50/50 px-4 py-4">
-                                <p class="text-sm font-medium text-brand-text">Localization-ready Vue structure</p>
-                                <p class="mt-1 text-sm leading-6 text-brand-muted">
-                                    This settings workspace already reads from a shared translation map, so you can expand labels and microcopy without refactoring page structure later.
-                                </p>
-                            </div>
-                        </div>
+                        </AppCard>
                     </div>
 
-                    <div class="mt-8 flex justify-end border-t border-slate-100 pt-6">
-                        <PrimaryButton :loading="businessForm.processing">Save changes</PrimaryButton>
+                    <div class="mt-2 flex justify-end border-t border-slate-100 pt-6">
+                        <PrimaryButton :loading="businessForm.processing">{{ t('common.saveChanges') }}</PrimaryButton>
                     </div>
                 </form>
             </div>

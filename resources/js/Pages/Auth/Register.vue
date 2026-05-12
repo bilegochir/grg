@@ -4,6 +4,7 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import { useLocale } from '@/lib/i18n';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 
 const form = useForm({
@@ -18,15 +19,17 @@ const submit = () => {
         onFinish: () => form.reset('password', 'password_confirmation'),
     });
 };
+
+const { t } = useLocale();
 </script>
 
 <template>
     <GuestLayout>
-        <Head title="Register" />
+        <Head :title="t('auth.register.title')" />
 
         <form @submit.prevent="submit">
             <div>
-                <InputLabel for="name" value="Name" />
+                <InputLabel for="name" :value="t('common.name')" />
 
                 <TextInput
                     id="name"
@@ -42,7 +45,7 @@ const submit = () => {
             </div>
 
             <div class="mt-4">
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="email" :value="t('common.email')" />
 
                 <TextInput
                     id="email"
@@ -57,7 +60,7 @@ const submit = () => {
             </div>
 
             <div class="mt-4">
-                <InputLabel for="password" value="Password" />
+                <InputLabel for="password" :value="t('common.password')" />
 
                 <TextInput
                     id="password"
@@ -74,7 +77,7 @@ const submit = () => {
             <div class="mt-4">
                 <InputLabel
                     for="password_confirmation"
-                    value="Confirm Password"
+                    :value="t('auth.register.confirmPassword')"
                 />
 
                 <TextInput
@@ -97,7 +100,7 @@ const submit = () => {
                     :href="route('login')"
                     class="rounded-md text-sm font-medium text-slate-600 underline decoration-slate-300 underline-offset-4 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-primary/20 focus:ring-offset-2"
                 >
-                    Already registered?
+                    {{ t('auth.register.alreadyRegistered') }}
                 </Link>
 
                 <PrimaryButton
@@ -105,7 +108,7 @@ const submit = () => {
                     :class="{ 'opacity-25': form.processing }"
                     :disabled="form.processing"
                 >
-                    Register
+                    {{ t('auth.register.title') }}
                 </PrimaryButton>
             </div>
         </form>

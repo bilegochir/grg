@@ -94,7 +94,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/tasks', [TaskController::class, 'index'])->middleware('permission:cases.view')->name('tasks.index');
     Route::get('/invoices', [InvoiceController::class, 'index'])->middleware('permission:finance.view')->name('invoices.index');
     Route::get('/reports', ReportsController::class)->middleware('permission:dashboard.view')->name('reports.index');
-    Route::get('/search/global', GlobalSearchController::class)->middleware('permission:dashboard.view')->name('search.global');
+    Route::get('/search/global', GlobalSearchController::class)->name('search.global');
     Route::post('/invoices/{invoice}/payments', [InvoiceController::class, 'recordPayment'])->middleware('permission:finance.view')->name('invoices.payments.store');
     Route::post('/invoices/{invoice}/remind', [InvoiceController::class, 'remind'])->middleware('permission:communications.manage')->name('invoices.remind');
 

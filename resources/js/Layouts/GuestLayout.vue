@@ -1,6 +1,9 @@
 <script setup>
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import { useLocale } from '@/lib/i18n';
 import { Link } from '@inertiajs/vue3';
+
+const { t } = useLocale();
 </script>
 
 <template>
@@ -12,8 +15,8 @@ import { Link } from '@inertiajs/vue3';
                 <ApplicationLogo class="h-16 w-16 fill-current text-brand-primary" />
             </Link>
             <div class="space-y-1">
-                <p class="text-lg font-semibold tracking-tight text-slate-900">Agency</p>
-                <p class="text-sm text-slate-500">Warm, clear workflows for agents and applicants.</p>
+                <p class="text-lg font-semibold tracking-tight text-slate-900">{{ t('common.agency') }}</p>
+                <p class="text-sm text-slate-500">{{ t('auth.guestTagline') }}</p>
             </div>
         </div>
 

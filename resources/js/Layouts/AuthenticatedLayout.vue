@@ -4,9 +4,11 @@ import AppIcon from '@/Components/AppIcon.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import FlashBanner from '@/Components/FlashBanner.vue';
+import { useLocale } from '@/lib/i18n';
 import { Link, usePage } from '@inertiajs/vue3';
 
 const page = usePage();
+const { t } = useLocale();
 const sidebarOpen = ref(false);
 const sidebarCollapsed = ref(false);
 const can = (permission) => page.props.auth.user?.permissions?.includes(permission);
@@ -66,38 +68,38 @@ const markNotificationsSeen = async (isOpen) => {
 
 const sections = [
     {
-        label: 'Main',
+        label: t('nav.main'),
         items: [
-            { name: 'Dashboard', href: route('dashboard'), current: 'dashboard', icon: 'dashboard', permission: 'dashboard.view' },
+            { name: t('common.dashboard'), href: route('dashboard'), current: 'dashboard', icon: 'dashboard', permission: 'dashboard.view' },
         ],
     },
     {
-        label: 'Clients',
+        label: t('nav.clients'),
         items: [
-            { name: 'Leads', href: route('leads.index'), current: 'leads.*', icon: 'leads', permission: 'leads.view' },
-            { name: 'Applicants', href: route('applicants.index'), current: 'applicants.*', icon: 'applicants', permission: 'applicants.view' },
-            { name: 'Cases', href: route('cases.index'), current: 'cases.*', icon: 'users', permission: 'cases.view' },
+            { name: t('common.leads'), href: route('leads.index'), current: 'leads.*', icon: 'leads', permission: 'leads.view' },
+            { name: t('common.applicants'), href: route('applicants.index'), current: 'applicants.*', icon: 'applicants', permission: 'applicants.view' },
+            { name: t('common.cases'), href: route('cases.index'), current: 'cases.*', icon: 'users', permission: 'cases.view' },
         ],
     },
     {
-        label: 'Operations',
+        label: t('nav.operations'),
         items: [
-            { name: 'Documents', href: route('documents.index'), current: 'documents.*', icon: 'note', permission: 'documents.review' },
-            { name: 'Tasks', href: route('tasks.index'), current: 'tasks.*', icon: 'check', permission: 'cases.view' },
-            { name: 'Appointments', href: route('appointments.index'), current: 'appointments.*', icon: 'clock', permission: 'cases.view' },
+            { name: t('common.documents'), href: route('documents.index'), current: 'documents.*', icon: 'note', permission: 'documents.review' },
+            { name: t('common.tasks'), href: route('tasks.index'), current: 'tasks.*', icon: 'check', permission: 'cases.view' },
+            { name: t('common.appointments'), href: route('appointments.index'), current: 'appointments.*', icon: 'clock', permission: 'cases.view' },
         ],
     },
     {
-        label: 'Finance',
+        label: t('nav.finance'),
         items: [
-            { name: 'Invoices', href: route('invoices.index'), current: 'invoices.*', icon: 'inbox', permission: 'finance.view' },
+            { name: t('common.invoices'), href: route('invoices.index'), current: 'invoices.*', icon: 'inbox', permission: 'finance.view' },
         ],
     },
     {
-        label: 'Admin',
+        label: t('nav.admin'),
         items: [
-            { name: 'Staff', href: route('staff.index'), current: 'staff.*', icon: 'users', permission: 'staff.manage' },
-            { name: 'Reports', href: route('reports.index'), current: 'reports.*', icon: 'dashboard', permission: 'dashboard.view' },
+            { name: t('common.staff'), href: route('staff.index'), current: 'staff.*', icon: 'users', permission: 'staff.manage' },
+            { name: t('common.reports'), href: route('reports.index'), current: 'reports.*', icon: 'dashboard', permission: 'dashboard.view' },
         ],
     },
 ];
@@ -113,46 +115,46 @@ const pageTitle = computed(() => {
     const component = page.component ?? '';
 
     if (component.startsWith('Leads/')) {
-        return 'Leads';
+        return t('common.leads');
     }
 
     if (component.startsWith('Applicants/')) {
-        return 'Applicants';
+        return t('common.applicants');
     }
 
     if (component.startsWith('Cases/')) {
-        return 'Cases';
+        return t('common.cases');
     }
 
     if (component.startsWith('Appointments/')) {
-        return 'Appointments';
+        return t('common.appointments');
     }
 
     if (component.startsWith('Documents/')) {
-        return 'Documents';
+        return t('common.documents');
     }
 
     if (component.startsWith('Tasks/')) {
-        return 'Tasks';
+        return t('common.tasks');
     }
 
     if (component.startsWith('Invoices/')) {
-        return 'Invoices';
+        return t('common.invoices');
     }
 
     if (component.startsWith('Settings/')) {
-        return 'Settings';
+        return t('common.settings');
     }
 
     if (component.startsWith('Staff/')) {
-        return 'Staff';
+        return t('common.staff');
     }
 
     if (component.startsWith('Reports/')) {
-        return 'Reports';
+        return t('common.reports');
     }
 
-    return 'Dashboard';
+    return t('common.dashboard');
 });
 
 const openSearch = () => {
@@ -183,6 +185,8 @@ const runGlobalSearch = async () => {
 
         const apiResults = response.data.results ?? [];
         searchResults.value = apiResults;
+    } catch {
+        searchResults.value = [];
     } finally {
         searchLoading.value = false;
     }
@@ -252,7 +256,7 @@ onUnmounted(() => {
                     <button class="app-topbar-search w-full group" @click="openSearch">
                         <AppIcon name="search" :size="13" class="text-slate-400 group-hover:text-slate-600" />
                         <template v-if="!sidebarCollapsed">
-                            <span class="font-medium">Search</span>
+                            <span class="font-medium">{{ t('common.search') }}</span>
                             <div class="ml-auto flex items-center gap-0.5">
                                 <kbd class="inline-flex h-4 items-center rounded bg-slate-200/50 px-1 text-[9px] font-bold text-slate-500 uppercase">⌘</kbd>
                                 <kbd class="inline-flex h-4 items-center rounded bg-slate-200/50 px-1 text-[9px] font-bold text-slate-500 uppercase">K</kbd>
@@ -346,14 +350,14 @@ onUnmounted(() => {
 
                         <template #content>
                             <div class="px-3 py-2 border-b border-slate-100">
-                                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Account</p>
+                                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ t('common.account') }}</p>
                             </div>
                             <div class="py-1">
                                 <DropdownLink :href="route('settings.index')">
-                                    Settings
+                                    {{ t('common.settings') }}
                                 </DropdownLink>
                                 <Link :href="route('logout')" method="post" as="button" class="block w-full px-3 py-1.5 text-left text-[13px] font-medium text-red-600 transition hover:bg-red-50 hover:text-red-700">
-                                    Log out
+                                    {{ t('common.logOut') }}
                                 </Link>
                             </div>
                         </template>
@@ -374,7 +378,7 @@ onUnmounted(() => {
                             <div class="flex items-center gap-1.5 text-[12px] font-medium text-slate-500 min-w-0">
                                 <span class="hover:text-slate-900 cursor-pointer transition-colors">{{ pageTitle }}</span>
                                 <AppIcon name="chevronRight" :size="10" class="text-slate-300" />
-                                <span class="text-slate-900 truncate">Overview</span>
+                                <span class="text-slate-900 truncate">{{ t('search.breadcrumb') }}</span>
                             </div>
                         </div>
 
@@ -393,7 +397,7 @@ onUnmounted(() => {
                                 <template #content>
                                     <div class="w-80 max-w-[calc(100vw-2rem)]">
                                         <div class="border-b border-slate-100 px-4 py-3 bg-slate-50/50">
-                                            <p class="text-[12px] font-bold text-slate-900">Notifications</p>
+                                            <p class="text-[12px] font-bold text-slate-900">{{ t('common.notifications') }}</p>
                                         </div>
 
                                         <div v-if="hasNotifications" class="max-h-[26rem] overflow-y-auto py-1">
@@ -414,7 +418,7 @@ onUnmounted(() => {
                                         </div>
 
                                         <div v-else class="px-4 py-8 text-center">
-                                            <p class="text-[12px] font-medium text-slate-500">No new notifications</p>
+                                            <p class="text-[12px] font-medium text-slate-500">{{ t('search.noNewNotifications') }}</p>
                                         </div>
                                     </div>
                                 </template>
@@ -431,112 +435,90 @@ onUnmounted(() => {
                 </main>
             </div>
 
-            <TransitionRoot :show="searchOpen" as="template">
-                <Dialog as="div" class="relative z-[70]" @close="closeSearch">
-                    <TransitionChild
-                        as="template"
-                        enter="ease-out duration-200"
-                        enter-from="opacity-0"
-                        enter-to="opacity-100"
-                        leave="ease-in duration-150"
-                        leave-from="opacity-100"
-                        leave-to="opacity-0"
-                    >
-                        <div class="fixed inset-0 bg-slate-950/20 backdrop-blur-[2px]" />
-                    </TransitionChild>
+            <div v-if="searchOpen" class="relative z-[70]">
+                <div class="fixed inset-0 bg-slate-950/20 backdrop-blur-[2px]" @click="closeSearch"></div>
 
-                    <div class="fixed inset-0 overflow-y-auto p-4 sm:p-6 md:p-20">
-                        <TransitionChild
-                            as="template"
-                            enter="ease-out duration-200"
-                            enter-from="opacity-0 scale-95"
-                            enter-to="opacity-100 scale-100"
-                            leave="ease-in duration-150"
-                            leave-from="opacity-100 scale-100"
-                            leave-to="opacity-0 scale-95"
-                        >
-                            <DialogPanel class="mx-auto max-w-2xl transform divide-y divide-slate-100 overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-slate-900/5 transition-all">
-                                <div class="relative">
-                                    <AppIcon
-                                        name="search"
-                                        class="pointer-events-none absolute left-4 top-3.5 h-4 w-4 text-slate-400"
-                                        aria-hidden="true"
-                                    />
-                                    <input
-                                        ref="searchInput"
-                                        v-model="searchQuery"
-                                        type="text"
-                                        class="h-11 w-full border-0 bg-transparent pl-11 pr-4 text-slate-900 placeholder:text-slate-400 focus:ring-0 text-[14px]"
-                                        placeholder="Type a command or search..."
-                                    />
+                <div class="fixed inset-0 overflow-y-auto p-4 sm:p-6 md:p-20">
+                    <div class="mx-auto max-w-2xl divide-y divide-slate-100 overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-slate-900/5">
+                        <div class="relative">
+                            <AppIcon
+                                name="search"
+                                class="pointer-events-none absolute left-4 top-3.5 h-4 w-4 text-slate-400"
+                                aria-hidden="true"
+                            />
+                            <input
+                                ref="searchInput"
+                                v-model="searchQuery"
+                                type="text"
+                                class="h-11 w-full border-0 bg-transparent pl-11 pr-4 text-slate-900 placeholder:text-slate-400 focus:ring-0 text-[14px]"
+                                :placeholder="t('search.shellPlaceholder')"
+                            />
+                        </div>
+
+                        <div class="max-h-[32rem] overflow-y-auto p-2">
+                            <div v-if="searchLoading" class="flex items-center justify-center py-12">
+                                <div class="h-5 w-5 animate-spin rounded-full border-2 border-brand-primary/30 border-t-brand-primary"></div>
+                            </div>
+
+                            <div v-else-if="searchQuery.trim().length < 1" class="py-2">
+                                <p class="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">{{ t('common.recent') }}</p>
+                                <div class="mt-1 space-y-0.5">
+                                    <button class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-100">
+                                        <AppIcon name="tasks" :size="14" class="text-slate-400" />
+                                        <span>{{ t('common.goToDashboard') }}</span>
+                                    </button>
+                                    <button class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-100">
+                                        <AppIcon name="applicants" :size="14" class="text-slate-400" />
+                                        <span>{{ t('search.recentApplicantSearch') }}</span>
+                                    </button>
                                 </div>
+                            </div>
 
-                                <div class="max-h-[32rem] overflow-y-auto p-2">
-                                    <div v-if="searchLoading" class="flex items-center justify-center py-12">
-                                        <div class="h-5 w-5 animate-spin rounded-full border-2 border-brand-primary/30 border-t-brand-primary"></div>
+                            <div v-else-if="searchResults.length" class="space-y-0.5">
+                                <Link
+                                    v-for="result in searchResults"
+                                    :key="`${result.type}-${result.href}-${result.title}`"
+                                    :href="result.href"
+                                    class="flex items-center gap-3 rounded-md px-3 py-2 text-left transition hover:bg-slate-100 group"
+                                    @click="closeSearch"
+                                >
+                                    <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-slate-50 text-slate-400 group-hover:bg-white transition-colors">
+                                        <AppIcon :name="result.icon ?? 'sparkle'" :size="13" />
                                     </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="truncate text-[13px] font-medium text-slate-900">{{ result.title }}</p>
+                                        <p v-if="result.subtitle" class="truncate text-[11px] text-slate-500">{{ result.subtitle }}</p>
+                                    </div>
+                                    <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                        {{ result.type }}
+                                    </span>
+                                </Link>
+                            </div>
 
-                                    <div v-else-if="searchQuery.trim().length < 1" class="py-2">
-                                        <p class="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">Recent</p>
-                                        <div class="mt-1 space-y-0.5">
-                                            <button class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-100">
-                                                <AppIcon name="tasks" :size="14" class="text-slate-400" />
-                                                <span>Go to Dashboard</span>
-                                            </button>
-                                            <button class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-100">
-                                                <AppIcon name="applicants" :size="14" class="text-slate-400" />
-                                                <span>Search applicants...</span>
-                                            </button>
-                                        </div>
-                                    </div>
+                            <div v-else class="px-6 py-12 text-center">
+                                <p class="text-[13px] font-medium text-slate-500">{{ t('search.noResults', 'No results found', { query: searchQuery }) }}</p>
+                            </div>
+                        </div>
 
-                                    <div v-else-if="searchResults.length" class="space-y-0.5">
-                                        <Link
-                                            v-for="result in searchResults"
-                                            :key="`${result.type}-${result.href}-${result.title}`"
-                                            :href="result.href"
-                                            class="flex items-center gap-3 rounded-md px-3 py-2 text-left transition hover:bg-slate-100 group"
-                                            @click="closeSearch"
-                                        >
-                                            <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-slate-50 text-slate-400 group-hover:bg-white transition-colors">
-                                                <AppIcon :name="result.icon ?? 'sparkle'" :size="13" />
-                                            </div>
-                                            <div class="min-w-0 flex-1">
-                                                <p class="truncate text-[13px] font-medium text-slate-900">{{ result.title }}</p>
-                                                <p v-if="result.subtitle" class="truncate text-[11px] text-slate-500">{{ result.subtitle }}</p>
-                                            </div>
-                                            <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                                                {{ result.type }}
-                                            </span>
-                                        </Link>
-                                    </div>
-
-                                    <div v-else class="px-6 py-12 text-center">
-                                        <p class="text-[13px] font-medium text-slate-500">No results found for "{{ searchQuery }}"</p>
-                                    </div>
+                        <div class="flex items-center justify-between bg-slate-50 px-4 py-2 text-[10px] text-slate-500">
+                            <div class="flex items-center gap-4">
+                                <div class="flex items-center gap-1.5">
+                                    <kbd class="inline-flex h-4 items-center rounded border border-slate-200 bg-white px-1 font-bold text-slate-400">↑↓</kbd>
+                                    <span>{{ t('search.toNavigate') }}</span>
                                 </div>
-
-                                <div class="flex items-center justify-between bg-slate-50 px-4 py-2 text-[10px] text-slate-500">
-                                    <div class="flex items-center gap-4">
-                                        <div class="flex items-center gap-1.5">
-                                            <kbd class="inline-flex h-4 items-center rounded border border-slate-200 bg-white px-1 font-bold text-slate-400">↑↓</kbd>
-                                            <span>to navigate</span>
-                                        </div>
-                                        <div class="flex items-center gap-1.5">
-                                            <kbd class="inline-flex h-4 items-center rounded border border-slate-200 bg-white px-1 font-bold text-slate-400">↵</kbd>
-                                            <span>to select</span>
-                                        </div>
-                                    </div>
-                                    <div class="flex items-center gap-1.5">
-                                        <kbd class="inline-flex h-4 items-center rounded border border-slate-200 bg-white px-1 font-bold text-slate-400">ESC</kbd>
-                                        <span>to close</span>
-                                    </div>
+                                <div class="flex items-center gap-1.5">
+                                    <kbd class="inline-flex h-4 items-center rounded border border-slate-200 bg-white px-1 font-bold text-slate-400">↵</kbd>
+                                    <span>{{ t('search.toSelect') }}</span>
                                 </div>
-                            </DialogPanel>
-                        </TransitionChild>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <kbd class="inline-flex h-4 items-center rounded border border-slate-200 bg-white px-1 font-bold text-slate-400">ESC</kbd>
+                                <span>{{ t('search.toClose') }}</span>
+                            </div>
+                        </div>
                     </div>
-                </Dialog>
-            </TransitionRoot>
+                </div>
+            </div>
         </div>
     </div>
 </template>

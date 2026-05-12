@@ -233,8 +233,6 @@ class SettingsController extends Controller
             'locales' => [
                 ['value' => 'en', 'label' => 'English'],
                 ['value' => 'mn', 'label' => 'Mongolian'],
-                ['value' => 'ja', 'label' => 'Japanese'],
-                ['value' => 'ko', 'label' => 'Korean'],
             ],
             'smsProviders' => [
                 ['value' => 'log', 'label' => 'Log only'],

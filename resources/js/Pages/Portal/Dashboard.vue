@@ -2,6 +2,7 @@
 import AppCard from '@/Components/AppCard.vue';
 import EmptyState from '@/Components/EmptyState.vue';
 import PortalLayout from '@/Layouts/PortalLayout.vue';
+import { useLocale } from '@/lib/i18n';
 import { Link } from '@inertiajs/vue3';
 
 defineProps({
@@ -19,17 +20,18 @@ const progressTone = (percent) => {
 };
 
 const attentionCount = (item) => item.documents_waiting_count + item.open_tasks_count;
+const { t } = useLocale();
 </script>
 
 <template>
-    <PortalLayout title="Applicant portal" :business="business" :applicant="applicant">
+    <PortalLayout :title="t('pages.portal.applicantPortal')" :business="business" :applicant="applicant">
         <section class="rounded-[28px] border border-orange-100 bg-white px-6 py-6 shadow-[0_18px_40px_rgba(15,23,42,0.06)] sm:px-8 sm:py-8">
             <div class="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,360px)] lg:items-center">
                 <div>
-                    <p class="ui-kicker text-orange-500">Hello {{ applicant.name }}</p>
-                    <h1 class="mt-2 max-w-2xl text-[32px] leading-tight">You can track your case, send documents, and stay on top of each next step here.</h1>
+                    <p class="ui-kicker text-orange-500">{{ t('pages.portal.helloName', 'Hello :name', { name: applicant.name }) }}</p>
+                    <h1 class="mt-2 max-w-2xl text-[32px] leading-tight">{{ t('pages.portal.dashboardHeading') }}</h1>
                     <p class="mt-4 max-w-2xl text-base text-brand-muted">
-                        We’ll keep this page simple. If your team needs something from you, it will show up clearly.
+                        {{ t('pages.portal.dashboardDescription') }}
                     </p>
                     <div class="mt-5 flex flex-wrap gap-3">
                         <span class="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
@@ -43,16 +45,16 @@ const attentionCount = (item) => item.documents_waiting_count + item.open_tasks_
 
                 <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
                     <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                        <p class="text-sm text-brand-muted">Open cases</p>
+                        <p class="text-sm text-brand-muted">{{ t('pages.portal.openCases') }}</p>
                         <p class="mt-2 text-2xl font-semibold text-brand-text">{{ summary.cases_count }}</p>
                     </div>
                     <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                        <p class="text-sm text-brand-muted">Waiting on you</p>
+                        <p class="text-sm text-brand-muted">{{ t('pages.portal.waitingOnYou') }}</p>
                         <p class="mt-2 text-2xl font-semibold text-brand-text">{{ summary.documents_waiting_count + summary.open_tasks_count }}</p>
-                        <p class="mt-1 text-sm text-brand-muted">Documents and checklist items</p>
+                        <p class="mt-1 text-sm text-brand-muted">{{ t('pages.portal.documentsAndChecklist') }}</p>
                     </div>
                     <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 sm:col-span-2 lg:col-span-1">
-                        <p class="text-sm text-brand-muted">Outstanding balance</p>
+                        <p class="text-sm text-brand-muted">{{ t('pages.portal.outstandingBalance') }}</p>
                         <p class="mt-2 text-2xl font-semibold text-brand-text">${{ summary.balance_due }}</p>
                     </div>
                 </div>
@@ -60,7 +62,7 @@ const attentionCount = (item) => item.documents_waiting_count + item.open_tasks_
         </section>
 
         <section class="mt-8">
-            <AppCard title="Your cases" :padded="false">
+            <AppCard :title="t('pages.portal.yourCases')" :padded="false">
                 <div v-if="cases.length" class="divide-y divide-slate-200">
                     <Link
                         v-for="item in cases"
@@ -73,7 +75,7 @@ const attentionCount = (item) => item.documents_waiting_count + item.open_tasks_
                                 <div class="flex flex-wrap items-center gap-3">
                                     <p class="text-base font-semibold text-brand-text">{{ item.reference_code }}</p>
                                     <span class="rounded-full bg-orange-50 px-3 py-1 text-xs font-medium text-orange-700">
-                                        {{ item.stage || 'In progress' }}
+                                        {{ item.stage || t('pages.portal.inProgress') }}
                                     </span>
                                 </div>
                                 <p class="mt-2 text-sm text-brand-muted">{{ item.country }} • {{ item.visa_type }}</p>
@@ -92,7 +94,7 @@ const attentionCount = (item) => item.documents_waiting_count + item.open_tasks_
                             <div class="w-full max-w-sm space-y-4 lg:w-[340px]">
                                 <div>
                                     <div class="flex items-center justify-between text-sm">
-                                        <span class="text-brand-muted">Progress</span>
+                                        <span class="text-brand-muted">{{ t('pages.portal.progress') }}</span>
                                         <span class="font-medium text-brand-text">{{ item.progress_percent }}%</span>
                                     </div>
                                     <div class="mt-2 h-2 rounded-full bg-slate-100">
@@ -124,8 +126,8 @@ const attentionCount = (item) => item.documents_waiting_count + item.open_tasks_
                 <div v-else class="px-5 py-6">
                     <EmptyState
                         icon="users"
-                        title="No active cases yet"
-                        description="Your visa team will add your case here as soon as intake is complete."
+                        :title="t('pages.portal.noActiveCasesTitle')"
+                        :description="t('pages.portal.noActiveCasesDescription')"
                     />
                 </div>
             </AppCard>

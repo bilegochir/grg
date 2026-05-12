@@ -18,7 +18,7 @@ class UpdateBusinessSettingRequest extends FormRequest
             'contact_email' => ['nullable', 'email', 'max:255'],
             'contact_phone' => ['nullable', 'string', 'max:255'],
             'contact_address' => ['nullable', 'string', 'max:255'],
-            'default_locale' => ['required', 'string', 'max:10'],
+            'default_locale' => ['required', 'in:en,mn'],
             'sms_provider' => ['required', 'in:log,twilio,local_gateway'],
             'sms_sender' => ['nullable', 'string', 'max:255'],
             'multi_branch_enabled' => ['sometimes', 'boolean'],

@@ -2,6 +2,7 @@
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
+import { useLocale } from '@/lib/i18n';
 import { Head, Link } from '@inertiajs/vue3';
 
 defineProps({
@@ -21,24 +22,26 @@ defineProps({
     },
 });
 
+const { t } = useLocale();
+
 const featureCards = [
     {
-        title: 'Lead to applicant flow',
-        description: 'Capture leads, qualify them, and convert them into applicants without losing context.',
+        title: t('pages.welcome.featureLeadTitle'),
+        description: t('pages.welcome.featureLeadDescription'),
     },
     {
-        title: 'Case tracking that stays human',
-        description: 'Keep agents aligned with clear statuses, dates, priorities, and visible next steps.',
+        title: t('pages.welcome.featureCaseTitle'),
+        description: t('pages.welcome.featureCaseDescription'),
     },
     {
-        title: 'Document handling in one place',
-        description: 'Track uploads, verification, expiry dates, and applicant-ready downloads from each case.',
+        title: t('pages.welcome.featureDocsTitle'),
+        description: t('pages.welcome.featureDocsDescription'),
     },
 ];
 </script>
 
 <template>
-    <Head title="Agency" />
+    <Head :title="t('pages.welcome.title')" />
 
     <div class="min-h-screen bg-slate-50 text-slate-900">
         <div class="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8">
@@ -47,7 +50,7 @@ const featureCards = [
                     <ApplicationLogo class="h-11 w-11 fill-current text-brand-primary" />
                     <div>
                         <p class="text-lg font-semibold tracking-tight">Agency</p>
-                        <p class="text-sm text-slate-500">Warm, clear visa operations</p>
+                        <p class="text-sm text-slate-500">{{ t('pages.welcome.tagline') }}</p>
                     </div>
                 </Link>
 
@@ -57,19 +60,19 @@ const featureCards = [
                         :href="route('dashboard')"
                         class="ui-button-secondary"
                     >
-                        Open dashboard
+                        {{ t('pages.welcome.openDashboard') }}
                     </Link>
 
                     <template v-else>
                         <Link :href="route('login')" class="ui-button-secondary">
-                            Log in
+                            {{ t('common.logIn') }}
                         </Link>
                         <Link
                             v-if="canRegister"
                             :href="route('register')"
                             class="ui-button-primary"
                         >
-                            Create account
+                            {{ t('pages.welcome.createAccount') }}
                         </Link>
                     </template>
                 </nav>
@@ -79,16 +82,15 @@ const featureCards = [
                 <section class="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
                     <div class="space-y-6">
                         <div class="inline-flex items-center rounded-full bg-brand-primary/10 px-4 py-2 text-sm font-medium text-brand-primary">
-                            Built for visa teams who guide real life decisions
+                            {{ t('pages.welcome.heroKicker') }}
                         </div>
 
                         <div class="space-y-4">
                             <h1 class="max-w-3xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
-                                Help applicants move forward with confidence.
+                                {{ t('pages.welcome.heroTitle') }}
                             </h1>
                             <p class="max-w-2xl text-lg leading-8 text-slate-600">
-                                Agency gives your team a friendly CRM for leads, applicants, visa cases,
-                                and documents so every step feels organized, clear, and reassuring.
+                                {{ t('pages.welcome.heroDescription') }}
                             </p>
                         </div>
 
@@ -97,14 +99,14 @@ const featureCards = [
                                 v-if="$page.props.auth.user"
                                 :href="route('dashboard')"
                             >
-                                <PrimaryButton>Go to dashboard</PrimaryButton>
+                                <PrimaryButton>{{ t('common.goToDashboard') }}</PrimaryButton>
                             </Link>
                             <template v-else>
                                 <Link :href="route('login')">
-                                    <PrimaryButton>Log in to Agency</PrimaryButton>
+                                    <PrimaryButton>{{ t('pages.welcome.loginToAgency') }}</PrimaryButton>
                                 </Link>
                                 <Link v-if="canRegister" :href="route('register')">
-                                    <SecondaryButton>Create staff account</SecondaryButton>
+                                    <SecondaryButton>{{ t('pages.welcome.createStaffAccount') }}</SecondaryButton>
                                 </Link>
                             </template>
                         </div>
@@ -112,18 +114,18 @@ const featureCards = [
                         <div class="flex flex-wrap items-center gap-6 pt-2 text-sm text-slate-500">
                             <span>Laravel {{ laravelVersion }}</span>
                             <span>PHP {{ phpVersion }}</span>
-                            <span>Lead, case, and document workflows ready</span>
+                            <span>{{ t('pages.welcome.workflowReady') }}</span>
                         </div>
                     </div>
 
                     <div class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
                         <div class="mb-6 flex items-center justify-between">
                             <div>
-                                <p class="text-sm font-medium text-slate-500">Today’s snapshot</p>
-                                <h2 class="text-2xl font-semibold tracking-tight text-slate-950">Agency workspace</h2>
+                                <p class="text-sm font-medium text-slate-500">{{ t('pages.welcome.snapshot') }}</p>
+                                <h2 class="text-2xl font-semibold tracking-tight text-slate-950">{{ t('pages.welcome.workspace') }}</h2>
                             </div>
                             <div class="rounded-full bg-orange-50 px-3 py-1 text-sm font-medium text-orange-600">
-                                Human-first
+                                {{ t('pages.welcome.humanFirst') }}
                             </div>
                         </div>
 
@@ -131,28 +133,28 @@ const featureCards = [
                             <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                                 <div class="flex items-center justify-between">
                                     <div>
-                                        <p class="text-sm font-medium text-slate-500">Open visa cases</p>
+                                        <p class="text-sm font-medium text-slate-500">{{ t('pages.welcome.openVisaCases') }}</p>
                                         <p class="mt-1 text-3xl font-semibold tracking-tight text-slate-950">24</p>
                                     </div>
                                     <div class="rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-700">
-                                        +6 this week
+                                        {{ t('pages.welcome.thisWeek') }}
                                     </div>
                                 </div>
                             </div>
 
                             <div class="grid gap-4 sm:grid-cols-2">
                                 <div class="rounded-2xl border border-slate-200 p-4">
-                                    <p class="text-sm font-medium text-slate-500">Awaiting documents</p>
+                                    <p class="text-sm font-medium text-slate-500">{{ t('pages.welcome.awaitingDocuments') }}</p>
                                     <p class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">8</p>
                                 </div>
                                 <div class="rounded-2xl border border-slate-200 p-4">
-                                    <p class="text-sm font-medium text-slate-500">Priority reviews</p>
+                                    <p class="text-sm font-medium text-slate-500">{{ t('pages.welcome.priorityReviews') }}</p>
                                     <p class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">3</p>
                                 </div>
                             </div>
 
                             <div class="rounded-2xl border border-slate-200 p-4">
-                                <p class="text-sm font-medium text-slate-500">Recent activity</p>
+                                <p class="text-sm font-medium text-slate-500">{{ t('pages.welcome.recentActivity') }}</p>
                                 <div class="mt-3 space-y-3">
                                     <div class="flex items-start gap-3">
                                         <span class="mt-1 h-2.5 w-2.5 rounded-full bg-brand-primary"></span>

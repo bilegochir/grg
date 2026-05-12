@@ -5,6 +5,7 @@ import EmptyState from '@/Components/EmptyState.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import StatusBadge from '@/Components/StatusBadge.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { useLocale } from '@/lib/i18n';
 import { Head, Link } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
@@ -17,6 +18,8 @@ const props = defineProps({
     slaAlerts: Array,
     hasData: Boolean,
 });
+
+const { t } = useLocale();
 
 import {
     Chart as ChartJS,
@@ -127,17 +130,15 @@ const sourceOptions = {
 </script>
 
 <template>
-    <Head title="Dashboard" />
+    <Head :title="t('pages.dashboard.title')" />
 
     <AuthenticatedLayout>
         <template #header>
             <div class="ui-page-header">
                 <div class="max-w-3xl">
-                    <p class="ui-kicker">Workspace Overview</p>
-                    <h1 class="ui-header-title text-[28px] tracking-tight">Everything moving across the agency.</h1>
-                    <p class="ui-header-copy text-[14px] leading-relaxed">
-                        Track lead flow, case movement, and recent work without bouncing between screens.
-                    </p>
+                    <p class="ui-kicker">{{ t('pages.dashboard.kicker') }}</p>
+                    <h1 class="ui-header-title text-[28px] tracking-tight">{{ t('pages.dashboard.heading') }}</h1>
+                    <p class="ui-header-copy text-[14px] leading-relaxed">{{ t('pages.dashboard.description') }}</p>
                 </div>
             </div>
         </template>
@@ -146,12 +147,12 @@ const sourceOptions = {
             <EmptyState
                 v-if="!hasData"
                 icon="sparkle"
-                title="Your workspace is ready"
-                description="Once leads, applicants, and cases start moving, this dashboard will turn into a live snapshot of what needs attention."
+                :title="t('pages.dashboard.emptyTitle')"
+                :description="t('pages.dashboard.emptyDescription')"
             >
                 <template #action>
                     <Link :href="route('leads.index')">
-                        <PrimaryButton icon="plus">Add your first lead</PrimaryButton>
+                        <PrimaryButton icon="plus">{{ t('common.addFirstLead') }}</PrimaryButton>
                     </Link>
                 </template>
             </EmptyState>

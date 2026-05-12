@@ -3,6 +3,7 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import { useLocale } from '@/lib/i18n';
 import { useForm } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
@@ -31,23 +32,25 @@ const updatePassword = () => {
         },
     });
 };
+
+const { t } = useLocale();
 </script>
 
 <template>
     <section>
         <header>
             <h2 class="text-lg font-semibold text-brand-text">
-                Update password
+                {{ t('profileForms.updatePasswordTitle') }}
             </h2>
 
             <p class="mt-1 text-sm leading-6 text-brand-muted">
-                Choose a strong password that protects your account without slowing down your day.
+                {{ t('profileForms.updatePasswordDescription') }}
             </p>
         </header>
 
         <form @submit.prevent="updatePassword" class="mt-6 space-y-6">
             <div>
-                <InputLabel for="current_password" value="Current Password" />
+                <InputLabel for="current_password" :value="t('profileForms.currentPassword')" />
 
                 <TextInput
                     id="current_password"
@@ -65,7 +68,7 @@ const updatePassword = () => {
             </div>
 
             <div>
-                <InputLabel for="password" value="New Password" />
+                <InputLabel for="password" :value="t('profileForms.newPassword')" />
 
                 <TextInput
                     id="password"
@@ -82,7 +85,7 @@ const updatePassword = () => {
             <div>
                 <InputLabel
                     for="password_confirmation"
-                    value="Confirm Password"
+                    :value="t('auth.resetPassword.confirmPassword')"
                 />
 
                 <TextInput
@@ -100,7 +103,7 @@ const updatePassword = () => {
             </div>
 
             <div class="flex items-center gap-4">
-                <PrimaryButton :disabled="form.processing">Save password</PrimaryButton>
+                <PrimaryButton :disabled="form.processing">{{ t('profileForms.savePassword') }}</PrimaryButton>
 
                 <Transition
                     enter-active-class="transition ease-in-out"
@@ -112,7 +115,7 @@ const updatePassword = () => {
                         v-if="form.recentlySuccessful"
                         class="text-sm text-brand-muted"
                     >
-                        Password updated.
+                        {{ t('profileForms.passwordUpdated') }}
                     </p>
                 </Transition>
             </div>
