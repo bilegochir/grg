@@ -83,7 +83,10 @@ class CreateVisaCaseAction
             }
 
             $this->instantiateChecklist->execute($visaCase, $visaType);
-            $this->instantiateTasks->execute($visaCase, $visaType);
+
+            if ($defaultStage !== null) {
+                $this->instantiateTasks->execute($visaCase, $visaType, $defaultStage, true);
+            }
 
             $this->recordActivity->execute(
                 $visaCase,

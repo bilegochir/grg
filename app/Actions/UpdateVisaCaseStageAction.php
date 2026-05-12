@@ -14,6 +14,7 @@ class UpdateVisaCaseStageAction
     public function __construct(
         private readonly RecordActivityAction $recordActivity,
         private readonly DispatchApplicantCaseNotificationAction $dispatchNotification,
+        private readonly InstantiateVisaCaseTasksAction $instantiateTasks,
     ) {
     }
 
@@ -30,6 +31,8 @@ class UpdateVisaCaseStageAction
                 'current_stage_id' => $toStage->id,
                 'closed_at' => $toStage->is_closed ? now() : null,
             ])->save();
+
+            $createdTasksCount = $this->instantiateTasks->execute($visaCase, $toStage->visaType, $toStage, false);
 
             $visaCase->stageHistories()->create([
                 'from_stage_id' => $fromStage?->id,
@@ -48,6 +51,24 @@ class UpdateVisaCaseStageAction
                 ),
                 $user,
             );
+
+            if ($createdTasksCount > 0) {
+                $this->recordActivity->execute(
+                    $visaCase,
+                    'visa_case.workflow_tasks_instantiated',
+                    sprintf(
+                        '%d workflow task%s added for %s.',
+                        $createdTasksCount,
+                        $createdTasksCount === 1 ? '' : 's',
+                        $toStage->name,
+                    ),
+                    $user,
+                    [
+                        'stage_id' => $toStage->id,
+                        'task_count' => $createdTasksCount,
+                    ],
+                );
+            }
 
             $freshCase = $visaCase->fresh(['applicant', 'country', 'visaType', 'currentStage']);
 
