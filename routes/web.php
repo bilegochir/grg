@@ -57,6 +57,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/applicants', [ApplicantController::class, 'index'])->middleware('permission:applicants.view')->name('applicants.index');
     Route::get('/applicants/{applicant}', [ApplicantController::class, 'show'])->middleware('permission:applicants.view')->name('applicants.show');
+    Route::patch('/applicants/{applicant}/travel-history', [ApplicantController::class, 'updateTravelHistory'])->middleware('permission:applicants.update')->name('applicants.travel-history.update');
     Route::post('/applicants/{applicant}/notes', [ApplicantNoteController::class, 'store'])->middleware('permission:applicants.update')->name('applicants.notes.store');
     Route::patch('/applicants/{applicant}/notification-preferences', [ApplicantNotificationPreferenceController::class, 'update'])->middleware('permission:applicants.update')->name('applicants.notification-preferences.update');
     Route::post('/applicants/{applicant}/portal-invites', [ApplicantPortalInviteController::class, 'store'])->middleware('permission:applicants.update')->name('applicants.portal-invites.store');

@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\RecordActivityAction;
 use App\Models\Applicant;
 use App\Models\BusinessSetting;
 use App\Models\Tag;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -116,6 +118,44 @@ class ApplicantController extends Controller
                 ]),
             ],
         ]);
+    }
+
+    public function updateTravelHistory(
+        Request $request,
+        Applicant $applicant,
+        RecordActivityAction $recordActivity,
+    ): RedirectResponse {
+        $this->workspace()->assertApplicantAccess($request->user(), $applicant);
+
+        $attributes = $request->validate([
+            'travel_history' => ['nullable', 'array'],
+            'travel_history.*.country' => ['required_with:travel_history', 'string', 'max:100'],
+            'travel_history.*.purpose' => ['nullable', 'string', 'max:150'],
+            'travel_history.*.year' => ['nullable', 'integer', 'min:1900', 'max:2100'],
+        ]);
+
+        $travelHistory = collect($attributes['travel_history'] ?? [])
+            ->map(fn (array $entry): array => [
+                'country' => trim((string) ($entry['country'] ?? '')),
+                'purpose' => trim((string) ($entry['purpose'] ?? '')),
+                'year' => $entry['year'] ?? null,
+            ])
+            ->filter(fn (array $entry): bool => $entry['country'] !== '')
+            ->values()
+            ->all();
+
+        $applicant->forceFill([
+            'travel_history' => $travelHistory,
+        ])->save();
+
+        $recordActivity->execute(
+            $applicant,
+            'applicant.travel_history_updated',
+            'Updated travel history.',
+            $request->user(),
+        );
+
+        return back()->with('success', 'Travel history updated.');
     }
 
     private function applicantSummary(Applicant $applicant): array

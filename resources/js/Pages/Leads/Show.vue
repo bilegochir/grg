@@ -114,6 +114,41 @@ const timeline = computed(() => {
     return [...notes, ...statusHistory, ...activities].sort((a, b) => b._ts - a._ts);
 });
 
+const timelineTypeLabel = (type) => {
+    if (type === 'note') return 'Note';
+    if (type === 'status') return 'Stage change';
+    return 'Activity';
+};
+
+const timelineRowTone = (type) => {
+    if (type === 'status') return 'bg-blue-50/60';
+    if (type === 'activity') return 'bg-slate-50';
+    return 'bg-white';
+};
+
+const timelineTypeTone = (type) => {
+    if (type === 'status') return 'text-blue-700';
+    if (type === 'activity') return 'text-slate-600';
+    return 'text-amber-700';
+};
+
+const timelineBody = (entry) => {
+    if (entry._type === 'note') return entry.body;
+    if (entry._type === 'status') return `${entry.from_status || 'Created'} -> ${entry.to_status}`;
+    return entry.description;
+};
+
+const timelineActor = (entry) => {
+    if (entry._type === 'note') return entry.author;
+    if (entry._type === 'status') return entry.changed_by;
+    return entry.causer;
+};
+
+const timelineTimestamp = (entry) => {
+    if (entry._type === 'status') return entry.changed_at;
+    return entry.created_at;
+};
+
 // Pre-filled fields summary for the convert CTA
 const prefilledCount = computed(() => {
     const fields = [
@@ -369,45 +404,26 @@ const passportAny = computed(() =>
                     </div>
 
                     <!-- Timeline entries -->
-                    <div v-if="timeline.length" class="space-y-3">
+                    <div v-if="timeline.length" class="space-y-1.5">
                         <div
                             v-for="entry in timeline"
                             :key="`${entry._type}-${entry.id}`"
-                            class="rounded-lg border px-4 py-4"
-                            :class="{
-                                'border-brand-border bg-white':             entry._type === 'note',
-                                'border-blue-100 bg-blue-50/50':            entry._type === 'status',
-                                'border-transparent bg-brand-neutral':      entry._type === 'activity',
-                            }"
+                            class="rounded-2xl px-3 py-3"
+                            :class="timelineRowTone(entry._type)"
                         >
-                            <!-- Type pill -->
-                            <span
-                                class="mb-2 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide"
-                                :class="{
-                                    'bg-slate-100 text-slate-600':           entry._type === 'note',
-                                    'bg-blue-100 text-blue-700':             entry._type === 'status',
-                                    'bg-brand-neutral text-brand-muted ring-1 ring-black/5': entry._type === 'activity',
-                                }"
-                            >
-                                {{ entry._type === 'note' ? 'Note' : entry._type === 'status' ? 'Stage change' : 'Activity' }}
-                            </span>
+                            <div class="flex items-center justify-between gap-3 text-[12px]">
+                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <span class="font-medium text-brand-text">{{ timelineActor(entry) }}</span>
+                                    <span class="text-slate-300">•</span>
+                                    <span class="font-medium" :class="timelineTypeTone(entry._type)">
+                                        {{ timelineTypeLabel(entry._type) }}
+                                    </span>
+                                </div>
+                                <span class="shrink-0 text-brand-muted">{{ timelineTimestamp(entry) }}</span>
+                            </div>
 
-                            <!-- Content -->
-                            <p class="text-sm leading-6 text-brand-text">
-                                <template v-if="entry._type === 'note'">{{ entry.body }}</template>
-                                <template v-else-if="entry._type === 'status'">
-                                    <span class="font-medium">{{ entry.from_status || 'Created' }}</span>
-                                    <span class="mx-1.5 text-brand-muted">→</span>
-                                    <span class="font-medium">{{ entry.to_status }}</span>
-                                </template>
-                                <template v-else>{{ entry.description }}</template>
-                            </p>
-
-                            <!-- Meta -->
-                            <p class="mt-2 text-xs text-brand-muted">
-                                <template v-if="entry._type === 'note'">{{ entry.author }} • {{ entry.created_at }}</template>
-                                <template v-else-if="entry._type === 'status'">{{ entry.changed_by }} • {{ entry.changed_at }}</template>
-                                <template v-else>{{ entry.causer }} • {{ entry.created_at }}</template>
+                            <p class="mt-1.5 whitespace-pre-line text-sm leading-6 text-brand-text">
+                                {{ timelineBody(entry) }}
                             </p>
                         </div>
                     </div>

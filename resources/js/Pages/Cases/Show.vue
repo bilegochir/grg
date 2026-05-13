@@ -537,7 +537,10 @@ const removeFromGroup = () => {
                         <div class="flex flex-wrap items-center justify-between gap-3">
                             <div>
                                 <p class="ui-kicker">Document progress</p>
-                                <p class="text-sm text-brand-muted">{{ verifiedDocumentCount }} of {{ caseRecord.documents.length }} requirements verified</p>
+                                <p class="text-sm text-brand-muted">
+                                    {{ verifiedDocumentCount }} of {{ caseRecord.documents.length }} verified by your team
+                                    <span v-if="uploadedDocumentCount" class="hidden sm:inline">• {{ uploadedDocumentCount }} uploaded</span>
+                                </p>
                             </div>
                             <p class="text-lg font-semibold text-brand-text">{{ documentCompletion }}%</p>
                         </div>
@@ -547,7 +550,7 @@ const removeFromGroup = () => {
                     </div>
                 </AppCard>
 
-                <AppCard title="Activity" subtitle="The main working thread for this case: notes, messages, uploads, and system updates.">
+                <AppCard title="Activity">
                     <template #action>
                         <div class="flex flex-wrap items-center gap-2">
                             <button type="button" class="ui-button-ghost !h-8 px-3 text-[12px]" @click="showActivityComposer = !showActivityComposer">
@@ -556,13 +559,6 @@ const removeFromGroup = () => {
                             <button type="button" class="ui-button-secondary" @click="showMessageSlideOver = true">Message client</button>
                         </div>
                     </template>
-
-                    <div class="mb-5 flex flex-wrap items-center gap-2">
-                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">{{ unifiedThread.length }} total</span>
-                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">{{ activitySummary.messages }} messages</span>
-                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">{{ activitySummary.notes }} notes</span>
-                        <span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">{{ activitySummary.updates }} updates</span>
-                    </div>
 
                     <form v-if="showActivityComposer" class="mb-5 rounded-lg border border-brand-border bg-brand-neutral/40 p-4 space-y-3" @submit.prevent="submitInternalNote">
                         <div>
@@ -582,20 +578,41 @@ const removeFromGroup = () => {
                         </div>
                     </form>
 
-                    <div v-if="unifiedThread.length" class="space-y-3">
-                        <p class="text-sm text-brand-muted">Newest first.</p>
-                        <div v-for="item in unifiedThread" :key="item.id" class="flex items-start gap-3 rounded-lg border border-brand-border px-4 py-3">
-                            <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-neutral text-brand-muted">
-                                <AppIcon :name="item.icon" :size="16" />
-                            </div>
-                            <div class="min-w-0 flex-1">
+                    <div v-if="unifiedThread.length" class="space-y-1.5">
+                        <div
+                            v-for="item in unifiedThread"
+                            :key="item.id"
+                            class="rounded-2xl px-3 py-3"
+                            :class="{
+                                'bg-blue-50/60': item.kind === 'Message',
+                                'bg-amber-50/70': item.kind === 'Internal note' || item.kind === 'Client note',
+                                'bg-slate-50': item.kind === 'Activity',
+                            }"
+                        >
+                            <div class="flex items-center justify-between text-[12px]">
                                 <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                    <p class="font-medium text-brand-text">{{ item.actor }}</p>
-                                    <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{{ item.kind }}</span>
-                                    <span class="text-xs text-brand-muted">{{ formatTimestamp(item.timestamp) }}</span>
+                                    <span class="font-medium text-brand-text">{{ item.actor }}</span>
+                                    <span class="text-slate-300">•</span>
+                                    <span
+                                        class="font-medium"
+                                        :class="{
+                                            'text-blue-700': item.kind === 'Message',
+                                            'text-amber-700': item.kind === 'Internal note' || item.kind === 'Client note',
+                                            'text-slate-600': item.kind === 'Activity',
+                                        }"
+                                    >
+                                        {{ item.kind }}
+                                    </span>
+                                    <template v-if="item.subject_name">
+                                        <span class="text-slate-300">•</span>
+                                        <span class="text-brand-primary">{{ item.subject_name }}</span>
+                                    </template>
                                 </div>
-                                <p class="mt-1 whitespace-pre-line text-sm leading-6 text-brand-text">{{ item.body }}</p>
+                                <div>
+                                    <span class="text-brand-muted">{{ formatTimestamp(item.timestamp) }}</span>
+                                </div>
                             </div>
+                            <p class="mt-1.5 whitespace-pre-line pl-0 text-sm leading-6 text-brand-text">{{ item.body }}</p>
                         </div>
                     </div>
                     <EmptyState v-else icon="document" title="No activity yet" description="Notes, messages, and system updates will appear here." />
@@ -670,7 +687,7 @@ const removeFromGroup = () => {
                             <p class="mt-1.5 text-xl font-bold text-brand-text">{{ documentCompletion }}%</p>
                         </div>
                         <div class="rounded-lg bg-brand-neutral px-3.5 py-3">
-                            <p class="ui-kicker">Pending</p>
+                            <p class="ui-kicker">Awaiting review</p>
                             <p class="mt-1.5 text-xl font-bold text-brand-text">{{ pendingDocumentCount }}</p>
                         </div>
                         <div class="rounded-lg bg-brand-neutral px-3.5 py-3">

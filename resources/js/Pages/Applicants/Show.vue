@@ -13,6 +13,12 @@ const props = defineProps({
     applicant: Object,
 });
 
+const blankTravelHistory = () => ({
+    country: '',
+    purpose: '',
+    year: '',
+});
+
 // ── Derived helpers ────────────────────────────────────────────────────────
 
 const activeCaseCount = computed(() => props.applicant.visa_cases.length);
@@ -39,6 +45,44 @@ const unifiedTimeline = computed(() => {
     }));
     return [...notes, ...activities].sort((a, b) => b._ts - a._ts);
 });
+
+const timelineTypeLabel = (type) => (type === 'note' ? 'Note' : 'Activity');
+
+const timelineRowTone = (type) => (type === 'note' ? 'bg-white' : 'bg-slate-50');
+
+const timelineTypeTone = (type) => (type === 'note' ? 'text-amber-700' : 'text-slate-600');
+
+const timelineBody = (entry) => (entry._type === 'note' ? entry.body : entry.description);
+
+const timelineActor = (entry) => (entry._type === 'note' ? entry.author : entry.causer);
+
+const showTravelHistoryForm = ref(false);
+const travelHistoryForm = useForm({
+    travel_history: props.applicant.travel_history?.length
+        ? props.applicant.travel_history.map((entry) => ({
+              country: entry.country ?? '',
+              purpose: entry.purpose ?? '',
+              year: entry.year ?? '',
+          }))
+        : [],
+});
+
+const addTravelHistoryEntry = () => {
+    travelHistoryForm.travel_history.push(blankTravelHistory());
+};
+
+const removeTravelHistoryEntry = (index) => {
+    travelHistoryForm.travel_history.splice(index, 1);
+};
+
+const submitTravelHistory = () => {
+    travelHistoryForm.patch(route('applicants.travel-history.update', props.applicant.id), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showTravelHistoryForm.value = false;
+        },
+    });
+};
 
 // ── Portal copy ────────────────────────────────────────────────────────────
 const copiedInvite = ref(false);
@@ -203,6 +247,58 @@ const notificationEvents = [
 
                 <!-- Travel history -->
                 <AppCard title="Travel history" subtitle="Prior movement and application context.">
+                    <template #action>
+                        <button
+                            type="button"
+                            class="ui-button-ghost !h-8 px-3 text-[12px]"
+                            @click="showTravelHistoryForm = !showTravelHistoryForm"
+                        >
+                            {{ showTravelHistoryForm ? 'Cancel' : applicant.travel_history.length ? 'Edit travel history' : 'Add travel history' }}
+                        </button>
+                    </template>
+
+                    <form v-if="showTravelHistoryForm" class="mb-5 space-y-3 rounded-lg border border-dashed border-brand-border bg-brand-neutral p-4" @submit.prevent="submitTravelHistory">
+                        <div v-if="travelHistoryForm.travel_history.length" class="space-y-3">
+                            <div
+                                v-for="(entry, index) in travelHistoryForm.travel_history"
+                                :key="`travel-history-${index}`"
+                                class="rounded-lg border border-brand-border bg-white p-4"
+                            >
+                                <div class="grid gap-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_120px_auto] md:items-end">
+                                    <div>
+                                        <InputLabel :for="`travel_country_${index}`" value="Country" />
+                                        <input :id="`travel_country_${index}`" v-model="entry.country" type="text" class="ui-input" placeholder="Japan" />
+                                    </div>
+                                    <div>
+                                        <InputLabel :for="`travel_purpose_${index}`" value="Purpose" />
+                                        <input :id="`travel_purpose_${index}`" v-model="entry.purpose" type="text" class="ui-input" placeholder="Tourism, study, business" />
+                                    </div>
+                                    <div>
+                                        <InputLabel :for="`travel_year_${index}`" value="Year" />
+                                        <input :id="`travel_year_${index}`" v-model="entry.year" type="number" min="1900" max="2100" class="ui-input" placeholder="2024" />
+                                    </div>
+                                    <div class="md:pb-0.5">
+                                        <button type="button" class="ui-button-ghost !h-10 w-full px-3 text-[12px]" @click="removeTravelHistoryEntry(index)">
+                                            Remove
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <InputError :message="travelHistoryForm.errors.travel_history" />
+
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <button type="button" class="ui-button-ghost !h-9 px-3 text-[12px]" @click="addTravelHistoryEntry">
+                                + Add trip
+                            </button>
+                            <div class="flex items-center gap-2">
+                                <button type="button" class="ui-button-ghost !h-9 px-3 text-[12px]" @click="showTravelHistoryForm = false">Cancel</button>
+                                <PrimaryButton :loading="travelHistoryForm.processing">Save travel history</PrimaryButton>
+                            </div>
+                        </div>
+                    </form>
+
                     <div v-if="applicant.travel_history.length" class="space-y-3">
                         <div
                             v-for="(entry, index) in applicant.travel_history"
@@ -261,32 +357,26 @@ const notificationEvents = [
                     </div>
 
                     <!-- Timeline -->
-                    <div v-if="unifiedTimeline.length" class="space-y-3">
+                    <div v-if="unifiedTimeline.length" class="space-y-1.5">
                         <div
                             v-for="entry in unifiedTimeline"
                             :key="`${entry._type}-${entry.id}`"
-                            class="rounded-lg border px-4 py-4"
-                            :class="entry._type === 'note'
-                                ? 'border-brand-border bg-white'
-                                : 'border-transparent bg-brand-neutral'"
+                            class="rounded-2xl px-3 py-3"
+                            :class="timelineRowTone(entry._type)"
                         >
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="min-w-0">
-                                    <span
-                                        class="mb-2 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide"
-                                        :class="entry._type === 'note'
-                                            ? 'bg-slate-100 text-slate-600'
-                                            : 'bg-brand-neutral text-brand-muted ring-1 ring-black/5'"
-                                    >
-                                        {{ entry._type === 'note' ? 'Note' : 'Activity' }}
+                            <div class="flex items-center justify-between gap-3 text-[12px]">
+                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <span class="font-medium text-brand-text">{{ timelineActor(entry) }}</span>
+                                    <span class="text-slate-300">•</span>
+                                    <span class="font-medium" :class="timelineTypeTone(entry._type)">
+                                        {{ timelineTypeLabel(entry._type) }}
                                     </span>
-                                    <p class="text-sm leading-6 text-brand-text">
-                                        {{ entry._type === 'note' ? entry.body : entry.description }}
-                                    </p>
                                 </div>
+                                <span class="shrink-0 text-brand-muted">{{ entry.created_at }}</span>
                             </div>
-                            <p class="mt-2 text-xs text-brand-muted">
-                                {{ entry._type === 'note' ? entry.author : entry.causer }} • {{ entry.created_at }}
+
+                            <p class="mt-1.5 whitespace-pre-line text-sm leading-6 text-brand-text">
+                                {{ timelineBody(entry) }}
                             </p>
                         </div>
                     </div>
