@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Actions\InstantiateVisaCaseChecklistAction;
+use App\Actions\InstantiateVisaCaseTasksAction;
 use App\Enums\LeadSource;
 use App\Enums\LeadStatus;
 use App\Enums\VisaCasePriority;
@@ -29,6 +30,7 @@ class DatabaseSeeder extends Seeder
 
     public function __construct(
         private readonly InstantiateVisaCaseChecklistAction $instantiateChecklist,
+        private readonly InstantiateVisaCaseTasksAction $instantiateTasks,
     ) {
     }
 
@@ -42,6 +44,8 @@ class DatabaseSeeder extends Seeder
             'contact_email' => 'hello@agency.test',
             'contact_phone' => '+1 (800) 555-0117',
             'contact_address' => 'Ulaanbaatar City Centre',
+            'bank_name' => 'Khan Bank',
+            'bank_account' => '100200300400',
             'default_locale' => 'en',
             'sms_provider' => 'log',
             'sms_sender' => 'Agency',
@@ -244,6 +248,7 @@ class DatabaseSeeder extends Seeder
             AustralianVisaCatalogSeeder::class,
             AdditionalVisaCatalogSeeder::class,
             VisaDocumentTemplateSeeder::class,
+            VisaTaskTemplateSeeder::class,
         ]);
 
         $australia = TargetCountry::query()->firstWhere('slug', 'australia');
@@ -277,6 +282,10 @@ class DatabaseSeeder extends Seeder
 
             if ($visaCase->documents()->count() === 0) {
                 $this->instantiateChecklist->execute($visaCase, $studentVisa->load('documentTemplates'));
+            }
+
+            if ($visaCase->tasks()->count() === 0) {
+                $this->instantiateTasks->execute($visaCase, $studentVisa, $workflow[1]);
             }
 
             $visaCase->notes()->create([

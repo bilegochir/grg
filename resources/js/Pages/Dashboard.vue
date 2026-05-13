@@ -137,7 +137,7 @@ const sourceOptions = {
             <div class="ui-page-header">
                 <div class="max-w-3xl">
                     <p class="ui-kicker">{{ t('pages.dashboard.kicker') }}</p>
-                    <h1 class="ui-header-title text-[28px] tracking-tight">{{ t('pages.dashboard.heading') }}</h1>
+                    <h1 class="ui-header-title">{{ t('pages.dashboard.heading') }}</h1>
                     <p class="ui-header-copy text-[14px] leading-relaxed">{{ t('pages.dashboard.description') }}</p>
                 </div>
             </div>

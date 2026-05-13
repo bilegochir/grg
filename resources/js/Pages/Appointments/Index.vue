@@ -17,7 +17,7 @@ defineProps({
             <div class="ui-page-header">
                 <div class="max-w-3xl">
                     <p class="ui-kicker">Appointments</p>
-                    <h1 class="ui-header-title text-[28px] tracking-tight">Schedule & Touchpoints</h1>
+                    <h1 class="ui-header-title">Schedule & Touchpoints</h1>
                     <p class="ui-header-copy text-[14px] leading-relaxed">
                         Keep consultations, embassy touchpoints, and follow-ups visible across the team.
                     </p>

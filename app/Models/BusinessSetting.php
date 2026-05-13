@@ -17,6 +17,8 @@ class BusinessSetting extends Model
         'contact_email',
         'contact_phone',
         'contact_address',
+        'bank_name',
+        'bank_account',
         'default_locale',
         'sms_provider',
         'sms_sender',

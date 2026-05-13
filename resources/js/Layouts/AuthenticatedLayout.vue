@@ -218,6 +218,8 @@ const pageContextLabel = computed(() => {
     return t('common.overview');
 });
 
+const hasDistinctPageContext = computed(() => pageContextLabel.value !== pageTitle.value);
+
 const openSearch = () => {
     searchOpen.value = true;
     setTimeout(() => searchInput.value?.focus(), 0);
@@ -526,8 +528,10 @@ onUnmounted(() => {
                             </button>
                             <div class="flex items-center gap-1.5 text-[12px] font-medium text-slate-500 min-w-0">
                                 <span class="hover:text-slate-900 cursor-pointer transition-colors">{{ pageTitle }}</span>
-                                <AppIcon name="chevronRight" :size="10" class="text-slate-300" />
-                                <span class="text-slate-900 truncate">{{ pageContextLabel }}</span>
+                                <template v-if="hasDistinctPageContext">
+                                    <AppIcon name="chevronRight" :size="10" class="text-slate-300" />
+                                    <span class="text-slate-900 truncate">{{ pageContextLabel }}</span>
+                                </template>
                             </div>
                         </div>
 
@@ -579,6 +583,9 @@ onUnmounted(() => {
                 <main class="flex-1 overflow-y-auto bg-white">
                     <FlashBanner :success="$page.props.flash.success" :error="$page.props.flash.error" />
                     <div class="px-8 py-6">
+                        <div v-if="$slots.header" class="mb-6">
+                            <slot name="header" />
+                        </div>
                         <slot />
                     </div>
                 </main>

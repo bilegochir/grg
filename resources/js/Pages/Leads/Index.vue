@@ -76,7 +76,7 @@ const submit = () => {
             <div class="ui-page-header">
                 <div class="max-w-3xl">
                     <p class="ui-kicker">Leads</p>
-                    <h1 class="ui-header-title text-[28px] tracking-tight">Lead Pipeline</h1>
+                    <h1 class="ui-header-title">Lead Pipeline</h1>
                     <p class="ui-header-copy text-[14px] leading-relaxed">
                         Track potential applicants from initial inquiry to case conversion. Focus on high-intent leads and pending follow-ups.
                     </p>

@@ -213,6 +213,8 @@ class SettingsController extends Controller
                 'contact_email' => $businessSetting->contact_email,
                 'contact_phone' => $businessSetting->contact_phone,
                 'contact_address' => $businessSetting->contact_address,
+                'bank_name' => $businessSetting->bank_name,
+                'bank_account' => $businessSetting->bank_account,
                 'default_locale' => $businessSetting->default_locale,
                 'sms_provider' => $businessSetting->sms_provider,
                 'sms_sender' => $businessSetting->sms_sender,

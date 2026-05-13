@@ -1,8 +1,6 @@
 <script setup>
 import AppCard from '@/Components/AppCard.vue';
 import EmptyState from '@/Components/EmptyState.vue';
-import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TagBadge from '@/Components/TagBadge.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -178,29 +176,6 @@ const submitNote = () => {
         },
     });
 };
-
-// ── Preferences form ───────────────────────────────────────────────────────
-const preferenceForm = useForm({
-    email_enabled: props.applicant.notification_preferences.email_enabled,
-    sms_enabled:   props.applicant.notification_preferences.sms_enabled,
-    locale:        props.applicant.notification_preferences.locale,
-    events:        { ...props.applicant.notification_preferences.events },
-});
-
-const savePreferences = () => {
-    preferenceForm.patch(
-        route('applicants.notification-preferences.update', props.applicant.id),
-        { preserveScroll: true },
-    );
-};
-
-const notificationEvents = [
-    { key: 'case_status_changes',   label: 'Case status changes' },
-    { key: 'document_requests',     label: 'Document requests' },
-    { key: 'payment_reminders',     label: 'Payment reminders' },
-    { key: 'appointment_reminders', label: 'Appointment reminders' },
-    { key: 'messages',              label: 'General case messages' },
-];
 </script>
 
 <template>
@@ -210,9 +185,9 @@ const notificationEvents = [
         <template #header>
             <div class="ui-page-header">
                 <div class="max-w-3xl">
-                    <p class="ui-kicker">Applicant profile</p>
-                    <h1 class="mt-2 text-[30px]">{{ applicant.name }}</h1>
-                    <div class="mt-3 flex flex-wrap items-center gap-3">
+                    <p class="ui-kicker">Applicant</p>
+                    <h1 class="ui-header-title">{{ applicant.name }}</h1>
+                    <div class="mt-3 flex flex-wrap items-center gap-2.5">
                         <span class="text-sm text-brand-muted">
                             {{ activeCaseCount }} active case{{ activeCaseCount === 1 ? '' : 's' }}
                         </span>
@@ -222,7 +197,7 @@ const notificationEvents = [
                         <!-- Passport expiry warning -->
                         <span
                             v-if="passportExpiringSoon"
-                            class="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 ring-1 ring-amber-200"
+                            class="ui-header-badge gap-1.5 bg-amber-50 text-amber-700 ring-1 ring-amber-200"
                         >
                             <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
@@ -234,13 +209,14 @@ const notificationEvents = [
                         </div>
                     </div>
                 </div>
-                <Link
-                    v-if="applicant.lead"
-                    :href="route('leads.show', applicant.lead.id)"
-                    class="ui-button-secondary"
-                >
-                    View source lead
-                </Link>
+                <div v-if="applicant.lead" class="flex items-center gap-3">
+                    <Link
+                        :href="route('leads.show', applicant.lead.id)"
+                        class="ui-button-secondary"
+                    >
+                        View Lead
+                    </Link>
+                </div>
             </div>
         </template>
 
@@ -389,81 +365,6 @@ const notificationEvents = [
                     />
                 </AppCard>
 
-                <!-- Travel history -->
-                <AppCard title="Travel history" subtitle="Prior movement and application context.">
-                    <template #action>
-                        <button
-                            type="button"
-                            class="ui-button-ghost !h-8 px-3 text-[12px]"
-                            @click="showTravelHistoryForm = !showTravelHistoryForm"
-                        >
-                            {{ showTravelHistoryForm ? 'Cancel' : applicant.travel_history.length ? 'Edit travel history' : 'Add travel history' }}
-                        </button>
-                    </template>
-
-                    <form v-if="showTravelHistoryForm" class="mb-5 space-y-3 rounded-lg border border-dashed border-brand-border bg-brand-neutral p-4" @submit.prevent="submitTravelHistory">
-                        <div v-if="travelHistoryForm.travel_history.length" class="space-y-3">
-                            <div
-                                v-for="(entry, index) in travelHistoryForm.travel_history"
-                                :key="`travel-history-${index}`"
-                                class="rounded-lg border border-brand-border bg-white p-4"
-                            >
-                                <div class="grid gap-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_120px_auto] md:items-end">
-                                    <div>
-                                        <InputLabel :for="`travel_country_${index}`" value="Country" />
-                                        <input :id="`travel_country_${index}`" v-model="entry.country" type="text" class="ui-input" placeholder="Japan" />
-                                    </div>
-                                    <div>
-                                        <InputLabel :for="`travel_purpose_${index}`" value="Purpose" />
-                                        <input :id="`travel_purpose_${index}`" v-model="entry.purpose" type="text" class="ui-input" placeholder="Tourism, study, business" />
-                                    </div>
-                                    <div>
-                                        <InputLabel :for="`travel_year_${index}`" value="Year" />
-                                        <input :id="`travel_year_${index}`" v-model="entry.year" type="number" min="1900" max="2100" class="ui-input" placeholder="2024" />
-                                    </div>
-                                    <div class="md:pb-0.5">
-                                        <button type="button" class="ui-button-ghost !h-10 w-full px-3 text-[12px]" @click="removeTravelHistoryEntry(index)">
-                                            Remove
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <InputError :message="travelHistoryForm.errors.travel_history" />
-
-                        <div class="flex flex-wrap items-center justify-between gap-3">
-                            <button type="button" class="ui-button-ghost !h-9 px-3 text-[12px]" @click="addTravelHistoryEntry">
-                                + Add trip
-                            </button>
-                            <div class="flex items-center gap-2">
-                                <button type="button" class="ui-button-ghost !h-9 px-3 text-[12px]" @click="showTravelHistoryForm = false">Cancel</button>
-                                <PrimaryButton :loading="travelHistoryForm.processing">Save travel history</PrimaryButton>
-                            </div>
-                        </div>
-                    </form>
-
-                    <div v-if="applicant.travel_history.length" class="space-y-3">
-                        <div
-                            v-for="(entry, index) in applicant.travel_history"
-                            :key="`${entry.country}-${index}`"
-                            class="flex items-start justify-between gap-4 rounded-lg bg-brand-neutral px-4 py-4"
-                        >
-                            <div>
-                                <p class="font-medium text-brand-text">{{ entry.country }}</p>
-                                <p class="mt-1 text-sm text-brand-muted">{{ entry.purpose || 'Purpose not recorded yet' }}</p>
-                            </div>
-                            <span v-if="entry.year" class="shrink-0 text-sm text-brand-muted">{{ entry.year }}</span>
-                        </div>
-                    </div>
-                    <EmptyState
-                        v-else
-                        icon="clock"
-                        title="No travel history yet"
-                        description="This section will become useful once the applicant shares prior travel details."
-                    />
-                </AppCard>
-
                 <!-- Unified notes + activity timeline -->
                 <AppCard title="Notes & activity" subtitle="A combined record of team notes and profile changes, newest first.">
                     <template #action>
@@ -587,64 +488,82 @@ const notificationEvents = [
                     </div>
                 </AppCard>
 
-                <!-- Notification preferences -->
-                <AppCard title="Notification preferences" subtitle="Channels and events the applicant has opted into.">
-                    <form class="space-y-5" @submit.prevent="savePreferences">
+                <!-- Travel history -->
+                <AppCard title="Travel history" subtitle="Previous trips and visit context.">
+                    <template #action>
+                        <button
+                            type="button"
+                            class="ui-button-ghost !h-8 px-3 text-[12px]"
+                            @click="showTravelHistoryForm = !showTravelHistoryForm"
+                        >
+                            {{ showTravelHistoryForm ? 'Cancel' : applicant.travel_history.length ? 'Edit travel history' : 'Add travel history' }}
+                        </button>
+                    </template>
 
-                        <!-- Channel toggles -->
-                        <div>
-                            <p class="mb-2 text-xs font-medium uppercase tracking-wide text-brand-muted">Channels</p>
-                            <div class="grid gap-3 sm:grid-cols-2">
-                                <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-brand-border px-3 py-3 transition hover:border-brand-primary/30">
-                                    <input
-                                        v-model="preferenceForm.email_enabled"
-                                        type="checkbox"
-                                        class="h-4 w-4 rounded border-slate-300 text-brand-primary focus:ring-brand-primary/20"
-                                    />
-                                    <span class="text-sm text-brand-text">Email</span>
-                                </label>
-                                <label class="flex cursor-pointer items-center gap-3 rounded-lg border border-brand-border px-3 py-3 transition hover:border-brand-primary/30">
-                                    <input
-                                        v-model="preferenceForm.sms_enabled"
-                                        type="checkbox"
-                                        class="h-4 w-4 rounded border-slate-300 text-brand-primary focus:ring-brand-primary/20"
-                                    />
-                                    <span class="text-sm text-brand-text">SMS</span>
-                                </label>
+                    <form v-if="showTravelHistoryForm" class="mb-4 space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4" @submit.prevent="submitTravelHistory">
+                        <div v-if="travelHistoryForm.travel_history.length" class="space-y-3">
+                            <div
+                                v-for="(entry, index) in travelHistoryForm.travel_history"
+                                :key="`travel-history-${index}`"
+                                class="rounded-lg border border-slate-200 bg-white p-4"
+                            >
+                                <div class="mb-3 flex items-center justify-between gap-3">
+                                    <p class="text-sm font-medium text-slate-900">Trip {{ index + 1 }}</p>
+                                    <button type="button" class="text-sm text-slate-500 transition hover:text-red-600" @click="removeTravelHistoryEntry(index)">
+                                        Remove
+                                    </button>
+                                </div>
+                                <div class="space-y-3">
+                                    <div>
+                                        <InputLabel :for="`travel_country_${index}`" value="Country" />
+                                        <input :id="`travel_country_${index}`" v-model="entry.country" type="text" class="ui-input" placeholder="Japan" />
+                                    </div>
+                                    <div>
+                                        <InputLabel :for="`travel_purpose_${index}`" value="Purpose" />
+                                        <input :id="`travel_purpose_${index}`" v-model="entry.purpose" type="text" class="ui-input" placeholder="Tourism, study, business" />
+                                    </div>
+                                    <div>
+                                        <InputLabel :for="`travel_year_${index}`" value="Year" />
+                                        <input :id="`travel_year_${index}`" v-model="entry.year" type="number" min="1900" max="2100" class="ui-input" placeholder="2024" />
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Locale -->
-                        <div>
-                            <InputLabel for="locale" value="Preferred locale" />
-                            <select id="locale" v-model="preferenceForm.locale" class="ui-select">
-                                <option v-for="locale in applicant.available_locales" :key="locale.value" :value="locale.value">
-                                    {{ locale.label }}
-                                </option>
-                            </select>
-                        </div>
+                        <InputError :message="travelHistoryForm.errors.travel_history" />
 
-                        <!-- Event subscriptions -->
-                        <div>
-                            <p class="mb-2 text-xs font-medium uppercase tracking-wide text-brand-muted">Events</p>
-                            <div class="space-y-2">
-                                <label
-                                    v-for="event in notificationEvents"
-                                    :key="event.key"
-                                    class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition hover:bg-brand-neutral"
-                                >
-                                    <input
-                                        v-model="preferenceForm.events[event.key]"
-                                        type="checkbox"
-                                        class="h-4 w-4 rounded border-slate-300 text-brand-primary focus:ring-brand-primary/20"
-                                    />
-                                    <span class="text-sm text-brand-text">{{ event.label }}</span>
-                                </label>
+                        <div class="flex flex-col gap-2">
+                            <button type="button" class="ui-button-ghost !h-9 justify-center px-3 text-[12px] sm:self-start" @click="addTravelHistoryEntry">
+                                + Add trip
+                            </button>
+                            <div class="flex flex-col gap-2 sm:flex-row">
+                                <button type="button" class="ui-button-ghost !h-9 justify-center px-3 text-[12px]" @click="showTravelHistoryForm = false">Cancel</button>
+                                <PrimaryButton class="justify-center sm:w-auto" :loading="travelHistoryForm.processing">Save travel history</PrimaryButton>
                             </div>
                         </div>
-
-                        <PrimaryButton :loading="preferenceForm.processing">Save preferences</PrimaryButton>
                     </form>
+
+                    <div v-if="applicant.travel_history.length" class="divide-y divide-slate-100 rounded-lg border border-slate-200 bg-white">
+                        <div
+                            v-for="(entry, index) in applicant.travel_history"
+                            :key="`${entry.country}-${index}`"
+                            class="px-4 py-4"
+                        >
+                            <div class="flex items-start justify-between gap-3">
+                                <div class="min-w-0">
+                                    <p class="text-sm font-medium text-slate-900">{{ entry.country || 'Country not recorded yet' }}</p>
+                                    <p class="mt-1 text-sm text-slate-500">{{ entry.purpose || 'Purpose not recorded yet' }}</p>
+                                </div>
+                                <span v-if="entry.year" class="shrink-0 text-sm text-slate-500">{{ entry.year }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <EmptyState
+                        v-else
+                        icon="clock"
+                        title="No travel history yet"
+                        description="This section will become useful once the applicant shares prior travel details."
+                    />
                 </AppCard>
 
             </div>

@@ -156,6 +156,8 @@ class ApplicantPortalController extends Controller
             'logo_url' => $business->logoUrl(),
             'email' => $business->contact_email,
             'phone' => $business->contact_phone,
+            'bank_name' => $business->bank_name,
+            'bank_account' => $business->bank_account,
         ];
     }
 

@@ -12,7 +12,7 @@ import DeleteUserForm from '../Profile/Partials/DeleteUserForm.vue';
 import UpdatePasswordForm from '../Profile/Partials/UpdatePasswordForm.vue';
 import UpdateProfileInformationForm from '../Profile/Partials/UpdateProfileInformationForm.vue';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
     businessSetting: Object,
@@ -55,11 +55,12 @@ const editingWorkflowStageId = ref(null);
 const editingTaskTemplateId = ref(null);
 const selectedVisaTypeId = ref(props.visaTypes[0]?.id ?? '');
 const canManage = computed(() => usePage().props.auth.user.permissions.includes('settings.manage'));
-const activeTab = ref(new URLSearchParams(window.location.search).get('tab') || (canManage.value ? 'business' : 'profile'));
 const visaTypeSearch = ref('');
 const visaTypeCountryFilter = ref('all');
 const visaTypeServiceScopeFilter = ref('all');
 const visaTypeReviewFilter = ref('all');
+const taskTemplateCountryFilter = ref('all');
+const taskTemplateVisaSearch = ref('');
 const expandedVisaTypes = ref([]);
 const logoPreviewUrl = ref(props.businessSetting.logo_url ?? null);
 
@@ -76,6 +77,8 @@ const businessForm = useForm({
     contact_email: props.businessSetting.contact_email ?? '',
     contact_phone: props.businessSetting.contact_phone ?? '',
     contact_address: props.businessSetting.contact_address ?? '',
+    bank_name: props.businessSetting.bank_name ?? '',
+    bank_account: props.businessSetting.bank_account ?? '',
     default_locale: props.businessSetting.default_locale ?? 'en',
     sms_provider: props.businessSetting.sms_provider ?? 'log',
     sms_sender: props.businessSetting.sms_sender ?? '',
@@ -266,6 +269,54 @@ const filteredTaskTemplates = computed(() => props.taskTemplates.filter((templat
     return template.visa_type_id === Number(selectedVisaTypeId.value);
 }));
 
+const taskTemplateVisaTypes = computed(() => {
+    const query = taskTemplateVisaSearch.value.trim().toLowerCase();
+
+    return [...props.visaTypes]
+        .filter((visaType) => {
+            if (taskTemplateCountryFilter.value !== 'all' && String(visaType.country.id) !== taskTemplateCountryFilter.value) {
+                return false;
+            }
+
+            if (!query) {
+                return true;
+            }
+
+            const haystack = [
+                visaType.name,
+                visaType.code,
+                visaType.slug,
+                visaType.official_subclass,
+                visaType.country?.name,
+            ]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase();
+
+            return haystack.includes(query);
+        })
+        .sort((left, right) => {
+            const countryCompare = (left.country?.name ?? '').localeCompare(right.country?.name ?? '');
+
+            if (countryCompare !== 0) {
+                return countryCompare;
+            }
+
+            return left.name.localeCompare(right.name, undefined, {
+                numeric: true,
+                sensitivity: 'base',
+            });
+        });
+});
+
+const filteredTaskTemplateStages = computed(() => props.workflowStages.filter((stage) => {
+    if (!taskTemplateForm.visa_type_id) {
+        return false;
+    }
+
+    return stage.visa_type_id === Number(taskTemplateForm.visa_type_id);
+}));
+
 const resetCountryForm = () => {
     editingCountryId.value = null;
     countryForm.reset();
@@ -348,7 +399,45 @@ const resetTaskTemplateForm = () => {
     taskTemplateForm.due_days = '';
     taskTemplateForm.is_required = true;
     taskTemplateForm.is_client_visible = false;
+    taskTemplateCountryFilter.value = taskTemplateForm.visa_type_id
+        ? String(props.visaTypes.find((visaType) => visaType.id === Number(taskTemplateForm.visa_type_id))?.country.id ?? 'all')
+        : 'all';
+    taskTemplateVisaSearch.value = '';
 };
+
+watch(taskTemplateCountryFilter, (value) => {
+    if (value === 'all' || !taskTemplateForm.visa_type_id) {
+        return;
+    }
+
+    const selectedVisaType = props.visaTypes.find((visaType) => visaType.id === Number(taskTemplateForm.visa_type_id));
+
+    if (!selectedVisaType || String(selectedVisaType.country.id) !== value) {
+        taskTemplateForm.visa_type_id = '';
+        taskTemplateForm.visa_workflow_stage_id = '';
+    }
+});
+
+watch(() => taskTemplateForm.visa_type_id, (value) => {
+    if (!value) {
+        taskTemplateForm.visa_workflow_stage_id = '';
+        return;
+    }
+
+    const selectedVisaType = props.visaTypes.find((visaType) => visaType.id === Number(value));
+
+    if (selectedVisaType) {
+        taskTemplateCountryFilter.value = String(selectedVisaType.country.id);
+    }
+
+    const stageStillValid = props.workflowStages.some((stage) =>
+        stage.id === Number(taskTemplateForm.visa_workflow_stage_id) && stage.visa_type_id === Number(value)
+    );
+
+    if (!stageStillValid) {
+        taskTemplateForm.visa_workflow_stage_id = '';
+    }
+});
 
 const openCountryCreate = () => {
     activeTab.value = 'countries';
@@ -793,6 +882,36 @@ const visibleSettingGroups = computed(() => {
     });
 });
 
+const visibleSettingTabKeys = computed(() =>
+    visibleSettingGroups.value.flatMap((group) => group.items.map((item) => item.key))
+);
+
+const defaultSettingsTab = computed(() => (canManage.value ? 'business' : 'profile'));
+
+const resolveSettingsTab = (tab) => (
+    visibleSettingTabKeys.value.includes(tab) ? tab : defaultSettingsTab.value
+);
+
+const activeTab = ref(resolveSettingsTab(new URLSearchParams(window.location.search).get('tab')));
+
+const syncSettingsTabUrl = (tab) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    window.history.replaceState({}, '', url);
+};
+
+const setActiveTab = (tab) => {
+    activeTab.value = resolveSettingsTab(tab);
+};
+
+watch(activeTab, (tab) => {
+    syncSettingsTabUrl(tab);
+}, { immediate: true });
+
+watch(visibleSettingTabKeys, () => {
+    activeTab.value = resolveSettingsTab(activeTab.value);
+});
+
 // ── Form Templates ────────────────────────────────────────────────────────────
 const formTemplateForm = useForm({
     visa_type_id: props.visaTypes[0]?.id ?? '',
@@ -903,7 +1022,7 @@ const saveFormTemplate = () => {
                                 :class="activeTab === tab.key
                                     ? 'bg-slate-200/50 text-slate-900 font-semibold shadow-sm'
                                     : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 font-medium'"
-                                @click="activeTab = tab.key"
+                                @click="setActiveTab(tab.key)"
                             >
                                 <AppIcon
                                     :name="tab.icon"
@@ -1007,6 +1126,19 @@ const saveFormTemplate = () => {
                                     <InputLabel for="contact_address" :value="t('pages.settings.businessAddress')" />
                                     <textarea id="contact_address" v-model="businessForm.contact_address" rows="3" class="ui-textarea"></textarea>
                                     <InputError :message="businessForm.errors.contact_address" />
+                                </div>
+
+                                <div class="grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <InputLabel for="bank_name" value="Bank name" />
+                                        <input id="bank_name" v-model="businessForm.bank_name" class="ui-input" placeholder="Khan Bank" />
+                                        <InputError :message="businessForm.errors.bank_name" />
+                                    </div>
+                                    <div>
+                                        <InputLabel for="bank_account" value="Bank account" />
+                                        <input id="bank_account" v-model="businessForm.bank_account" class="ui-input" placeholder="100200300400" />
+                                        <InputError :message="businessForm.errors.bank_account" />
+                                    </div>
                                 </div>
 
                                 <div>
@@ -1900,11 +2032,32 @@ const saveFormTemplate = () => {
                     </div>
                 </div>
                 <form class="flex-1 space-y-5 overflow-y-auto px-6 py-6" @submit.prevent="saveTaskTemplate">
+                    <div class="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <InputLabel for="task_template_country_filter" value="Country" />
+                            <select id="task_template_country_filter" v-model="taskTemplateCountryFilter" class="ui-select">
+                                <option value="all">All countries</option>
+                                <option v-for="country in visaTypeCountries" :key="country.id" :value="String(country.id)">
+                                    {{ country.name }}
+                                </option>
+                            </select>
+                        </div>
+                        <div>
+                            <InputLabel for="task_template_visa_search" value="Search visa type" />
+                            <input
+                                id="task_template_visa_search"
+                                v-model="taskTemplateVisaSearch"
+                                type="text"
+                                class="ui-input"
+                                placeholder="Search by visa or country"
+                            />
+                        </div>
+                    </div>
                     <div>
                         <InputLabel for="task_template_visa_type" value="Visa type" />
                         <select id="task_template_visa_type" v-model="taskTemplateForm.visa_type_id" class="ui-select">
                             <option value="">Choose a visa type</option>
-                            <option v-for="visaType in visaTypes" :key="visaType.id" :value="visaType.id">
+                            <option v-for="visaType in taskTemplateVisaTypes" :key="visaType.id" :value="visaType.id">
                                 {{ visaType.country.name }} • {{ visaType.name }}
                             </option>
                         </select>
@@ -1914,7 +2067,7 @@ const saveFormTemplate = () => {
                         <InputLabel for="task_template_stage" value="Workflow stage" />
                         <select id="task_template_stage" v-model="taskTemplateForm.visa_workflow_stage_id" class="ui-select">
                             <option value="">Not tied to a specific stage</option>
-                            <option v-for="stage in filteredWorkflowStages" :key="stage.id" :value="stage.id">
+                            <option v-for="stage in filteredTaskTemplateStages" :key="stage.id" :value="stage.id">
                                 {{ stage.name }}
                             </option>
                         </select>

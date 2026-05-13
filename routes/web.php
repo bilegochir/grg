@@ -4,7 +4,6 @@ use App\Http\Controllers\ApplicantController;
 use App\Http\Controllers\ApplicantPortalAuthController;
 use App\Http\Controllers\ApplicantPortalController;
 use App\Http\Controllers\ApplicantPortalInviteController;
-use App\Http\Controllers\ApplicantNotificationPreferenceController;
 use App\Http\Controllers\ApplicantNoteController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\DashboardController;
@@ -59,7 +58,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/applicants/{applicant}', [ApplicantController::class, 'show'])->middleware('permission:applicants.view')->name('applicants.show');
     Route::patch('/applicants/{applicant}/travel-history', [ApplicantController::class, 'updateTravelHistory'])->middleware('permission:applicants.update')->name('applicants.travel-history.update');
     Route::post('/applicants/{applicant}/notes', [ApplicantNoteController::class, 'store'])->middleware('permission:applicants.update')->name('applicants.notes.store');
-    Route::patch('/applicants/{applicant}/notification-preferences', [ApplicantNotificationPreferenceController::class, 'update'])->middleware('permission:applicants.update')->name('applicants.notification-preferences.update');
     Route::post('/applicants/{applicant}/portal-invites', [ApplicantPortalInviteController::class, 'store'])->middleware('permission:applicants.update')->name('applicants.portal-invites.store');
 
     Route::get('/cases', [VisaCaseController::class, 'index'])->middleware('permission:cases.view')->name('cases.index');

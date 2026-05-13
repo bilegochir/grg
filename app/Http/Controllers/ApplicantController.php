@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Actions\RecordActivityAction;
 use App\Models\Applicant;
-use App\Models\BusinessSetting;
 use App\Models\Tag;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -82,14 +81,6 @@ class ApplicantController extends Controller
                 'passport_issued_at' => $applicant->passport_issued_at?->toDateString(),
                 'passport_expires_at' => $applicant->passport_expires_at?->toDateString(),
                 'travel_history' => $applicant->travel_history ?? [],
-                'notification_preferences' => $applicant->notificationPreferences(),
-                'available_locales' => [
-                    ['value' => BusinessSetting::current()->default_locale, 'label' => strtoupper(BusinessSetting::current()->default_locale)],
-                    ['value' => 'en', 'label' => 'EN'],
-                    ['value' => 'mn', 'label' => 'MN'],
-                    ['value' => 'ja', 'label' => 'JA'],
-                    ['value' => 'ko', 'label' => 'KO'],
-                ],
                 'portal' => [
                     'login_url' => route('portal.login'),
                     'invite_url' => session('portal_invite_url')

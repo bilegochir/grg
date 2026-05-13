@@ -429,6 +429,24 @@ const { t } = useLocale();
                             </div>
                         </div>
 
+                        <div
+                            v-if="business.bank_name || business.bank_account"
+                            class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+                        >
+                            <p class="text-sm font-medium text-brand-text">Bank transfer details</p>
+                            <p class="mt-1 text-sm text-brand-muted">Use these details when paying your invoice by bank transfer.</p>
+                            <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                                <div>
+                                    <p class="text-xs font-medium uppercase tracking-wide text-brand-muted">Bank name</p>
+                                    <p class="mt-1 text-sm font-medium text-brand-text">{{ business.bank_name || 'Not provided yet' }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs font-medium uppercase tracking-wide text-brand-muted">Bank account</p>
+                                    <p class="mt-1 text-sm font-medium text-brand-text">{{ business.bank_account || 'Not provided yet' }}</p>
+                                </div>
+                            </div>
+                        </div>
+
                         <div v-if="portalCase.invoices.length" class="mt-5 space-y-4">
                             <div v-for="invoice in portalCase.invoices" :key="invoice.id" class="rounded-[20px] border border-slate-200 px-4 py-4">
                                 <div class="flex flex-wrap items-start justify-between gap-3">

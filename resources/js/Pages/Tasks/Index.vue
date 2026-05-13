@@ -82,7 +82,7 @@ const markDone = (task) => {
             <div class="ui-page-header">
                 <div class="max-w-3xl">
                     <p class="ui-kicker">Tasks</p>
-                    <h1 class="ui-header-title text-[28px] tracking-tight">Team Queue</h1>
+                    <h1 class="ui-header-title">Team Queue</h1>
                     <p class="ui-header-copy text-[14px] leading-relaxed">
                         A centralized view of all pending case work. Process quick updates or jump into the full case for context.
                     </p>

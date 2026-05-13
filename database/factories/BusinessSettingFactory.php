@@ -19,6 +19,8 @@ class BusinessSettingFactory extends Factory
             'contact_email' => fake()->companyEmail(),
             'contact_phone' => fake()->phoneNumber(),
             'contact_address' => fake()->address(),
+            'bank_name' => fake()->company() . ' Bank',
+            'bank_account' => fake()->bankAccountNumber(),
             'default_locale' => 'en',
             'sms_provider' => 'log',
             'sms_sender' => 'Agency',

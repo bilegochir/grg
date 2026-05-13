@@ -139,6 +139,14 @@
         @apply flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between pb-3;
     }
 
+    .ui-header-title {
+        @apply mt-1 text-[24px] font-semibold leading-tight tracking-tight text-slate-900;
+    }
+
+    .ui-header-badge {
+        @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium;
+    }
+
     .ui-page-body {
         @apply space-y-5;
     }

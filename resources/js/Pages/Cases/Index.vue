@@ -155,7 +155,7 @@ const submit = () => {
             <div class="ui-page-header">
                 <div class="max-w-3xl">
                     <p class="ui-kicker">Cases</p>
-                    <h1 class="ui-header-title text-[28px] tracking-tight">Embassy Workflow</h1>
+                    <h1 class="ui-header-title">Embassy Workflow</h1>
                     <p class="ui-header-copy text-[14px] leading-relaxed">
                         Track every visa application from initial review to final decision. See ownership, stage, and urgency at a glance.
                     </p>

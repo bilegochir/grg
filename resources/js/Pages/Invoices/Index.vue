@@ -16,7 +16,7 @@ defineProps({
             <div class="ui-page-header">
                 <div class="max-w-3xl">
                     <p class="ui-kicker">Invoices</p>
-                    <h1 class="ui-header-title text-[28px] tracking-tight">Billing & Revenue</h1>
+                    <h1 class="ui-header-title">Billing & Revenue</h1>
                     <p class="ui-header-copy text-[14px] leading-relaxed">
                         Track what has been issued, what is due, and what still needs follow-up across your portfolio.
                     </p>

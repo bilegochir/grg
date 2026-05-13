@@ -280,12 +280,12 @@ const passportAny = computed(() =>
         <template #header>
             <div class="ui-page-header">
                 <div class="max-w-3xl">
-                    <p class="ui-kicker">Lead Profile</p>
-                    <h1 class="text-[32px] font-bold tracking-tight text-slate-900 leading-tight">{{ lead.name }}</h1>
+                    <p class="ui-kicker">Lead</p>
+                    <h1 class="ui-header-title">{{ lead.name }}</h1>
                     
-                    <div class="mt-4 flex flex-wrap items-center gap-4">
-                        <div 
-                            class="rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider"
+                    <div class="mt-3 flex flex-wrap items-center gap-2.5">
+                        <div
+                            class="ui-header-badge"
                             :class="{
                                 'bg-slate-100 text-slate-500': lead.status.value === 'new',
                                 'bg-blue-50 text-blue-700': lead.status.value === 'contacted',
@@ -296,9 +296,7 @@ const passportAny = computed(() =>
                             {{ lead.status.label }}
                         </div>
 
-                        <div class="h-4 w-px bg-slate-200"></div>
-
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2.5">
                             <a v-if="lead.email" :href="`mailto:${lead.email}`" class="text-slate-500 hover:text-brand-primary transition-colors">
                                 <AppIcon name="email" :size="16" />
                             </a>
@@ -317,13 +315,12 @@ const passportAny = computed(() =>
                     <Link
                         v-if="lead.applicant"
                         :href="route('applicants.show', lead.applicant.id)"
-                        class="ui-button-secondary !h-10"
+                        class="ui-button-secondary"
                     >
                         View Applicant
                     </Link>
                     <PrimaryButton
                         v-if="!lead.applicant"
-                        class="!h-10"
                         @click="showConvert = true"
                     >
                         Convert to Applicant

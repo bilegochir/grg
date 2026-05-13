@@ -122,7 +122,7 @@ const uploadDocument = (document, event) => {
             <div class="ui-page-header">
                 <div class="max-w-3xl">
                     <p class="ui-kicker">Documents</p>
-                    <h1 class="ui-header-title text-[28px] tracking-tight">Compliance & Verification</h1>
+                    <h1 class="ui-header-title">Compliance & Verification</h1>
                     <p class="ui-header-copy text-[14px] leading-relaxed">
                         Track applicant uploads, verify authenticity, and manage document lifecycles for active cases.
                     </p>

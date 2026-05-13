@@ -119,30 +119,3 @@ it('stores an outbound case communication and notifies the applicant', function 
     expect($message->channel)->toBe('email');
     expect($message->notification_event)->toBe(ApplicantNotificationEvent::DocumentRequests->value);
 });
-
-it('updates applicant notification preferences', function () {
-    $user = User::factory()->create();
-    $applicant = Applicant::factory()->create();
-
-    $this
-        ->actingAs($user)
-        ->patch(route('applicants.notification-preferences.update', $applicant), [
-            'email_enabled' => true,
-            'sms_enabled' => true,
-            'locale' => 'mn',
-            'events' => [
-                'case_status_changes' => true,
-                'document_requests' => true,
-                'payment_reminders' => false,
-                'appointment_reminders' => false,
-                'messages' => true,
-            ],
-        ])
-        ->assertRedirect();
-
-    $preferences = $applicant->fresh()->notificationPreferences();
-
-    expect($preferences['sms_enabled'])->toBeTrue();
-    expect($preferences['locale'])->toBe('mn');
-    expect($preferences['events']['payment_reminders'])->toBeFalse();
-});

@@ -207,7 +207,7 @@ const saveInvite = () => {
     <AuthenticatedLayout>
         <template #header>
             <div class="mb-6">
-                <h1 class="text-[24px] font-semibold text-slate-900 tracking-tight">Staff & Access</h1>
+                <h1 class="ui-header-title">Staff & Access</h1>
             </div>
         </template>
 

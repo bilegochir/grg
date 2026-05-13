@@ -476,30 +476,16 @@ const removeFromGroup = () => {
             <div class="ui-page-header">
                 <div class="max-w-3xl">
                     <p class="ui-kicker">Case</p>
-                    <h1 class="text-[32px] font-bold tracking-tight text-slate-900 leading-tight">{{ caseRecord.reference_code }}</h1>
-                    <div class="mt-3 flex flex-wrap items-center gap-2 gap-y-3">
-                        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                    <h1 class="ui-header-title">{{ caseRecord.reference_code }}</h1>
+                    <div class="mt-3 flex flex-wrap items-center gap-2.5">
+                        <span class="ui-header-badge bg-slate-100 text-slate-700">
                             {{ caseRecord.stage?.name || 'No stage' }}
                         </span>
-                        <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                        <span class="ui-header-badge bg-slate-100 text-slate-700">
                             {{ caseRecord.priority.label }}
                         </span>
                         <span class="text-sm text-brand-muted">{{ caseRecord.country.name }} • {{ caseRecord.visa_type }}</span>
                         <span class="text-sm text-brand-muted">• {{ caseRecord.applicant.name }}</span>
-                    </div>
-                    <div class="mt-4 grid gap-3 sm:grid-cols-3">
-                        <div class="rounded-lg bg-brand-neutral px-4 py-3">
-                            <p class="ui-kicker">Next milestone</p>
-                            <p class="font-medium text-brand-text">{{ caseRecord.expected_submission_at || 'Not scheduled' }}</p>
-                        </div>
-                        <div class="rounded-lg bg-brand-neutral px-4 py-3">
-                            <p class="ui-kicker">Work queue</p>
-                            <p class="font-medium text-brand-text">{{ openTaskCount }} open tasks • {{ pendingDocumentCount }} pending docs</p>
-                        </div>
-                        <div class="rounded-lg bg-brand-neutral px-4 py-3">
-                            <p class="ui-kicker">Balance due</p>
-                            <p class="font-medium text-brand-text">{{ formatMoney('USD', totalBalanceDue) }}</p>
-                        </div>
                     </div>
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
