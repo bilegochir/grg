@@ -33,50 +33,14 @@ const createForm = useForm({
     last_name: '',
     email: '',
     phone: '',
+    date_of_birth: '',
     source: props.sources[0]?.value ?? '',
     status: props.statuses[0]?.value ?? '',
     country_of_citizenship: '',
     interested_visa_type: '',
-    education_history: [],
-    work_experience: [],
     tag_ids: [],
     note: '',
 });
-
-const blankEducation = () => ({
-    institution: '',
-    degree: '',
-    field_of_study: '',
-    start_date: '',
-    end_date: '',
-    notes: '',
-});
-
-const blankExperience = () => ({
-    company: '',
-    title: '',
-    location: '',
-    start_date: '',
-    end_date: '',
-    is_current: false,
-    notes: '',
-});
-
-const addEducation = () => {
-    createForm.education_history.push(blankEducation());
-};
-
-const removeEducation = (index) => {
-    createForm.education_history.splice(index, 1);
-};
-
-const addExperience = () => {
-    createForm.work_experience.push(blankExperience());
-};
-
-const removeExperience = (index) => {
-    createForm.work_experience.splice(index, 1);
-};
 
 const resultsLabel = computed(() => {
     if (!props.leads.total) {
@@ -222,7 +186,7 @@ const submit = () => {
             :show="showCreate"
             width="wide"
             title="Add New Lead"
-            description="Capture the essentials now, then add education or work background when it helps qualification."
+            description="Capture the essentials now and fill in deeper background later if the lead progresses."
             @close="showCreate = false"
         >
             <form class="space-y-6" @submit.prevent="submit">
@@ -248,6 +212,12 @@ const submit = () => {
                         <InputLabel for="phone" value="Phone" />
                         <TextInput id="phone" v-model="createForm.phone" />
                     </div>
+                </div>
+
+                <div>
+                    <InputLabel for="date_of_birth" value="Date of birth" />
+                    <TextInput id="date_of_birth" v-model="createForm.date_of_birth" type="date" />
+                    <InputError :message="createForm.errors.date_of_birth" />
                 </div>
 
                 <div class="grid gap-4 sm:grid-cols-2">
@@ -308,108 +278,6 @@ const submit = () => {
                         class="ui-textarea"
                         placeholder="What did they ask for, and what should the next agent know?"
                     ></textarea>
-                </div>
-
-                <div class="space-y-4 rounded-xl border border-brand-border bg-brand-neutral/50 p-4">
-                    <div class="flex items-center justify-between gap-3">
-                        <div>
-                            <p class="text-sm font-medium text-brand-text">Education</p>
-                            <p class="mt-1 text-sm text-brand-muted">Optional study history that helps with assessment later.</p>
-                        </div>
-                        <button type="button" class="ui-button-ghost !h-8 px-3 text-[12px]" @click="addEducation">Add education</button>
-                    </div>
-
-                    <div v-if="createForm.education_history.length" class="space-y-4">
-                        <div v-for="(item, index) in createForm.education_history" :key="`education-${index}`" class="rounded-lg border border-brand-border bg-white p-4">
-                            <div class="mb-4 flex items-center justify-between gap-3">
-                                <p class="text-sm font-medium text-brand-text">Education {{ index + 1 }}</p>
-                                <button type="button" class="ui-button-ghost !h-8 px-3 text-[12px]" @click="removeEducation(index)">Remove</button>
-                            </div>
-                            <div class="grid gap-4 sm:grid-cols-2">
-                                <div>
-                                    <InputLabel :for="`education_institution_${index}`" value="Institution" />
-                                    <TextInput :id="`education_institution_${index}`" v-model="item.institution" />
-                                </div>
-                                <div>
-                                    <InputLabel :for="`education_degree_${index}`" value="Degree" />
-                                    <TextInput :id="`education_degree_${index}`" v-model="item.degree" />
-                                </div>
-                            </div>
-                            <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                                <div>
-                                    <InputLabel :for="`education_field_${index}`" value="Field of study" />
-                                    <TextInput :id="`education_field_${index}`" v-model="item.field_of_study" />
-                                </div>
-                                <div class="grid gap-4 sm:grid-cols-2">
-                                    <div>
-                                        <InputLabel :for="`education_start_${index}`" value="Start date" />
-                                        <TextInput :id="`education_start_${index}`" v-model="item.start_date" type="date" />
-                                    </div>
-                                    <div>
-                                        <InputLabel :for="`education_end_${index}`" value="End date" />
-                                        <TextInput :id="`education_end_${index}`" v-model="item.end_date" type="date" />
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mt-4">
-                                <InputLabel :for="`education_notes_${index}`" value="Notes" />
-                                <textarea :id="`education_notes_${index}`" v-model="item.notes" rows="3" class="ui-textarea" placeholder="Achievements, GPA, graduation status, or other context."></textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="space-y-4 rounded-xl border border-brand-border bg-brand-neutral/50 p-4">
-                    <div class="flex items-center justify-between gap-3">
-                        <div>
-                            <p class="text-sm font-medium text-brand-text">Work experience</p>
-                            <p class="mt-1 text-sm text-brand-muted">Optional employment history for skilled, student, or family pathway screening.</p>
-                        </div>
-                        <button type="button" class="ui-button-ghost !h-8 px-3 text-[12px]" @click="addExperience">Add experience</button>
-                    </div>
-
-                    <div v-if="createForm.work_experience.length" class="space-y-4">
-                        <div v-for="(item, index) in createForm.work_experience" :key="`experience-${index}`" class="rounded-lg border border-brand-border bg-white p-4">
-                            <div class="mb-4 flex items-center justify-between gap-3">
-                                <p class="text-sm font-medium text-brand-text">Experience {{ index + 1 }}</p>
-                                <button type="button" class="ui-button-ghost !h-8 px-3 text-[12px]" @click="removeExperience(index)">Remove</button>
-                            </div>
-                            <div class="grid gap-4 sm:grid-cols-2">
-                                <div>
-                                    <InputLabel :for="`experience_company_${index}`" value="Company" />
-                                    <TextInput :id="`experience_company_${index}`" v-model="item.company" />
-                                </div>
-                                <div>
-                                    <InputLabel :for="`experience_title_${index}`" value="Job title" />
-                                    <TextInput :id="`experience_title_${index}`" v-model="item.title" />
-                                </div>
-                            </div>
-                            <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                                <div>
-                                    <InputLabel :for="`experience_location_${index}`" value="Location" />
-                                    <TextInput :id="`experience_location_${index}`" v-model="item.location" />
-                                </div>
-                                <label class="flex items-center gap-2 rounded-lg border border-brand-border px-3 py-2 text-sm text-brand-text">
-                                    <input v-model="item.is_current" type="checkbox" class="rounded border-brand-border text-brand-primary focus:ring-brand-primary" />
-                                    Current role
-                                </label>
-                            </div>
-                            <div class="mt-4 grid gap-4 sm:grid-cols-2">
-                                <div>
-                                    <InputLabel :for="`experience_start_${index}`" value="Start date" />
-                                    <TextInput :id="`experience_start_${index}`" v-model="item.start_date" type="date" />
-                                </div>
-                                <div>
-                                    <InputLabel :for="`experience_end_${index}`" value="End date" />
-                                    <TextInput :id="`experience_end_${index}`" v-model="item.end_date" :disabled="item.is_current" type="date" />
-                                </div>
-                            </div>
-                            <div class="mt-4">
-                                <InputLabel :for="`experience_notes_${index}`" value="Notes" />
-                                <textarea :id="`experience_notes_${index}`" v-model="item.notes" rows="3" class="ui-textarea" placeholder="Responsibilities, years of experience, or relevance to the visa pathway."></textarea>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </form>
 

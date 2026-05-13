@@ -21,6 +21,7 @@ const props = defineProps({
 });
 
 const showEdit = ref(false);
+const showBackgroundEdit = ref(false);
 
 const blankEducation = () => ({
     institution: '',
@@ -46,6 +47,7 @@ const editForm = useForm({
     last_name: props.lead.name.split(' ').slice(1).join(' '),
     email: props.lead.email ?? '',
     phone: props.lead.phone ?? '',
+    date_of_birth: props.lead.date_of_birth ?? '',
     source: props.lead.source.value,
     country_of_citizenship: props.lead.country_of_citizenship ?? '',
     interested_visa_type: props.lead.interested_visa_type ?? '',
@@ -90,6 +92,7 @@ const submitEdit = () => {
         preserveScroll: true,
         onSuccess: () => {
             showEdit.value = false;
+            showBackgroundEdit.value = false;
         },
     });
 };
@@ -160,6 +163,49 @@ const prefilledCount = computed(() => {
     return fields.filter(Boolean).length;
 });
 
+const leadOverviewCompletion = computed(() => {
+    const checks = [
+        Boolean(props.lead.email),
+        Boolean(props.lead.phone),
+        Boolean(props.lead.source?.value),
+        Boolean(props.lead.interested_visa_type),
+        Boolean(props.lead.country_of_citizenship),
+        Boolean(props.lead.education_history?.length),
+        Boolean(props.lead.work_experience?.length),
+    ];
+
+    return {
+        completed: checks.filter(Boolean).length,
+        total: checks.length,
+    };
+});
+
+const leadOverviewTone = computed(() => {
+    const ratio = leadOverviewCompletion.value.completed / leadOverviewCompletion.value.total;
+
+    if (ratio >= 0.85) {
+        return {
+            badge: 'Ready to convert',
+            badgeClass: 'bg-emerald-100 text-emerald-700',
+            panelClass: 'border-emerald-200 bg-emerald-50/70',
+        };
+    }
+
+    if (ratio >= 0.45) {
+        return {
+            badge: 'Needs a little more detail',
+            badgeClass: 'bg-amber-100 text-amber-700',
+            panelClass: 'border-amber-200 bg-amber-50/70',
+        };
+    }
+
+    return {
+        badge: 'Early stage lead',
+        badgeClass: 'bg-slate-200 text-slate-700',
+        panelClass: 'border-slate-200 bg-slate-50/80',
+    };
+});
+
 const formatDateRange = (start, end, current = false) => {
     if (!start && !end && !current) return 'Dates not added';
     if (start && current) return `${start} - Present`;
@@ -201,7 +247,7 @@ const convertForm = useForm({
     last_name:           props.lead.name.split(' ').slice(1).join(' '),
     email:               props.lead.email ?? '',
     phone:               props.lead.phone ?? '',
-    date_of_birth:       '',
+    date_of_birth:       props.lead.date_of_birth ?? '',
     nationality:         props.lead.country_of_citizenship ?? '',
     country_of_residence: '',
     passport_number:     '',
@@ -300,32 +346,101 @@ const passportAny = computed(() =>
                             Edit lead
                         </button>
                     </template>
-                    <div class="grid gap-6 md:grid-cols-2">
-                        <div>
-                            <p class="ui-kicker">Contact</p>
-                            <div class="ui-meta-list">
-                                <p v-if="lead.email">
-                                    <a :href="`mailto:${lead.email}`" class="text-brand-primary hover:underline">{{ lead.email }}</a>
-                                </p>
-                                <p v-else class="text-brand-muted">No email on file yet</p>
-                                <p v-if="lead.phone">
-                                    <a :href="`tel:${lead.phone}`" class="text-brand-primary hover:underline">{{ lead.phone }}</a>
-                                </p>
-                                <p v-else class="text-brand-muted">No phone number on file yet</p>
+                    <div class="space-y-6">
+                        <div :class="['rounded-2xl border p-4 sm:p-5', leadOverviewTone.panelClass]">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div class="max-w-2xl">
+                                    <p class="ui-kicker !mb-2">Lead health</p>
+                                    <p class="text-sm leading-6 text-slate-600">
+                                        {{ lead.applicant ? 'This lead has already been converted into an applicant record.' : 'A quick read on whether the team has enough detail to follow up or convert with confidence.' }}
+                                    </p>
+                                </div>
+                                <span
+                                    class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+                                    :class="leadOverviewTone.badgeClass"
+                                >
+                                    {{ leadOverviewTone.badge }}
+                                </span>
+                            </div>
+                            <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-slate-500">
+                                <span>{{ leadOverviewCompletion.completed }} of {{ leadOverviewCompletion.total }} key fields filled</span>
+                                <span class="text-slate-300">•</span>
+                                <span>{{ [lead.email, lead.phone].filter(Boolean).length }} contact method{{ [lead.email, lead.phone].filter(Boolean).length === 1 ? '' : 's' }}</span>
+                                <span class="text-slate-300">•</span>
+                                <span>{{ (lead.education_history?.length || 0) + (lead.work_experience?.length || 0) }} background entr{{ ((lead.education_history?.length || 0) + (lead.work_experience?.length || 0)) === 1 ? 'y' : 'ies' }}</span>
                             </div>
                         </div>
-                        <div>
-                            <p class="ui-kicker">Interest</p>
-                            <div class="ui-meta-list">
-                                <p>{{ lead.source.label }}</p>
-                                <p>{{ lead.interested_visa_type || 'Visa type still to be confirmed' }}</p>
-                                <p>{{ lead.country_of_citizenship || 'Citizenship not captured yet' }}</p>
+
+                        <div class="grid gap-4 xl:grid-cols-2">
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                                <div class="flex items-center justify-between gap-3">
+                                    <p class="ui-kicker !mb-0">Contact</p>
+                                    <span class="text-xs font-medium text-slate-500">
+                                        {{ [lead.email, lead.phone].filter(Boolean).length }}/2 available
+                                    </span>
+                                </div>
+                                <div class="mt-4 space-y-3 text-sm">
+                                    <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
+                                        <span class="font-medium text-slate-500">Email</span>
+                                        <a
+                                            v-if="lead.email"
+                                            :href="`mailto:${lead.email}`"
+                                            class="text-right text-brand-primary hover:underline"
+                                        >
+                                            {{ lead.email }}
+                                        </a>
+                                        <span v-else class="text-right text-slate-400">No email on file yet</span>
+                                    </div>
+                                    <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
+                                        <span class="font-medium text-slate-500">Date of birth</span>
+                                        <span class="text-right text-slate-900">{{ lead.date_of_birth || 'Date of birth not captured yet' }}</span>
+                                    </div>
+                                    <div class="flex items-start justify-between gap-4">
+                                        <span class="font-medium text-slate-500">Phone</span>
+                                        <a
+                                            v-if="lead.phone"
+                                            :href="`tel:${lead.phone}`"
+                                            class="text-right text-brand-primary hover:underline"
+                                        >
+                                            {{ lead.phone }}
+                                        </a>
+                                        <span v-else class="text-right text-slate-400">No phone number on file yet</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                                <div class="flex items-center justify-between gap-3">
+                                    <p class="ui-kicker !mb-0">Visa interest</p>
+                                    <span class="text-xs font-medium text-slate-500">
+                                        {{ lead.interested_visa_type ? 'Qualified' : 'Needs confirmation' }}
+                                    </span>
+                                </div>
+                                <div class="mt-4 space-y-3 text-sm">
+                                    <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
+                                        <span class="font-medium text-slate-500">Source</span>
+                                        <span class="text-right text-slate-900">{{ lead.source.label }}</span>
+                                    </div>
+                                    <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
+                                        <span class="font-medium text-slate-500">Visa type</span>
+                                        <span class="text-right text-slate-900">{{ lead.interested_visa_type || 'Visa type still to be confirmed' }}</span>
+                                    </div>
+                                    <div class="flex items-start justify-between gap-4">
+                                        <span class="font-medium text-slate-500">Citizenship</span>
+                                        <span class="text-right text-slate-900">{{ lead.country_of_citizenship || 'Citizenship not captured yet' }}</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </AppCard>
 
                 <AppCard title="Background" subtitle="Education and work history captured while qualifying the lead.">
+                    <template #action>
+                        <button type="button" class="ui-button-ghost !h-8 px-2 text-[12px]" @click="showBackgroundEdit = true">
+                            Edit background
+                        </button>
+                    </template>
                     <div class="grid gap-6 lg:grid-cols-2">
                         <div>
                             <div class="mb-3 flex items-center justify-between gap-3">
@@ -566,6 +681,12 @@ const passportAny = computed(() =>
                         </div>
                     </div>
 
+                    <div>
+                        <InputLabel for="edit_date_of_birth" value="Date of birth" />
+                        <TextInput id="edit_date_of_birth" v-model="editForm.date_of_birth" type="date" />
+                        <InputError :message="editForm.errors.date_of_birth" />
+                    </div>
+
                     <div class="grid gap-4 sm:grid-cols-2">
                         <div>
                             <InputLabel for="edit_source" value="Source" />
@@ -589,6 +710,50 @@ const passportAny = computed(() =>
                         <InputError :message="editForm.errors.interested_visa_type" />
                     </div>
 
+                    <div>
+                        <InputLabel value="Tags" />
+                        <div class="flex flex-wrap gap-2">
+                            <label
+                                v-for="tag in tags"
+                                :key="tag.id"
+                                class="inline-flex items-center gap-2 rounded-full border border-brand-border px-3 py-2 text-sm text-brand-text cursor-pointer hover:bg-slate-50 transition-colors"
+                            >
+                                <input
+                                    v-model="editForm.tag_ids"
+                                    type="checkbox"
+                                    :value="tag.id"
+                                    class="rounded border-brand-border text-brand-primary focus:ring-brand-primary"
+                                />
+                                {{ tag.name }}
+                            </label>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="sticky bottom-0 flex items-center justify-between gap-3 border-t border-brand-border bg-white px-6 py-4">
+                    <button type="button" class="ui-button-ghost" @click="showEdit = false">Cancel</button>
+                    <PrimaryButton :loading="editForm.processing" @click="submitEdit">
+                        Save changes
+                    </PrimaryButton>
+                </div>
+            </div>
+        </SlideOver>
+
+        <SlideOver :show="showBackgroundEdit" width="wide" @close="showBackgroundEdit = false">
+            <div class="flex h-full flex-col">
+                <div class="sticky top-0 z-10 border-b border-brand-border bg-white px-6 py-5">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <p class="ui-kicker">Edit background</p>
+                            <h2 class="mt-2 text-2xl">Update education and work history</h2>
+                        </div>
+                        <button class="rounded-md p-2 text-brand-muted hover:bg-brand-neutral" @click="showBackgroundEdit = false">
+                            <AppIcon name="close" :size="18" />
+                        </button>
+                    </div>
+                </div>
+
+                <form class="flex-1 space-y-6 overflow-y-auto px-6 py-6" @submit.prevent="submitEdit">
                     <div class="space-y-4 rounded-xl border border-brand-border bg-brand-neutral/50 p-4">
                         <div class="flex items-center justify-between gap-3">
                             <div>
@@ -636,6 +801,7 @@ const passportAny = computed(() =>
                                 </div>
                             </div>
                         </div>
+                        <EmptyState v-else icon="document" title="No education added" description="Add school or university background when it matters for this pathway." />
                     </div>
 
                     <div class="space-y-4 rounded-xl border border-brand-border bg-brand-neutral/50 p-4">
@@ -689,32 +855,14 @@ const passportAny = computed(() =>
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    <div>
-                        <InputLabel value="Tags" />
-                        <div class="flex flex-wrap gap-2">
-                            <label
-                                v-for="tag in tags"
-                                :key="tag.id"
-                                class="inline-flex items-center gap-2 rounded-full border border-brand-border px-3 py-2 text-sm text-brand-text cursor-pointer hover:bg-slate-50 transition-colors"
-                            >
-                                <input
-                                    v-model="editForm.tag_ids"
-                                    type="checkbox"
-                                    :value="tag.id"
-                                    class="rounded border-brand-border text-brand-primary focus:ring-brand-primary"
-                                />
-                                {{ tag.name }}
-                            </label>
-                        </div>
+                        <EmptyState v-else icon="document" title="No work history added" description="Add employer background when it helps assess fit or eligibility." />
                     </div>
                 </form>
 
                 <div class="sticky bottom-0 flex items-center justify-between gap-3 border-t border-brand-border bg-white px-6 py-4">
-                    <button type="button" class="ui-button-ghost" @click="showEdit = false">Cancel</button>
+                    <button type="button" class="ui-button-ghost" @click="showBackgroundEdit = false">Cancel</button>
                     <PrimaryButton :loading="editForm.processing" @click="submitEdit">
-                        Save changes
+                        Save background
                     </PrimaryButton>
                 </div>
             </div>
@@ -762,11 +910,6 @@ const passportAny = computed(() =>
                                         <TextInput id="last_name" v-model="convertForm.last_name" />
                                         <InputError :message="convertForm.errors.last_name" />
                                     </div>
-                                </div>
-                                <div>
-                                    <InputLabel for="date_of_birth" value="Date of birth" />
-                                    <TextInput id="date_of_birth" v-model="convertForm.date_of_birth" type="date" />
-                                    <InputError :message="convertForm.errors.date_of_birth" />
                                 </div>
                             </div>
                         </div>

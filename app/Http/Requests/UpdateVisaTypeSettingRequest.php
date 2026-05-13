@@ -40,6 +40,9 @@ class UpdateVisaTypeSettingRequest extends FormRequest
             'official_summary' => ['nullable', 'string', 'max:4000'],
             'official_requirements' => ['nullable', 'array', 'max:30'],
             'official_requirements.*' => ['string', 'max:500'],
+            'official_last_reviewed_at' => ['nullable', 'date'],
+            'policy_effective_date' => ['nullable', 'date'],
+            'official_change_notes' => ['nullable', 'string', 'max:4000'],
         ];
     }
 }

@@ -218,6 +218,10 @@ export const messages = {
         search: {
             breadcrumb: 'Overview',
             shellPlaceholder: 'Type a command or search...',
+            openDashboard: 'Jump back to the main workspace overview.',
+            openApplicants: 'Open applicants',
+            createLead: 'Create lead',
+            createLeadDescription: 'Open the new lead form right away.',
             recentApplicantSearch: 'Search applicants...',
             noNewNotifications: 'No new notifications',
             noResults: 'No results found for ":query"',
@@ -451,6 +455,10 @@ export const messages = {
         search: {
             breadcrumb: 'Ерөнхий',
             shellPlaceholder: 'Комманд бичих эсвэл хайх...',
+            openDashboard: 'Үндсэн ажлын самбар руу буцаж очих.',
+            openApplicants: 'Өргөдөл гаргагчид нээх',
+            createLead: 'Лийд үүсгэх',
+            createLeadDescription: 'Шинэ лийдийн формыг шууд нээх.',
             recentApplicantSearch: 'Өргөдөл гаргагч хайх...',
             noNewNotifications: 'Шинэ мэдэгдэл алга',
             noResults: '":query" гэсэн үр дүн олдсонгүй',

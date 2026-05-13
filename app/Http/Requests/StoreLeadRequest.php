@@ -21,6 +21,7 @@ class StoreLeadRequest extends FormRequest
             'last_name' => ['required', 'string', 'max:100'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
+            'date_of_birth' => ['nullable', 'date'],
             'source' => ['required', Rule::enum(LeadSource::class)],
             'status' => ['nullable', Rule::enum(LeadStatus::class)],
             'country_of_citizenship' => ['nullable', 'string', 'max:100'],

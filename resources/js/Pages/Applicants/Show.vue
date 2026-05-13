@@ -23,6 +23,71 @@ const blankTravelHistory = () => ({
 
 const activeCaseCount = computed(() => props.applicant.visa_cases.length);
 
+const identityFields = computed(() => ([
+    props.applicant.email,
+    props.applicant.phone,
+    props.applicant.nationality,
+    props.applicant.country_of_residence,
+]));
+
+const passportFields = computed(() => ([
+    props.applicant.passport_number,
+    props.applicant.passport_country,
+    props.applicant.passport_issued_at,
+    props.applicant.passport_expires_at,
+]));
+
+const identityFieldCount = computed(() => identityFields.value.filter(Boolean).length);
+const passportFieldCount = computed(() => passportFields.value.filter(Boolean).length);
+
+const identityStatus = computed(() => {
+    if (identityFieldCount.value === identityFields.value.length) {
+        return {
+            label: 'Complete',
+            className: 'bg-emerald-100 text-emerald-700',
+            helper: 'The core identity profile is fully captured.',
+        };
+    }
+
+    if (identityFieldCount.value > 0) {
+        return {
+            label: 'Partial',
+            className: 'bg-amber-100 text-amber-700',
+            helper: 'A few profile details still need to be filled in.',
+        };
+    }
+
+    return {
+        label: 'Missing',
+        className: 'bg-slate-200 text-slate-700',
+        helper: 'No identity details have been added yet.',
+    };
+});
+
+const passportStatus = computed(() => {
+    if (passportFieldCount.value === passportFields.value.length) {
+        return {
+            label: 'Complete',
+            className: 'bg-emerald-100 text-emerald-700',
+            helper: 'All core passport details are on file.',
+        };
+    }
+
+    if (passportFieldCount.value > 0) {
+        return {
+            label: 'Partial',
+            className: 'bg-amber-100 text-amber-700',
+            helper: 'Some passport details are still missing.',
+        };
+    }
+
+    return {
+        label: 'Missing',
+        className: 'bg-slate-200 text-slate-700',
+        helper: 'No passport details have been added yet.',
+    };
+});
+
 const passportExpiringSoon = computed(() => {
     if (!props.applicant.passport_expires_at) return false;
     const expiry = new Date(props.applicant.passport_expires_at);
@@ -188,28 +253,107 @@ const notificationEvents = [
 
                 <!-- Identity & Passport -->
                 <AppCard title="Identity and passport" subtitle="The details your team reaches for most often.">
-                    <div class="grid gap-6 md:grid-cols-2">
-                        <div>
-                            <p class="ui-kicker">Identity</p>
-                            <div class="ui-meta-list">
-                                <p>{{ applicant.email || 'No email on file yet' }}</p>
-                                <p>{{ applicant.phone || 'No phone number on file yet' }}</p>
-                                <p>{{ applicant.nationality || 'Nationality not added yet' }}</p>
-                                <p>{{ applicant.country_of_residence || 'Residence not added yet' }}</p>
+                    <div class="space-y-5">
+                        <div
+                            v-if="passportExpiringSoon && applicant.passport_expires_at"
+                            class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3"
+                        >
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <p class="text-sm font-semibold text-amber-900">Passport renewal attention needed</p>
+                                    <p class="mt-1 text-sm text-amber-700">
+                                        The current passport expires on {{ applicant.passport_expires_at }}. Check renewal timing before the next submission step.
+                                    </p>
+                                </div>
+                                <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
+                                    Expiring soon
+                                </span>
                             </div>
                         </div>
-                        <div>
-                            <p class="ui-kicker">Passport</p>
-                            <div class="ui-meta-list">
-                                <p>{{ applicant.passport_number || 'Passport number not added yet' }}</p>
-                                <p>{{ applicant.passport_country || 'Passport country not added yet' }}</p>
-                                <p>{{ applicant.passport_issued_at || 'Issue date not added yet' }}</p>
-                                <p
-                                    :class="passportExpiringSoon ? 'font-medium text-amber-600' : ''"
-                                >
-                                    {{ applicant.passport_expires_at || 'Expiry date not added yet' }}
-                                    <span v-if="passportExpiringSoon"> ⚠</span>
-                                </p>
+
+                        <div class="grid gap-4 xl:grid-cols-2">
+                            <div class="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                                <div class="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <p class="ui-kicker !mb-0">Identity</p>
+                                        <p class="mt-2 text-sm text-slate-500">{{ identityStatus.helper }}</p>
+                                    </div>
+                                    <span
+                                        class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+                                        :class="identityStatus.className"
+                                    >
+                                        {{ identityStatus.label }}
+                                    </span>
+                                </div>
+
+                                <div class="mt-4 space-y-3 text-sm">
+                                    <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
+                                        <span class="font-medium text-slate-500">Email</span>
+                                        <a
+                                            v-if="applicant.email"
+                                            :href="`mailto:${applicant.email}`"
+                                            class="text-right text-brand-primary hover:underline"
+                                        >
+                                            {{ applicant.email }}
+                                        </a>
+                                        <span v-else class="text-right text-slate-400">No email on file yet</span>
+                                    </div>
+                                    <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
+                                        <span class="font-medium text-slate-500">Phone</span>
+                                        <a
+                                            v-if="applicant.phone"
+                                            :href="`tel:${applicant.phone}`"
+                                            class="text-right text-brand-primary hover:underline"
+                                        >
+                                            {{ applicant.phone }}
+                                        </a>
+                                        <span v-else class="text-right text-slate-400">No phone number on file yet</span>
+                                    </div>
+                                    <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
+                                        <span class="font-medium text-slate-500">Nationality</span>
+                                        <span class="text-right text-slate-900">{{ applicant.nationality || 'Nationality not added yet' }}</span>
+                                    </div>
+                                    <div class="flex items-start justify-between gap-4">
+                                        <span class="font-medium text-slate-500">Residence</span>
+                                        <span class="text-right text-slate-900">{{ applicant.country_of_residence || 'Residence not added yet' }}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="rounded-2xl border border-slate-200 bg-white p-4">
+                                <div class="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <p class="ui-kicker !mb-0">Passport</p>
+                                        <p class="mt-2 text-sm text-slate-500">{{ passportStatus.helper }}</p>
+                                    </div>
+                                    <span
+                                        class="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold"
+                                        :class="passportStatus.className"
+                                    >
+                                        {{ passportStatus.label }}
+                                    </span>
+                                </div>
+
+                                <div class="mt-4 space-y-3 text-sm">
+                                    <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
+                                        <span class="font-medium text-slate-500">Number</span>
+                                        <span class="text-right text-slate-900">{{ applicant.passport_number || 'Passport number not added yet' }}</span>
+                                    </div>
+                                    <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
+                                        <span class="font-medium text-slate-500">Issuing country</span>
+                                        <span class="text-right text-slate-900">{{ applicant.passport_country || 'Passport country not added yet' }}</span>
+                                    </div>
+                                    <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
+                                        <span class="font-medium text-slate-500">Issued on</span>
+                                        <span class="text-right text-slate-900">{{ applicant.passport_issued_at || 'Issue date not added yet' }}</span>
+                                    </div>
+                                    <div class="flex items-start justify-between gap-4">
+                                        <span class="font-medium text-slate-500">Expires on</span>
+                                        <span :class="passportExpiringSoon ? 'text-right font-semibold text-amber-700' : 'text-right text-slate-900'">
+                                            {{ applicant.passport_expires_at || 'Expiry date not added yet' }}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

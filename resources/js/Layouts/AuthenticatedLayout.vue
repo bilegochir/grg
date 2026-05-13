@@ -5,7 +5,7 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import FlashBanner from '@/Components/FlashBanner.vue';
 import { useLocale } from '@/lib/i18n';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 
 const page = usePage();
 const { t } = useLocale();
@@ -22,7 +22,9 @@ const searchQuery = ref('');
 const searchResults = ref([]);
 const searchLoading = ref(false);
 const searchInput = ref(null);
+const recentSearchItems = ref([]);
 let searchTimeout = null;
+const recentSearchStorageKey = 'grg.global-search.recent-items';
 
 const notificationTone = (event) => {
     if (!event) {
@@ -157,6 +159,65 @@ const pageTitle = computed(() => {
     return t('common.dashboard');
 });
 
+const pageContextLabel = computed(() => {
+    const component = page.component ?? '';
+    const props = page.props ?? {};
+
+    if (component === 'Leads/Show') {
+        return props.lead?.name || `Lead #${props.lead?.id}`;
+    }
+
+    if (component === 'Applicants/Show') {
+        return props.applicant?.name || `Applicant #${props.applicant?.id}`;
+    }
+
+    if (component === 'Cases/Show') {
+        return props.case?.reference_code || `Case #${props.case?.id}`;
+    }
+
+    if (component === 'Leads/Index') {
+        return t('common.leads');
+    }
+
+    if (component === 'Applicants/Index') {
+        return t('common.applicants');
+    }
+
+    if (component === 'Cases/Index') {
+        return t('common.cases');
+    }
+
+    if (component === 'Documents/Index') {
+        return t('common.documents');
+    }
+
+    if (component === 'Tasks/Index') {
+        return t('common.tasks');
+    }
+
+    if (component === 'Appointments/Index') {
+        return t('common.appointments');
+    }
+
+    if (component === 'Invoices/Index') {
+        return t('common.invoices');
+    }
+
+    if (component === 'Settings/Index') {
+        return t('common.settings');
+    }
+
+    if (component === 'Staff/Index') {
+        return t('common.staff');
+    }
+
+    if (component === 'Reports/Index') {
+        return t('common.reports');
+    }
+
+    return t('common.overview');
+});
+
 const openSearch = () => {
     searchOpen.value = true;
     setTimeout(() => searchInput.value?.focus(), 0);
@@ -167,6 +228,91 @@ const closeSearch = () => {
     searchQuery.value = '';
     searchResults.value = [];
     searchLoading.value = false;
+};
+
+const loadRecentSearchItems = () => {
+    try {
+        const stored = window.localStorage.getItem(recentSearchStorageKey);
+        recentSearchItems.value = stored ? JSON.parse(stored) : [];
+    } catch {
+        recentSearchItems.value = [];
+    }
+};
+
+const persistRecentSearchItems = () => {
+    try {
+        window.localStorage.setItem(
+            recentSearchStorageKey,
+            JSON.stringify(recentSearchItems.value.slice(0, 6)),
+        );
+    } catch {
+        // Ignore local storage failures and keep search usable.
+    }
+};
+
+const rememberRecentSearchItem = (item) => {
+    if (!item?.href) {
+        return;
+    }
+
+    recentSearchItems.value = [
+        {
+            type: item.type,
+            title: item.title,
+            subtitle: item.subtitle ?? null,
+            href: item.href,
+            icon: item.icon ?? 'sparkle',
+        },
+        ...recentSearchItems.value.filter((existing) => existing.href !== item.href),
+    ].slice(0, 6);
+
+    persistRecentSearchItems();
+};
+
+const quickSearchActions = computed(() => ([
+    {
+        type: 'Action',
+        title: t('common.goToDashboard'),
+        subtitle: t('search.openDashboard'),
+        icon: 'dashboard',
+        action: () => router.visit(route('dashboard')),
+    },
+    {
+        type: 'Action',
+        title: t('search.openApplicants'),
+        subtitle: t('search.recentApplicantSearch'),
+        icon: 'applicants',
+        action: () => router.visit(route('applicants.index')),
+    },
+    ...(can('leads.create')
+        ? [{
+            type: 'Action',
+            title: t('search.createLead'),
+            subtitle: t('search.createLeadDescription'),
+            icon: 'plus',
+            action: () => router.get(route('leads.index'), { create: 'true' }),
+        }]
+        : []),
+]));
+
+const visibleRecentSearchItems = computed(() =>
+    recentSearchItems.value.length ? recentSearchItems.value : quickSearchActions.value);
+
+const selectSearchItem = (item, remember = true) => {
+    if (remember && item?.href) {
+        rememberRecentSearchItem(item);
+    }
+
+    closeSearch();
+
+    if (typeof item?.action === 'function') {
+        item.action();
+        return;
+    }
+
+    if (item?.href) {
+        router.visit(item.href);
+    }
 };
 
 const runGlobalSearch = async () => {
@@ -208,7 +354,10 @@ const handleShellKeydown = (event) => {
     }
 };
 
-onMounted(() => window.addEventListener('keydown', handleShellKeydown));
+onMounted(() => {
+    loadRecentSearchItems();
+    window.addEventListener('keydown', handleShellKeydown);
+});
 onUnmounted(() => {
     window.removeEventListener('keydown', handleShellKeydown);
     clearTimeout(searchTimeout);
@@ -378,7 +527,7 @@ onUnmounted(() => {
                             <div class="flex items-center gap-1.5 text-[12px] font-medium text-slate-500 min-w-0">
                                 <span class="hover:text-slate-900 cursor-pointer transition-colors">{{ pageTitle }}</span>
                                 <AppIcon name="chevronRight" :size="10" class="text-slate-300" />
-                                <span class="text-slate-900 truncate">{{ t('search.breadcrumb') }}</span>
+                                <span class="text-slate-900 truncate">{{ pageContextLabel }}</span>
                             </div>
                         </div>
 
@@ -463,24 +612,32 @@ onUnmounted(() => {
                             <div v-else-if="searchQuery.trim().length < 1" class="py-2">
                                 <p class="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">{{ t('common.recent') }}</p>
                                 <div class="mt-1 space-y-0.5">
-                                    <button class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-100">
-                                        <AppIcon name="tasks" :size="14" class="text-slate-400" />
-                                        <span>{{ t('common.goToDashboard') }}</span>
-                                    </button>
-                                    <button class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-100">
-                                        <AppIcon name="applicants" :size="14" class="text-slate-400" />
-                                        <span>{{ t('search.recentApplicantSearch') }}</span>
+                                    <button
+                                        v-for="item in visibleRecentSearchItems"
+                                        :key="`${item.type}-${item.href ?? item.title}`"
+                                        type="button"
+                                        class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-[13px] font-medium text-slate-700 hover:bg-slate-100"
+                                        @click="selectSearchItem(item, false)"
+                                    >
+                                        <AppIcon :name="item.icon ?? 'sparkle'" :size="14" class="text-slate-400" />
+                                        <div class="min-w-0 flex-1">
+                                            <p class="truncate">{{ item.title }}</p>
+                                            <p v-if="item.subtitle" class="truncate text-[11px] text-slate-500">{{ item.subtitle }}</p>
+                                        </div>
+                                        <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                                            {{ item.type }}
+                                        </span>
                                     </button>
                                 </div>
                             </div>
 
                             <div v-else-if="searchResults.length" class="space-y-0.5">
-                                <Link
+                                <button
                                     v-for="result in searchResults"
                                     :key="`${result.type}-${result.href}-${result.title}`"
-                                    :href="result.href"
-                                    class="flex items-center gap-3 rounded-md px-3 py-2 text-left transition hover:bg-slate-100 group"
-                                    @click="closeSearch"
+                                    type="button"
+                                    class="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left transition hover:bg-slate-100 group"
+                                    @click="selectSearchItem(result)"
                                 >
                                     <div class="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-slate-50 text-slate-400 group-hover:bg-white transition-colors">
                                         <AppIcon :name="result.icon ?? 'sparkle'" :size="13" />
@@ -492,7 +649,7 @@ onUnmounted(() => {
                                     <span class="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                                         {{ result.type }}
                                     </span>
-                                </Link>
+                                </button>
                             </div>
 
                             <div v-else class="px-6 py-12 text-center">

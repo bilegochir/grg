@@ -38,6 +38,9 @@ class VisaType extends Model
         'official_reference_url',
         'official_summary',
         'official_requirements',
+        'official_last_reviewed_at',
+        'policy_effective_date',
+        'official_change_notes',
     ];
 
     protected function casts(): array
@@ -56,6 +59,8 @@ class VisaType extends Model
             'police_clearance_required' => 'boolean',
             'financial_proof_required' => 'boolean',
             'official_requirements' => 'array',
+            'official_last_reviewed_at' => 'date',
+            'policy_effective_date' => 'date',
         ];
     }
 

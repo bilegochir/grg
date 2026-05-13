@@ -22,6 +22,7 @@ class Lead extends Model
         'last_name',
         'email',
         'phone',
+        'date_of_birth',
         'source',
         'status',
         'country_of_citizenship',
@@ -38,6 +39,7 @@ class Lead extends Model
         return [
             'source' => LeadSource::class,
             'status' => LeadStatus::class,
+            'date_of_birth' => 'date',
             'education_history' => 'array',
             'work_experience' => 'array',
             'converted_at' => 'datetime',

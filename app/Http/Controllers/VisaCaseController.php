@@ -33,6 +33,7 @@ class VisaCaseController extends Controller
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
             'country' => ['nullable', 'string', 'max:255'],
+            'visa_type_id' => ['nullable', 'integer', 'exists:visa_types,id'],
             'priority' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -60,6 +61,7 @@ class VisaCaseController extends Controller
             ->when($filters['country'] ?? null, function (Builder $query, string $country): void {
                 $query->whereHas('country', fn (Builder $builder) => $builder->where('slug', $country));
             })
+            ->when($filters['visa_type_id'] ?? null, fn (Builder $query, int $visaTypeId) => $query->where('visa_type_id', $visaTypeId))
             ->when($filters['priority'] ?? null, fn (Builder $query, string $priority) => $query->where('priority', $priority))
             ->latest()
             ->paginate(10)

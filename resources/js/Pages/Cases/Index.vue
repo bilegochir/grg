@@ -11,7 +11,7 @@ import StatusBadge from '@/Components/StatusBadge.vue';
 import TextInput from '@/Components/TextInput.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps({
     cases: Object,
@@ -23,10 +23,13 @@ const props = defineProps({
 
 const urlParams = new URLSearchParams(window.location.search);
 const showCreate = ref(urlParams.get('create') === 'true');
+const createCountryId = ref('');
+const createVisaTypeSearch = ref('');
 
 const filterForm = useForm({
     search: props.filters.search ?? '',
     country: props.filters.country ?? '',
+    visa_type_id: props.filters.visa_type_id ?? '',
     priority: props.filters.priority ?? '',
 });
 
@@ -58,7 +61,69 @@ const applicantOptions = computed(() => props.caseMeta.applicants.map((applicant
 const visaTypeOptions = computed(() => props.caseMeta.visaTypes.map((visaType) => ({
     id: visaType.id,
     label: `${visaType.country.name} • ${visaType.name}`,
+    countryId: visaType.country.id,
 })));
+
+const createCountryOptions = computed(() => props.countries.map((country) => ({
+    id: country.id,
+    name: country.name,
+})));
+
+const filterCountryId = computed(() =>
+    props.countries.find((country) => country.slug === filterForm.country)?.id ?? '',
+);
+
+const filteredCaseVisaTypeOptions = computed(() => {
+    if (!filterCountryId.value) {
+        return visaTypeOptions.value;
+    }
+
+    return visaTypeOptions.value.filter((visaType) => String(visaType.countryId) === String(filterCountryId.value));
+});
+
+const filteredVisaTypeOptions = computed(() => {
+    const query = createVisaTypeSearch.value.trim().toLowerCase();
+
+    return visaTypeOptions.value.filter((visaType) => {
+        if (createCountryId.value && String(visaType.countryId) !== String(createCountryId.value)) {
+            return false;
+        }
+
+        if (!query) {
+            return true;
+        }
+
+        return visaType.label.toLowerCase().includes(query);
+    });
+});
+
+watch(createCountryId, (countryId) => {
+    if (!countryId) {
+        return;
+    }
+
+    const selectedVisaType = visaTypeOptions.value.find((visaType) => String(visaType.id) === String(createForm.visa_type_id));
+
+    if (selectedVisaType && String(selectedVisaType.countryId) !== String(countryId)) {
+        createForm.visa_type_id = '';
+    }
+});
+
+watch(() => createForm.visa_type_id, (visaTypeId) => {
+    const selectedVisaType = visaTypeOptions.value.find((visaType) => String(visaType.id) === String(visaTypeId));
+
+    if (selectedVisaType) {
+        createCountryId.value = String(selectedVisaType.countryId);
+    }
+});
+
+watch(() => filterForm.country, () => {
+    const selectedVisaType = visaTypeOptions.value.find((visaType) => String(visaType.id) === String(filterForm.visa_type_id));
+
+    if (selectedVisaType && filterCountryId.value && String(selectedVisaType.countryId) !== String(filterCountryId.value)) {
+        filterForm.visa_type_id = '';
+    }
+});
 
 const applyFilters = () => {
     router.get(route('cases.index'), filterForm.data(), {
@@ -75,6 +140,8 @@ const submit = () => {
             createForm.reset();
             createForm.branch_id = '';
             createForm.priority = 'normal';
+            createCountryId.value = '';
+            createVisaTypeSearch.value = '';
         },
     });
 };
@@ -112,6 +179,13 @@ const submit = () => {
                             <option value="">All Countries</option>
                             <option v-for="country in countries" :key="country.slug" :value="country.slug">
                                 {{ country.name }}
+                            </option>
+                        </select>
+
+                        <select v-model="filterForm.visa_type_id" class="ui-select !h-9 text-[13px] w-auto">
+                            <option value="">All Visa Types</option>
+                            <option v-for="visaType in filteredCaseVisaTypeOptions" :key="visaType.id" :value="visaType.id">
+                                {{ visaType.label }}
                             </option>
                         </select>
 
@@ -236,10 +310,26 @@ const submit = () => {
                         <InputError :message="createForm.errors.applicant_id" />
                     </div>
                     <div>
+                        <InputLabel for="create_country_id" value="Country of visa" />
+                        <select id="create_country_id" v-model="createCountryId" class="ui-select">
+                            <option value="">All countries</option>
+                            <option v-for="country in createCountryOptions" :key="country.id" :value="country.id">
+                                {{ country.name }}
+                            </option>
+                        </select>
+                    </div>
+                    <div>
                         <InputLabel for="visa_type_id" value="Visa type" />
+                        <input
+                            id="visa_type_search"
+                            v-model="createVisaTypeSearch"
+                            type="text"
+                            class="ui-input mb-2"
+                            placeholder="Search visa types..."
+                        />
                         <select id="visa_type_id" v-model="createForm.visa_type_id" class="ui-select">
                             <option value="">Choose a visa type</option>
-                            <option v-for="visaType in visaTypeOptions" :key="visaType.id" :value="visaType.id">
+                            <option v-for="visaType in filteredVisaTypeOptions" :key="visaType.id" :value="visaType.id">
                                 {{ visaType.label }}
                             </option>
                         </select>

@@ -55,41 +55,52 @@ class SettingsController extends Controller
             ->withCount(['workflowStages', 'documentTemplates', 'taskTemplates', 'cases'])
             ->orderBy('name')
             ->get()
-            ->map(fn (VisaType $visaType): array => [
-                'id' => $visaType->id,
-                'name' => $visaType->name,
-                'code' => $visaType->code,
-                'official_subclass' => $visaType->official_subclass,
-                'slug' => $visaType->slug,
-                'is_active' => $visaType->is_active,
-                'country' => [
-                    'id' => $visaType->country->id,
-                    'name' => $visaType->country->name,
-                ],
-                'submission_sla_days' => $visaType->submission_sla_days,
-                'decision_sla_days' => $visaType->decision_sla_days,
-                'validity_months' => $visaType->validity_months,
-                'stay_duration_days' => $visaType->stay_duration_days,
-                'entry_type' => $visaType->entry_type,
-                'service_scope' => $visaType->service_scope,
-                'priority_support' => $visaType->priority_support,
-                'dependants_allowed' => $visaType->dependants_allowed,
-                'biometrics_required' => $visaType->biometrics_required,
-                'interview_required' => $visaType->interview_required,
-                'medical_required' => $visaType->medical_required,
-                'police_clearance_required' => $visaType->police_clearance_required,
-                'financial_proof_required' => $visaType->financial_proof_required,
-                'checklist_intro' => $visaType->checklist_intro,
-                'portal_guidance' => $visaType->portal_guidance,
-                'notes' => $visaType->notes,
-                'official_reference_url' => $visaType->official_reference_url,
-                'official_summary' => $visaType->official_summary,
-                'official_requirements' => $visaType->official_requirements ?? [],
-                'workflow_stages_count' => $visaType->workflow_stages_count,
-                'document_templates_count' => $visaType->document_templates_count,
-                'task_templates_count' => $visaType->task_templates_count,
-                'cases_count' => $visaType->cases_count,
-            ])->values();
+            ->map(function (VisaType $visaType): array {
+                $lastReviewedAt = $visaType->official_last_reviewed_at;
+                $needsReview = $lastReviewedAt === null || $lastReviewedAt->lt(now()->subMonths(6));
+
+                return [
+                    'id' => $visaType->id,
+                    'name' => $visaType->name,
+                    'code' => $visaType->code,
+                    'official_subclass' => $visaType->official_subclass,
+                    'slug' => $visaType->slug,
+                    'is_active' => $visaType->is_active,
+                    'country' => [
+                        'id' => $visaType->country->id,
+                        'name' => $visaType->country->name,
+                    ],
+                    'submission_sla_days' => $visaType->submission_sla_days,
+                    'decision_sla_days' => $visaType->decision_sla_days,
+                    'validity_months' => $visaType->validity_months,
+                    'stay_duration_days' => $visaType->stay_duration_days,
+                    'entry_type' => $visaType->entry_type,
+                    'service_scope' => $visaType->service_scope,
+                    'priority_support' => $visaType->priority_support,
+                    'dependants_allowed' => $visaType->dependants_allowed,
+                    'biometrics_required' => $visaType->biometrics_required,
+                    'interview_required' => $visaType->interview_required,
+                    'medical_required' => $visaType->medical_required,
+                    'police_clearance_required' => $visaType->police_clearance_required,
+                    'financial_proof_required' => $visaType->financial_proof_required,
+                    'checklist_intro' => $visaType->checklist_intro,
+                    'portal_guidance' => $visaType->portal_guidance,
+                    'notes' => $visaType->notes,
+                    'official_reference_url' => $visaType->official_reference_url,
+                    'official_summary' => $visaType->official_summary,
+                    'official_requirements' => $visaType->official_requirements ?? [],
+                    'official_last_reviewed_at' => $lastReviewedAt?->toDateString(),
+                    'policy_effective_date' => $visaType->policy_effective_date?->toDateString(),
+                    'official_change_notes' => $visaType->official_change_notes,
+                    'needs_review' => $needsReview,
+                    'review_status_label' => $needsReview ? 'Needs review' : 'Reviewed',
+                    'review_status_tone' => $needsReview ? 'amber' : 'emerald',
+                    'workflow_stages_count' => $visaType->workflow_stages_count,
+                    'document_templates_count' => $visaType->document_templates_count,
+                    'task_templates_count' => $visaType->task_templates_count,
+                    'cases_count' => $visaType->cases_count,
+                ];
+            })->values();
 
         $workflowStages = VisaWorkflowStage::query()
             ->with(['visaType:id,name,target_country_id', 'visaType.country:id,name'])
@@ -391,6 +402,9 @@ class SettingsController extends Controller
                 'official_reference_url' => $request->string('official_reference_url')->toString() ?: null,
                 'official_summary' => $request->string('official_summary')->toString() ?: null,
                 'official_requirements' => $request->input('official_requirements', []),
+                'official_last_reviewed_at' => $request->date('official_last_reviewed_at'),
+                'policy_effective_date' => $request->date('policy_effective_date'),
+                'official_change_notes' => $request->string('official_change_notes')->toString() ?: null,
             ]);
 
             $provisionDefaults->execute($visaType);
@@ -435,6 +449,9 @@ class SettingsController extends Controller
             'official_reference_url' => $request->string('official_reference_url')->toString() ?: null,
             'official_summary' => $request->string('official_summary')->toString() ?: null,
             'official_requirements' => $request->input('official_requirements', []),
+            'official_last_reviewed_at' => $request->date('official_last_reviewed_at'),
+            'policy_effective_date' => $request->date('policy_effective_date'),
+            'official_change_notes' => $request->string('official_change_notes')->toString() ?: null,
         ]);
 
         return back()->with('success', 'Visa type updated.');

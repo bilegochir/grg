@@ -116,6 +116,7 @@ class LeadController extends Controller
         return Inertia::render('Leads/Show', [
             'lead' => [
                 ...$this->leadSummary($lead),
+                'date_of_birth' => $lead->date_of_birth?->toDateString(),
                 'country_of_citizenship' => $lead->country_of_citizenship,
                 'interested_visa_type' => $lead->interested_visa_type,
                 'education_history' => collect($lead->education_history ?? [])->values(),
@@ -203,6 +204,7 @@ class LeadController extends Controller
             'name' => $lead->full_name,
             'email' => $lead->email,
             'phone' => $lead->phone,
+            'date_of_birth' => $lead->date_of_birth?->toDateString(),
             'source' => [
                 'value' => $lead->source->value,
                 'label' => $lead->source->label(),

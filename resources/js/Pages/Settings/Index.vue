@@ -59,6 +59,7 @@ const activeTab = ref(new URLSearchParams(window.location.search).get('tab') || 
 const visaTypeSearch = ref('');
 const visaTypeCountryFilter = ref('all');
 const visaTypeServiceScopeFilter = ref('all');
+const visaTypeReviewFilter = ref('all');
 const expandedVisaTypes = ref([]);
 const logoPreviewUrl = ref(props.businessSetting.logo_url ?? null);
 
@@ -113,6 +114,9 @@ const visaTypeForm = useForm({
     official_reference_url: '',
     official_summary: '',
     official_requirements_input: '',
+    official_last_reviewed_at: '',
+    policy_effective_date: '',
+    official_change_notes: '',
     notes: '',
 });
 
@@ -179,6 +183,14 @@ const filteredVisaTypes = computed(() => {
             }
 
             if (visaTypeServiceScopeFilter.value !== 'all' && (visaType.service_scope ?? '') !== visaTypeServiceScopeFilter.value) {
+                return false;
+            }
+
+            if (visaTypeReviewFilter.value === 'needs_review' && !visaType.needs_review) {
+                return false;
+            }
+
+            if (visaTypeReviewFilter.value === 'reviewed' && visaType.needs_review) {
                 return false;
             }
 
@@ -285,6 +297,9 @@ const resetVisaTypeForm = () => {
     visaTypeForm.official_reference_url = '';
     visaTypeForm.official_summary = '';
     visaTypeForm.official_requirements_input = '';
+    visaTypeForm.official_last_reviewed_at = '';
+    visaTypeForm.policy_effective_date = '';
+    visaTypeForm.official_change_notes = '';
     visaTypeForm.notes = '';
 };
 
@@ -384,6 +399,9 @@ const openVisaTypeEdit = (visaType) => {
     visaTypeForm.official_reference_url = visaType.official_reference_url ?? '';
     visaTypeForm.official_summary = visaType.official_summary ?? '';
     visaTypeForm.official_requirements_input = (visaType.official_requirements ?? []).join('\n');
+    visaTypeForm.official_last_reviewed_at = visaType.official_last_reviewed_at ?? '';
+    visaTypeForm.policy_effective_date = visaType.policy_effective_date ?? '';
+    visaTypeForm.official_change_notes = visaType.official_change_notes ?? '';
     visaTypeForm.notes = visaType.notes ?? '';
     showVisaType.value = true;
 };
@@ -535,6 +553,9 @@ const saveVisaType = () => {
             .split('\n')
             .map((value) => value.trim())
             .filter(Boolean),
+        official_last_reviewed_at: data.official_last_reviewed_at || null,
+        policy_effective_date: data.policy_effective_date || null,
+        official_change_notes: data.official_change_notes || null,
     }));
 
     if (editingVisaTypeId.value) {
@@ -1034,7 +1055,7 @@ const saveFormTemplate = () => {
 
                 <div class="space-y-6">
                     <div class="sticky top-0 z-10 -mx-4 mb-6 rounded-xl border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur-md sm:mx-0">
-                        <div class="grid gap-4 md:grid-cols-[1fr,200px,200px]">
+                        <div class="grid gap-4 md:grid-cols-[1fr,180px,180px,180px]">
                             <div class="relative">
                                 <AppIcon name="search" :size="14" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                                 <input
@@ -1056,13 +1077,18 @@ const saveFormTemplate = () => {
                                 <option value="extension">Extension</option>
                                 <option value="multi_step_case">Multi-step case</option>
                             </select>
+                            <select v-model="visaTypeReviewFilter" class="ui-select">
+                                <option value="all">All review states</option>
+                                <option value="needs_review">Needs review</option>
+                                <option value="reviewed">Reviewed recently</option>
+                            </select>
                         </div>
-                        <div v-if="visaTypeSearch || visaTypeCountryFilter !== 'all' || visaTypeServiceScopeFilter !== 'all'" class="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
+                        <div v-if="visaTypeSearch || visaTypeCountryFilter !== 'all' || visaTypeServiceScopeFilter !== 'all' || visaTypeReviewFilter !== 'all'" class="mt-3 flex items-center justify-between border-t border-slate-100 pt-3">
                             <span class="text-[12px] text-slate-500">{{ filteredVisaTypes.length }} results found</span>
                             <button
                                 type="button"
                                 class="text-[12px] font-semibold text-brand-primary hover:underline"
-                                @click="visaTypeSearch = ''; visaTypeCountryFilter = 'all'; visaTypeServiceScopeFilter = 'all'"
+                                @click="visaTypeSearch = ''; visaTypeCountryFilter = 'all'; visaTypeServiceScopeFilter = 'all'; visaTypeReviewFilter = 'all'"
                             >
                                 Reset filters
                             </button>
@@ -1099,6 +1125,9 @@ const saveFormTemplate = () => {
                                                 <span v-if="visaType.code" class="text-[11px] font-mono font-bold text-slate-400">{{ visaType.code }}</span>
                                                 <span :class="visaType.is_active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'" class="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">
                                                     {{ visaType.is_active ? 'Live' : 'Paused' }}
+                                                </span>
+                                                <span :class="visaType.needs_review ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'" class="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+                                                    {{ visaType.review_status_label }}
                                                 </span>
                                             </div>
                                             <div class="mt-1 flex items-center gap-4 text-[12px] text-slate-500">
@@ -1143,6 +1172,14 @@ const saveFormTemplate = () => {
                                             </div>
                                         </div>
                                         <div class="mt-6 flex flex-wrap gap-4 pt-4 border-t border-slate-100">
+                                            <div class="flex flex-col">
+                                                <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Last reviewed</span>
+                                                <span class="text-[13px] font-medium text-slate-700">{{ visaType.official_last_reviewed_at || 'Not reviewed yet' }}</span>
+                                            </div>
+                                            <div v-if="visaType.policy_effective_date" class="flex flex-col">
+                                                <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Policy effective</span>
+                                                <span class="text-[13px] font-medium text-slate-700">{{ visaType.policy_effective_date }}</span>
+                                            </div>
                                             <div v-if="visaType.decision_sla_days" class="flex flex-col">
                                                 <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Decision SLA</span>
                                                 <span class="text-[13px] font-medium text-slate-700">{{ visaType.decision_sla_days }} days</span>
@@ -1155,6 +1192,10 @@ const saveFormTemplate = () => {
                                                 <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Typical Validity</span>
                                                 <span class="text-[13px] font-medium text-slate-700">{{ visaType.validity_months }} months</span>
                                             </div>
+                                        </div>
+                                        <div v-if="visaType.official_change_notes" class="mt-4 border-t border-slate-100 pt-4">
+                                            <h4 class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Recent change notes</h4>
+                                            <p class="mt-2 whitespace-pre-line text-[13px] leading-relaxed text-slate-600">{{ visaType.official_change_notes }}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -1509,11 +1550,28 @@ const saveFormTemplate = () => {
                                 <textarea id="visa_type_official_summary" v-model="visaTypeForm.official_summary" rows="4" class="ui-textarea" placeholder="Add a plain-language summary based on the official government visa page."></textarea>
                                 <InputError :message="visaTypeForm.errors.official_summary" />
                             </div>
+                            <div class="grid gap-5 xl:grid-cols-2">
+                                <div>
+                                    <InputLabel for="visa_type_official_last_reviewed_at" value="Last reviewed on" />
+                                    <input id="visa_type_official_last_reviewed_at" v-model="visaTypeForm.official_last_reviewed_at" type="date" class="ui-input" />
+                                    <InputError :message="visaTypeForm.errors.official_last_reviewed_at" />
+                                </div>
+                                <div>
+                                    <InputLabel for="visa_type_policy_effective_date" value="Policy effective date" />
+                                    <input id="visa_type_policy_effective_date" v-model="visaTypeForm.policy_effective_date" type="date" class="ui-input" />
+                                    <InputError :message="visaTypeForm.errors.policy_effective_date" />
+                                </div>
+                            </div>
                             <div>
                                 <InputLabel for="visa_type_official_requirements" value="Official requirements" />
                                 <textarea id="visa_type_official_requirements" v-model="visaTypeForm.official_requirements_input" rows="8" class="ui-textarea" placeholder="One requirement per line"></textarea>
                                 <p class="mt-2 text-[12px] text-brand-muted">Keep one requirement on each line so the app can store and display them cleanly.</p>
                                 <InputError :message="visaTypeForm.errors.official_requirements" />
+                            </div>
+                            <div>
+                                <InputLabel for="visa_type_official_change_notes" value="Official change notes" />
+                                <textarea id="visa_type_official_change_notes" v-model="visaTypeForm.official_change_notes" rows="4" class="ui-textarea" placeholder="Summarize what changed in the policy or official guidance since the last review."></textarea>
+                                <InputError :message="visaTypeForm.errors.official_change_notes" />
                             </div>
                         </div>
                     </div>

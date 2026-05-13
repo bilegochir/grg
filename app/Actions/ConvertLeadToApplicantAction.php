@@ -31,7 +31,7 @@ class ConvertLeadToApplicantAction
                 'last_name' => Arr::get($applicantData, 'last_name', $lead->last_name),
                 'email' => Arr::get($applicantData, 'email', $lead->email),
                 'phone' => Arr::get($applicantData, 'phone', $lead->phone),
-                'date_of_birth' => Arr::get($applicantData, 'date_of_birth'),
+                'date_of_birth' => Arr::get($applicantData, 'date_of_birth', $lead->date_of_birth),
                 'nationality' => Arr::get($applicantData, 'nationality', $lead->country_of_citizenship),
                 'country_of_residence' => Arr::get($applicantData, 'country_of_residence'),
                 'passport_number' => Arr::get($applicantData, 'passport_number'),
