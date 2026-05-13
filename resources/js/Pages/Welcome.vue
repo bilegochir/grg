@@ -1,4 +1,5 @@
 <script setup>
+import AppIcon from '@/Components/AppIcon.vue';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
@@ -24,174 +25,259 @@ defineProps({
 
 const { t } = useLocale();
 
-const featureCards = [
+const navItems = ['Product', 'Resources', 'Company'];
+
+const mockNavItems = [
+    { label: 'Leads', active: false },
+    { label: 'Applicants', active: true },
+    { label: 'Cases', active: false },
+    { label: 'Documents', active: false },
+];
+
+const metrics = [
     {
-        title: t('pages.welcome.featureLeadTitle'),
-        description: t('pages.welcome.featureLeadDescription'),
+        title: 'Lead conversion',
+        value: '62%',
+        change: '+5%',
+        tone: 'text-slate-900',
+        bars: [90, 74, 58, 82],
     },
     {
-        title: t('pages.welcome.featureCaseTitle'),
-        description: t('pages.welcome.featureCaseDescription'),
-    },
-    {
-        title: t('pages.welcome.featureDocsTitle'),
-        description: t('pages.welcome.featureDocsDescription'),
+        title: 'Active cases',
+        value: '124',
+        change: '+8',
+        tone: 'text-slate-500',
+        line: [34, 34, 62, 28, 50, 36, 30, 46, 46],
     },
 ];
+
+const activityItems = [
+    { name: 'Student visa review', detail: '3 documents waiting' },
+    { name: 'Partner case lodgement', detail: 'Ready for final check' },
+    { name: 'Skilled migration intake', detail: 'Consultation booked' },
+];
+
+const linePath = (points) => {
+    const stepX = 100 / Math.max(points.length - 1, 1);
+
+    return points
+        .map((point, index) => {
+            const x = index * stepX;
+            const y = 100 - point;
+
+            return `${index === 0 ? 'M' : 'L'} ${x},${y}`;
+        })
+        .join(' ');
+};
 </script>
 
 <template>
     <Head :title="t('pages.welcome.title')" />
 
-    <div class="min-h-screen bg-slate-50 text-slate-900">
-        <div class="mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-6 sm:px-6 lg:px-8">
-            <header class="flex items-center justify-between py-4">
-                <Link href="/" class="flex items-center gap-3">
-                    <ApplicationLogo class="h-11 w-11 fill-current text-brand-primary" />
-                    <div>
-                        <p class="text-lg font-semibold tracking-tight">Agency</p>
-                        <p class="text-sm text-slate-500">{{ t('pages.welcome.tagline') }}</p>
+    <div class="min-h-screen bg-white text-slate-900">
+        <div class="mx-auto min-h-screen max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
+            <div class="min-h-[calc(100vh-3rem)] bg-white px-6 py-6 sm:px-8 lg:px-10">
+                <header class="flex flex-wrap items-center justify-between gap-4 py-2">
+                    <div class="flex items-center gap-8">
+                        <Link href="/" class="flex items-center gap-3">
+                            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white">
+                                <ApplicationLogo class="h-7 w-7 fill-current" />
+                            </div>
+                            <span class="text-base font-semibold tracking-tight text-slate-950">gereg</span>
+                        </Link>
+
+                        <nav class="hidden items-center gap-8 md:flex">
+                            <a
+                                v-for="item in navItems"
+                                :key="item"
+                                href="#"
+                                class="text-[15px] font-medium text-slate-700 transition hover:text-slate-950"
+                            >
+                                {{ item }}
+                            </a>
+                        </nav>
                     </div>
-                </Link>
 
-                <nav v-if="canLogin" class="flex items-center gap-3">
-                    <Link
-                        v-if="$page.props.auth.user"
-                        :href="route('dashboard')"
-                        class="ui-button-secondary"
-                    >
-                        {{ t('pages.welcome.openDashboard') }}
-                    </Link>
-
-                    <template v-else>
-                        <Link :href="route('login')" class="ui-button-secondary">
-                            {{ t('common.logIn') }}
-                        </Link>
+                    <nav v-if="canLogin" class="flex items-center gap-3">
                         <Link
-                            v-if="canRegister"
-                            :href="route('register')"
-                            class="ui-button-primary"
+                            v-if="$page.props.auth.user"
+                            :href="route('dashboard')"
+                            class="ui-button-secondary !rounded-xl !border-slate-300 !px-4"
                         >
-                            {{ t('pages.welcome.createAccount') }}
+                            {{ t('pages.welcome.openDashboard') }}
                         </Link>
-                    </template>
-                </nav>
-            </header>
 
-            <main class="flex flex-1 flex-col justify-center py-10 lg:py-16">
-                <section class="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-                    <div class="space-y-6">
-                        <div class="inline-flex items-center rounded-full bg-brand-primary/10 px-4 py-2 text-sm font-medium text-brand-primary">
+                        <template v-else>
+                            <Link :href="route('login')" class="px-3 py-2 text-[15px] font-medium text-slate-700 transition hover:text-slate-950">
+                                {{ t('common.logIn') }}
+                            </Link>
+                            <Link
+                                v-if="canRegister"
+                                :href="route('register')"
+                            >
+                                <PrimaryButton class="!min-h-[44px] !rounded-xl !bg-slate-900 !px-5 !text-[15px] hover:!bg-slate-800">
+                                    {{ t('pages.welcome.createAccount') }}
+                                </PrimaryButton>
+                            </Link>
+                        </template>
+                    </nav>
+                </header>
+
+                <main class="pb-6 pt-10 sm:pt-14">
+                    <section class="mx-auto max-w-4xl text-center">
+                        <div class="inline-flex items-center rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700">
                             {{ t('pages.welcome.heroKicker') }}
                         </div>
 
-                        <div class="space-y-4">
-                            <h1 class="max-w-3xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">
-                                {{ t('pages.welcome.heroTitle') }}
-                            </h1>
-                            <p class="max-w-2xl text-lg leading-8 text-slate-600">
-                                {{ t('pages.welcome.heroDescription') }}
-                            </p>
-                        </div>
+                        <h1 class="mx-auto mt-8 max-w-4xl text-5xl font-semibold tracking-[-0.06em] text-slate-950 sm:text-6xl lg:text-7xl">
+                            Help your visa team work with more clarity.
+                        </h1>
+                        <p class="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-500 sm:text-xl">
+                            A calm workspace for leads, applicants, cases, and documents, designed to keep every next step clear.
+                        </p>
 
-                        <div class="flex flex-wrap items-center gap-3">
-                            <Link
-                                v-if="$page.props.auth.user"
-                                :href="route('dashboard')"
-                            >
-                                <PrimaryButton>{{ t('common.goToDashboard') }}</PrimaryButton>
-                            </Link>
+                        <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+                            <template v-if="$page.props.auth.user">
+                                <Link :href="route('dashboard')">
+                                    <PrimaryButton class="!min-h-[48px] !rounded-xl !bg-slate-900 !px-6 !text-[15px] hover:!bg-slate-800">
+                                        {{ t('common.goToDashboard') }}
+                                    </PrimaryButton>
+                                </Link>
+                            </template>
                             <template v-else>
                                 <Link :href="route('login')">
-                                    <PrimaryButton>{{ t('pages.welcome.loginToAgency') }}</PrimaryButton>
+                                    <SecondaryButton class="!min-h-[48px] !rounded-xl !border-slate-300 !bg-white !px-6 !text-[15px]">
+                                        {{ t('pages.welcome.loginToAgency') }}
+                                    </SecondaryButton>
                                 </Link>
                                 <Link v-if="canRegister" :href="route('register')">
-                                    <SecondaryButton>{{ t('pages.welcome.createStaffAccount') }}</SecondaryButton>
+                                    <PrimaryButton class="!min-h-[48px] !rounded-xl !bg-slate-900 !px-6 !text-[15px] hover:!bg-slate-800">
+                                        {{ t('pages.welcome.createStaffAccount') }}
+                                    </PrimaryButton>
                                 </Link>
                             </template>
                         </div>
+                    </section>
 
-                        <div class="flex flex-wrap items-center gap-6 pt-2 text-sm text-slate-500">
-                            <span>Laravel {{ laravelVersion }}</span>
-                            <span>PHP {{ phpVersion }}</span>
-                            <span>{{ t('pages.welcome.workflowReady') }}</span>
-                        </div>
-                    </div>
-
-                    <div class="rounded-[28px] border border-slate-200 bg-white p-6 shadow-[0_20px_60px_rgba(15,23,42,0.08)]">
-                        <div class="mb-6 flex items-center justify-between">
-                            <div>
-                                <p class="text-sm font-medium text-slate-500">{{ t('pages.welcome.snapshot') }}</p>
-                                <h2 class="text-2xl font-semibold tracking-tight text-slate-950">{{ t('pages.welcome.workspace') }}</h2>
-                            </div>
-                            <div class="rounded-full bg-orange-50 px-3 py-1 text-sm font-medium text-orange-600">
-                                {{ t('pages.welcome.humanFirst') }}
-                            </div>
-                        </div>
-
-                        <div class="space-y-4">
-                            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <section class="mx-auto mt-16 max-w-6xl overflow-hidden rounded-[28px] bg-slate-50">
+                        <div class="grid gap-0 lg:grid-cols-[240px_minmax(0,1fr)]">
+                            <aside class="bg-slate-50 p-4">
                                 <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-3">
+                                        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-900 text-white">
+                                            <ApplicationLogo class="h-6 w-6 fill-current" />
+                                        </div>
+                                        <div>
+                                            <p class="text-sm font-semibold text-slate-950">gereg</p>
+                                            <p class="text-xs text-slate-500">Workspace</p>
+                                        </div>
+                                    </div>
+                                    <AppIcon name="chevronLeft" :size="16" class="text-slate-400" />
+                                </div>
+
+                                <div class="mt-6 space-y-1.5">
+                                    <div
+                                        v-for="item in mockNavItems"
+                                        :key="item.label"
+                                        class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium"
+                                        :class="item.active ? 'bg-white text-slate-950 shadow-sm' : 'text-slate-500'"
+                                    >
+                                        <AppIcon :name="item.active ? 'dashboard' : 'note'" :size="16" />
+                                        <span>{{ item.label }}</span>
+                                    </div>
+                                </div>
+                            </aside>
+
+                            <div class="bg-white p-4 sm:p-5">
+                                <div class="flex flex-wrap items-center justify-between gap-4">
                                     <div>
-                                        <p class="text-sm font-medium text-slate-500">{{ t('pages.welcome.openVisaCases') }}</p>
-                                        <p class="mt-1 text-3xl font-semibold tracking-tight text-slate-950">24</p>
+                                        <p class="text-sm font-semibold text-slate-950">Hello, team</p>
+                                        <p class="mt-1 text-sm text-slate-500">A quick view of pipeline, casework, and document movement.</p>
                                     </div>
-                                    <div class="rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-700">
-                                        {{ t('pages.welcome.thisWeek') }}
+                                    <div class="flex items-center gap-2">
+                                            <button class="rounded-xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-600">
+                                            Edit view
+                                        </button>
+                                        <button class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
+                                            Share
+                                        </button>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div class="grid gap-4 sm:grid-cols-2">
-                                <div class="rounded-2xl border border-slate-200 p-4">
-                                    <p class="text-sm font-medium text-slate-500">{{ t('pages.welcome.awaitingDocuments') }}</p>
-                                    <p class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">8</p>
-                                </div>
-                                <div class="rounded-2xl border border-slate-200 p-4">
-                                    <p class="text-sm font-medium text-slate-500">{{ t('pages.welcome.priorityReviews') }}</p>
-                                    <p class="mt-2 text-2xl font-semibold tracking-tight text-slate-950">3</p>
-                                </div>
-                            </div>
+                                <div class="mt-5 grid gap-4 xl:grid-cols-[1fr,1fr,0.9fr]">
+                                    <div
+                                        v-for="metric in metrics"
+                                        :key="metric.title"
+                                        class="rounded-[24px] bg-slate-50 p-5"
+                                    >
+                                        <div class="flex items-start justify-between gap-3">
+                                            <div>
+                                                <p class="text-sm font-medium text-slate-500">{{ metric.title }}</p>
+                                                <div class="mt-3 flex items-baseline gap-2">
+                                                    <p class="text-4xl font-semibold tracking-[-0.05em] text-slate-950">{{ metric.value }}</p>
+                                                    <span class="text-sm font-medium" :class="metric.tone">{{ metric.change }}</span>
+                                                </div>
+                                            </div>
+                                            <div class="rounded-xl bg-white px-3 py-2 text-sm text-slate-600 shadow-sm">
+                                                1 month
+                                            </div>
+                                        </div>
 
-                            <div class="rounded-2xl border border-slate-200 p-4">
-                                <p class="text-sm font-medium text-slate-500">{{ t('pages.welcome.recentActivity') }}</p>
-                                <div class="mt-3 space-y-3">
-                                    <div class="flex items-start gap-3">
-                                        <span class="mt-1 h-2.5 w-2.5 rounded-full bg-brand-primary"></span>
-                                        <p class="text-sm leading-6 text-slate-600">
-                                            Sarah moved Ahmed Al-Rashid to <span class="font-medium text-slate-900">Under Review</span>.
-                                        </p>
+                                        <div v-if="metric.bars" class="mt-5 space-y-3">
+                                            <div
+                                                v-for="(bar, index) in metric.bars"
+                                                :key="`${metric.title}-bar-${index}`"
+                                                class="flex items-center gap-3"
+                                            >
+                                                <span class="w-20 text-sm text-slate-500">
+                                                    {{ ['Qualified', 'Ready', 'Submitted', 'Approved'][index] }}
+                                                </span>
+                                                <div class="h-2 flex-1 rounded-full bg-slate-100">
+                                                    <div class="h-2 rounded-full bg-slate-900" :style="{ width: `${bar}%` }"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div v-else class="mt-5">
+                                            <svg viewBox="0 0 100 100" class="h-36 w-full">
+                                                <path d="M 0 100 L 0 66 L 12.5 66 L 25 38 L 37.5 72 L 50 50 L 62.5 64 L 75 70 L 87.5 54 L 100 54 L 100 100 Z" fill="rgba(15,23,42,0.08)" />
+                                                <path :d="linePath(metric.line)" fill="none" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                                            </svg>
+                                        </div>
                                     </div>
-                                    <div class="flex items-start gap-3">
-                                        <span class="mt-1 h-2.5 w-2.5 rounded-full bg-orange-500"></span>
-                                        <p class="text-sm leading-6 text-slate-600">
-                                            A passport copy was uploaded for <span class="font-medium text-slate-900">Mina Park</span>.
-                                        </p>
+
+                                    <div class="rounded-[24px] bg-slate-50 p-5">
+                                        <p class="text-sm font-medium text-slate-500">Recent movement</p>
+                                        <div class="mt-4 space-y-4">
+                                            <div
+                                                v-for="item in activityItems"
+                                                :key="item.name"
+                                                class="flex items-start gap-3"
+                                            >
+                                                <div class="mt-1 h-2.5 w-2.5 rounded-full bg-slate-300"></div>
+                                                <div class="min-w-0">
+                                                    <p class="text-sm font-medium text-slate-900">{{ item.name }}</p>
+                                                    <div class="mt-1 inline-flex rounded-full bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
+                                                        {{ item.detail }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    </section>
+                </main>
+
+                <footer class="flex flex-wrap items-center justify-between gap-3 py-5 text-sm text-slate-500">
+                    <p>Professional, clear, and easy to understand.</p>
+                    <div class="flex items-center gap-4">
+                        <span>Laravel {{ laravelVersion }}</span>
+                        <span>PHP {{ phpVersion }}</span>
                     </div>
-                </section>
-
-                <section class="mt-16 grid gap-5 md:grid-cols-3">
-                    <article
-                        v-for="card in featureCards"
-                        :key="card.title"
-                        class="rounded-3xl border border-slate-200 bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04)]"
-                    >
-                        <div class="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-primary/10 text-brand-primary">
-                            <span class="text-lg font-semibold">•</span>
-                        </div>
-                        <h3 class="text-xl font-semibold tracking-tight text-slate-950">
-                            {{ card.title }}
-                        </h3>
-                        <p class="mt-3 text-sm leading-7 text-slate-600">
-                            {{ card.description }}
-                        </p>
-                    </article>
-                </section>
-            </main>
+                </footer>
+            </div>
         </div>
     </div>
 </template>

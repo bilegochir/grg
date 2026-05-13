@@ -20,6 +20,15 @@ it('creates a lead with tags and an initial note', function () {
             'source' => 'website',
             'status' => 'new',
             'country_of_citizenship' => 'Mongolia',
+            'pathway_interest' => 'Student',
+            'current_country' => 'Mongolia',
+            'relationship_status' => 'Single',
+            'english_test_status' => 'Planning IELTS',
+            'highest_education' => 'Bachelor',
+            'years_of_experience' => 1,
+            'has_refusal_history' => false,
+            'target_intake_date' => '2026-11-01',
+            'budget_range' => '$10,000-$20,000',
             'interested_visa_type' => 'Student',
             'education_history' => [
                 [
@@ -53,6 +62,9 @@ it('creates a lead with tags and an initial note', function () {
     expect($lead)->not->toBeNull();
     expect($lead->first_name)->toBe('Ariunaa');
     expect($lead->status)->toBe(LeadStatus::New);
+    expect($lead->pathway_interest)->toBe('Student');
+    expect($lead->english_test_status)->toBe('Planning IELTS');
+    expect($lead->target_intake_date?->toDateString())->toBe('2026-11-01');
     expect($lead->education_history)->toHaveCount(1);
     expect($lead->work_experience)->toHaveCount(1);
     expect($lead->tags)->toHaveCount(2);
@@ -74,6 +86,15 @@ it('updates a lead with education and work experience', function () {
             'phone' => '+97688112233',
             'source' => 'website',
             'country_of_citizenship' => 'Mongolia',
+            'pathway_interest' => 'Employer-sponsored',
+            'current_country' => 'Australia',
+            'relationship_status' => 'Married',
+            'english_test_status' => 'IELTS completed',
+            'highest_education' => 'Master',
+            'years_of_experience' => 4,
+            'has_refusal_history' => true,
+            'target_intake_date' => '2027-02-01',
+            'budget_range' => '$20,000+',
             'interested_visa_type' => 'Skilled Worker',
             'education_history' => [
                 [
@@ -104,6 +125,9 @@ it('updates a lead with education and work experience', function () {
     $lead->refresh();
 
     expect($lead->first_name)->toBe('Temuulen');
+    expect($lead->pathway_interest)->toBe('Employer-sponsored');
+    expect($lead->current_country)->toBe('Australia');
+    expect($lead->has_refusal_history)->toBeTrue();
     expect($lead->education_history[0]['degree'])->toBe('Master');
     expect($lead->work_experience[0]['company'])->toBe('Nomad Data');
 });

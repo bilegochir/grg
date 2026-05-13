@@ -1,13 +1,11 @@
 <script setup>
 import AppCard from '@/Components/AppCard.vue';
-import AppIcon from '@/Components/AppIcon.vue';
 import EmptyState from '@/Components/EmptyState.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PaginationLinks from '@/Components/PaginationLinks.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SlideOver from '@/Components/SlideOver.vue';
-import StatusBadge from '@/Components/StatusBadge.vue';
 import TextInput from '@/Components/TextInput.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
@@ -24,6 +22,7 @@ const props = defineProps({
 const urlParams = new URLSearchParams(window.location.search);
 const showCreate = ref(urlParams.get('create') === 'true');
 const createCountryId = ref('');
+const createPathway = ref('');
 const createVisaTypeSearch = ref('');
 
 const filterForm = useForm({
@@ -69,6 +68,8 @@ const createCountryOptions = computed(() => props.countries.map((country) => ({
     name: country.name,
 })));
 
+const createPathwayOptions = computed(() => [...new Set(props.caseMeta.visaTypes.map((visaType) => visaType.pathway))]);
+
 const filterCountryId = computed(() =>
     props.countries.find((country) => country.slug === filterForm.country)?.id ?? '',
 );
@@ -89,6 +90,14 @@ const filteredVisaTypeOptions = computed(() => {
             return false;
         }
 
+        if (createPathway.value) {
+            const fullVisaType = props.caseMeta.visaTypes.find((item) => String(item.id) === String(visaType.id));
+
+            if (fullVisaType?.pathway !== createPathway.value) {
+                return false;
+            }
+        }
+
         if (!query) {
             return true;
         }
@@ -96,6 +105,10 @@ const filteredVisaTypeOptions = computed(() => {
         return visaType.label.toLowerCase().includes(query);
     });
 });
+
+const selectedVisaTypePreview = computed(() =>
+    props.caseMeta.visaTypes.find((visaType) => String(visaType.id) === String(createForm.visa_type_id)) ?? null,
+);
 
 watch(createCountryId, (countryId) => {
     if (!countryId) {
@@ -109,11 +122,24 @@ watch(createCountryId, (countryId) => {
     }
 });
 
+watch(createPathway, (pathway) => {
+    if (!pathway || !createForm.visa_type_id) {
+        return;
+    }
+
+    const selectedVisaType = props.caseMeta.visaTypes.find((visaType) => String(visaType.id) === String(createForm.visa_type_id));
+
+    if (selectedVisaType && selectedVisaType.pathway !== pathway) {
+        createForm.visa_type_id = '';
+    }
+});
+
 watch(() => createForm.visa_type_id, (visaTypeId) => {
-    const selectedVisaType = visaTypeOptions.value.find((visaType) => String(visaType.id) === String(visaTypeId));
+    const selectedVisaType = props.caseMeta.visaTypes.find((visaType) => String(visaType.id) === String(visaTypeId));
 
     if (selectedVisaType) {
-        createCountryId.value = String(selectedVisaType.countryId);
+        createCountryId.value = String(selectedVisaType.country.id);
+        createPathway.value = selectedVisaType.pathway;
     }
 });
 
@@ -141,6 +167,7 @@ const submit = () => {
             createForm.branch_id = '';
             createForm.priority = 'normal';
             createCountryId.value = '';
+            createPathway.value = '';
             createVisaTypeSearch.value = '';
         },
     });
@@ -319,6 +346,15 @@ const submit = () => {
                         </select>
                     </div>
                     <div>
+                        <InputLabel for="create_pathway" value="Pathway" />
+                        <select id="create_pathway" v-model="createPathway" class="ui-select">
+                            <option value="">All pathways</option>
+                            <option v-for="pathway in createPathwayOptions" :key="pathway" :value="pathway">
+                                {{ pathway }}
+                            </option>
+                        </select>
+                    </div>
+                    <div>
                         <InputLabel for="visa_type_id" value="Visa type" />
                         <input
                             id="visa_type_search"
@@ -334,6 +370,42 @@ const submit = () => {
                             </option>
                         </select>
                         <InputError :message="createForm.errors.visa_type_id" />
+                    </div>
+                </div>
+
+                <div v-if="selectedVisaTypePreview" class="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                            <p class="ui-kicker !mb-1">Case setup preview</p>
+                            <p class="text-sm font-medium text-slate-900">
+                                {{ selectedVisaTypePreview.country.name }} • {{ selectedVisaTypePreview.pathway }}
+                            </p>
+                            <p class="mt-1 text-sm text-slate-500">{{ selectedVisaTypePreview.name }}</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2 text-[12px] text-slate-500">
+                            <span class="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">
+                                {{ selectedVisaTypePreview.workflow_stages_count }} stages
+                            </span>
+                            <span class="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">
+                                {{ selectedVisaTypePreview.document_templates_count }} documents
+                            </span>
+                            <span class="rounded-full bg-white px-3 py-1 ring-1 ring-slate-200">
+                                {{ selectedVisaTypePreview.task_templates_count }} tasks
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Default first stage</p>
+                            <p class="mt-2 text-sm text-slate-700">{{ selectedVisaTypePreview.default_stage_name || 'No default stage configured yet' }}</p>
+                        </div>
+                        <div>
+                            <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Built-in requirements</p>
+                            <p class="mt-2 text-sm text-slate-700">
+                                {{ selectedVisaTypePreview.requirements.length ? selectedVisaTypePreview.requirements.join(', ') : 'No special requirement flags configured yet.' }}
+                            </p>
+                        </div>
                     </div>
                 </div>
 

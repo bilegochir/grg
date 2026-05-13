@@ -214,4 +214,54 @@
     .ui-subtle-panel {
         @apply rounded-lg border border-slate-100 bg-white shadow-card;
     }
+
+    .portal-shell {
+        background:
+            radial-gradient(circle at top left, rgba(251, 191, 36, 0.16), transparent 26%),
+            linear-gradient(180deg, #fffaf2 0%, #f8fafc 18%, #f8fafc 100%);
+    }
+
+    .portal-frame {
+        @apply rounded-[28px] border border-orange-100/80 bg-white shadow-[0_20px_44px_rgba(15,23,42,0.06)];
+    }
+
+    .portal-hero {
+        @apply portal-frame px-6 py-6 sm:px-8 sm:py-8;
+    }
+
+    .portal-metric-card {
+        @apply rounded-2xl border border-slate-200/90 bg-slate-50/80 px-4 py-4;
+    }
+
+    .portal-kpi-value {
+        @apply mt-2 text-[28px] font-semibold tracking-tight text-slate-900;
+    }
+
+    .portal-chip {
+        @apply inline-flex items-center rounded-full px-3 py-1 text-sm font-medium;
+    }
+
+    .portal-chip-muted {
+        @apply portal-chip bg-slate-100 text-slate-700;
+    }
+
+    .portal-chip-warm {
+        @apply portal-chip bg-amber-50 text-amber-700;
+    }
+
+    .portal-chip-brand {
+        @apply portal-chip bg-orange-50 text-orange-700;
+    }
+
+    .portal-section-title {
+        @apply text-[15px] font-semibold tracking-tight text-slate-900;
+    }
+
+    .portal-case-row {
+        @apply block px-5 py-5 transition-colors duration-150 hover:bg-slate-50/80;
+    }
+
+    .portal-soft-panel {
+        @apply rounded-2xl border border-slate-200/90 bg-slate-50/70 px-4 py-4;
+    }
 }

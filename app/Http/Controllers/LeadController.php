@@ -116,9 +116,6 @@ class LeadController extends Controller
         return Inertia::render('Leads/Show', [
             'lead' => [
                 ...$this->leadSummary($lead),
-                'date_of_birth' => $lead->date_of_birth?->toDateString(),
-                'country_of_citizenship' => $lead->country_of_citizenship,
-                'interested_visa_type' => $lead->interested_visa_type,
                 'education_history' => collect($lead->education_history ?? [])->values(),
                 'work_experience' => collect($lead->work_experience ?? [])->values(),
                 'assigned_to' => $lead->assignedTo ? [
@@ -214,6 +211,16 @@ class LeadController extends Controller
                 'label' => $lead->status->label(),
                 'color' => $lead->status->color(),
             ],
+            'country_of_citizenship' => $lead->country_of_citizenship,
+            'pathway_interest' => $lead->pathway_interest,
+            'current_country' => $lead->current_country,
+            'relationship_status' => $lead->relationship_status,
+            'english_test_status' => $lead->english_test_status,
+            'highest_education' => $lead->highest_education,
+            'years_of_experience' => $lead->years_of_experience,
+            'has_refusal_history' => $lead->has_refusal_history,
+            'target_intake_date' => $lead->target_intake_date?->toDateString(),
+            'budget_range' => $lead->budget_range,
             'interested_visa_type' => $lead->interested_visa_type,
             'education_history_count' => count($lead->education_history ?? []),
             'work_experience_count' => count($lead->work_experience ?? []),

@@ -28,6 +28,8 @@ const filterForm = useForm({
     source: props.filters.source ?? '',
 });
 
+const pathwayOptions = ['Student', 'Visitor', 'Partner', 'Skilled', 'Employer-sponsored', 'Other'];
+
 const createForm = useForm({
     first_name: '',
     last_name: '',
@@ -37,6 +39,9 @@ const createForm = useForm({
     source: props.sources[0]?.value ?? '',
     status: props.statuses[0]?.value ?? '',
     country_of_citizenship: '',
+    pathway_interest: '',
+    current_country: '',
+    target_intake_date: '',
     interested_visa_type: '',
     tag_ids: [],
     note: '',
@@ -186,7 +191,7 @@ const submit = () => {
             :show="showCreate"
             width="wide"
             title="Add New Lead"
-            description="Capture the essentials now and fill in deeper background later if the lead progresses."
+            description="Capture the essentials now, including likely pathway and timing, then deepen eligibility later if the lead progresses."
             @close="showCreate = false"
         >
             <form class="space-y-6" @submit.prevent="submit">
@@ -243,11 +248,38 @@ const submit = () => {
                     <div>
                         <InputLabel for="country_of_citizenship" value="Country of citizenship" />
                         <TextInput id="country_of_citizenship" v-model="createForm.country_of_citizenship" />
+                        <InputError :message="createForm.errors.country_of_citizenship" />
+                    </div>
+                    <div>
+                        <InputLabel for="pathway_interest" value="Pathway interest" />
+                        <select id="pathway_interest" v-model="createForm.pathway_interest" class="ui-select">
+                            <option value="">Choose a pathway</option>
+                            <option v-for="pathway in pathwayOptions" :key="pathway" :value="pathway">
+                                {{ pathway }}
+                            </option>
+                        </select>
+                        <InputError :message="createForm.errors.pathway_interest" />
+                    </div>
+                </div>
+
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div>
+                        <InputLabel for="current_country" value="Current country" />
+                        <TextInput id="current_country" v-model="createForm.current_country" placeholder="Mongolia" />
+                        <InputError :message="createForm.errors.current_country" />
                     </div>
                     <div>
                         <InputLabel for="interested_visa_type" value="Interested visa type" />
                         <TextInput id="interested_visa_type" v-model="createForm.interested_visa_type" />
+                        <InputError :message="createForm.errors.interested_visa_type" />
                     </div>
+                </div>
+
+                <div>
+                    <InputLabel for="target_intake_date" value="Target intake or travel date" />
+                    <TextInput id="target_intake_date" v-model="createForm.target_intake_date" type="date" />
+                    <InputError :message="createForm.errors.target_intake_date" />
+                    <p class="ui-helper">Helpful for Australia timing without making intake too heavy.</p>
                 </div>
 
                 <div>

@@ -25,6 +25,15 @@ class LeadFactory extends Factory
             'source' => fake()->randomElement(LeadSource::cases()),
             'status' => fake()->randomElement(LeadStatus::cases()),
             'country_of_citizenship' => fake()->country(),
+            'pathway_interest' => fake()->randomElement(['Student', 'Visitor', 'Partner', 'Skilled']),
+            'current_country' => fake()->country(),
+            'relationship_status' => fake()->randomElement(['Single', 'Married']),
+            'english_test_status' => fake()->randomElement(['Not booked yet', 'Planning IELTS', 'IELTS completed']),
+            'highest_education' => fake()->randomElement(['Secondary school', 'Bachelor', 'Master']),
+            'years_of_experience' => fake()->numberBetween(0, 8),
+            'has_refusal_history' => fake()->boolean(20),
+            'target_intake_date' => fake()->dateTimeBetween('+1 month', '+10 months'),
+            'budget_range' => fake()->randomElement(['Under $5,000', '$5,000-$10,000', '$10,000+']),
             'interested_visa_type' => fake()->randomElement(['Student', 'Tourist', 'Skilled Worker']),
             'education_history' => [
                 [

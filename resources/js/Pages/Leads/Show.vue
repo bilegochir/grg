@@ -6,7 +6,6 @@ import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SlideOver from '@/Components/SlideOver.vue';
-import StatusBadge from '@/Components/StatusBadge.vue';
 import TagBadge from '@/Components/TagBadge.vue';
 import TextInput from '@/Components/TextInput.vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -19,6 +18,11 @@ const props = defineProps({
     sources: Array,
     tags: Array,
 });
+
+const pathwayOptions = ['Student', 'Visitor', 'Partner', 'Skilled', 'Employer-sponsored', 'Other'];
+const relationshipOptions = ['Single', 'Married', 'Defacto', 'Divorced', 'Separated', 'Widowed'];
+const englishTestOptions = ['Not booked yet', 'Planning IELTS', 'IELTS completed', 'PTE completed', 'TOEFL completed', 'Exempt / not required yet'];
+const budgetOptions = ['Under $5,000', '$5,000-$10,000', '$10,000-$20,000', '$20,000+'];
 
 const showEdit = ref(false);
 const showBackgroundEdit = ref(false);
@@ -50,6 +54,15 @@ const editForm = useForm({
     date_of_birth: props.lead.date_of_birth ?? '',
     source: props.lead.source.value,
     country_of_citizenship: props.lead.country_of_citizenship ?? '',
+    pathway_interest: props.lead.pathway_interest ?? '',
+    current_country: props.lead.current_country ?? '',
+    relationship_status: props.lead.relationship_status ?? '',
+    english_test_status: props.lead.english_test_status ?? '',
+    highest_education: props.lead.highest_education ?? '',
+    years_of_experience: props.lead.years_of_experience ?? '',
+    has_refusal_history: props.lead.has_refusal_history ?? false,
+    target_intake_date: props.lead.target_intake_date ?? '',
+    budget_range: props.lead.budget_range ?? '',
     interested_visa_type: props.lead.interested_visa_type ?? '',
     education_history: props.lead.education_history?.length ? props.lead.education_history.map((item) => ({
         institution: item.institution ?? '',
@@ -168,8 +181,11 @@ const leadOverviewCompletion = computed(() => {
         Boolean(props.lead.email),
         Boolean(props.lead.phone),
         Boolean(props.lead.source?.value),
+        Boolean(props.lead.pathway_interest),
         Boolean(props.lead.interested_visa_type),
         Boolean(props.lead.country_of_citizenship),
+        Boolean(props.lead.current_country),
+        Boolean(props.lead.english_test_status),
         Boolean(props.lead.education_history?.length),
         Boolean(props.lead.work_experience?.length),
     ];
@@ -212,6 +228,50 @@ const formatDateRange = (start, end, current = false) => {
     if (start && end) return `${start} - ${end}`;
     return start || end || 'Dates not added';
 };
+
+const eligibilityMissing = computed(() => {
+    const items = [];
+
+    if (!props.lead.pathway_interest) items.push('Pathway interest');
+    if (!props.lead.current_country) items.push('Current country');
+    if (!props.lead.english_test_status) items.push('English test plan');
+    if (!props.lead.highest_education && !(props.lead.education_history?.length)) items.push('Education background');
+    if ((props.lead.years_of_experience === null || props.lead.years_of_experience === '') && !(props.lead.work_experience?.length)) items.push('Work experience');
+    if (!props.lead.target_intake_date) items.push('Target intake date');
+    if (!props.lead.budget_range) items.push('Budget range');
+
+    return items;
+});
+
+const eligibilityFlags = computed(() => {
+    const flags = [];
+
+    if (props.lead.has_refusal_history) flags.push('Previous refusal history');
+    if (!props.lead.email && !props.lead.phone) flags.push('No contact method');
+    if (props.lead.pathway_interest === 'Student' && !props.lead.english_test_status) flags.push('English readiness not confirmed');
+    if ((props.lead.pathway_interest === 'Skilled' || props.lead.pathway_interest === 'Employer-sponsored')
+        && !(props.lead.work_experience?.length) && !props.lead.years_of_experience) {
+        flags.push('Work history still unclear');
+    }
+
+    return flags;
+});
+
+const likelyPathway = computed(() => {
+    if (props.lead.pathway_interest) {
+        return props.lead.pathway_interest;
+    }
+
+    const visaType = (props.lead.interested_visa_type ?? '').toLowerCase();
+
+    if (visaType.includes('student') || visaType.includes('500')) return 'Student';
+    if (visaType.includes('visitor') || visaType.includes('tourist') || visaType.includes('600')) return 'Visitor';
+    if (visaType.includes('partner')) return 'Partner';
+    if (visaType.includes('482') || visaType.includes('186') || visaType.includes('494') || visaType.includes('employer')) return 'Employer-sponsored';
+    if (visaType.includes('skilled') || visaType.includes('189') || visaType.includes('190') || visaType.includes('491') || visaType.includes('485')) return 'Skilled';
+
+    return 'Needs review';
+});
 
 // ── Status form ────────────────────────────────────────────────────────────
 const statusForm = useForm({
@@ -347,9 +407,9 @@ const passportAny = computed(() =>
                         <div :class="['rounded-2xl border p-4 sm:p-5', leadOverviewTone.panelClass]">
                             <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                                 <div class="max-w-2xl">
-                                    <p class="ui-kicker !mb-2">Lead health</p>
+                                    <p class="ui-kicker !mb-2">Eligibility snapshot</p>
                                     <p class="text-sm leading-6 text-slate-600">
-                                        {{ lead.applicant ? 'This lead has already been converted into an applicant record.' : 'A quick read on whether the team has enough detail to follow up or convert with confidence.' }}
+                                        {{ lead.applicant ? 'This lead has already been converted into an applicant record.' : 'A quick read on likely pathway, missing qualification detail, and any early risks before consultation or conversion.' }}
                                     </p>
                                 </div>
                                 <span
@@ -359,12 +419,23 @@ const passportAny = computed(() =>
                                     {{ leadOverviewTone.badge }}
                                 </span>
                             </div>
-                            <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-slate-500">
-                                <span>{{ leadOverviewCompletion.completed }} of {{ leadOverviewCompletion.total }} key fields filled</span>
-                                <span class="text-slate-300">•</span>
-                                <span>{{ [lead.email, lead.phone].filter(Boolean).length }} contact method{{ [lead.email, lead.phone].filter(Boolean).length === 1 ? '' : 's' }}</span>
-                                <span class="text-slate-300">•</span>
-                                <span>{{ (lead.education_history?.length || 0) + (lead.work_experience?.length || 0) }} background entr{{ ((lead.education_history?.length || 0) + (lead.work_experience?.length || 0)) === 1 ? 'y' : 'ies' }}</span>
+                            <div class="mt-4 grid gap-4 lg:grid-cols-[1fr,1fr,1fr]">
+                                <div>
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Likely pathway</p>
+                                    <p class="mt-2 text-sm font-medium text-slate-900">{{ likelyPathway }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Missing</p>
+                                    <p class="mt-2 text-sm text-slate-600">
+                                        {{ eligibilityMissing.length ? eligibilityMissing.slice(0, 3).join(', ') : 'Core qualification detail is covered.' }}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Risk flags</p>
+                                    <p class="mt-2 text-sm text-slate-600">
+                                        {{ eligibilityFlags.length ? eligibilityFlags.join(', ') : 'No early warning flags right now.' }}
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
@@ -392,6 +463,10 @@ const passportAny = computed(() =>
                                         <span class="font-medium text-slate-500">Date of birth</span>
                                         <span class="text-right text-slate-900">{{ lead.date_of_birth || 'Date of birth not captured yet' }}</span>
                                     </div>
+                                    <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
+                                        <span class="font-medium text-slate-500">Current country</span>
+                                        <span class="text-right text-slate-900">{{ lead.current_country || 'Current location not captured yet' }}</span>
+                                    </div>
                                     <div class="flex items-start justify-between gap-4">
                                         <span class="font-medium text-slate-500">Phone</span>
                                         <a
@@ -408,10 +483,8 @@ const passportAny = computed(() =>
 
                             <div class="rounded-2xl border border-slate-200 bg-white p-4">
                                 <div class="flex items-center justify-between gap-3">
-                                    <p class="ui-kicker !mb-0">Visa interest</p>
-                                    <span class="text-xs font-medium text-slate-500">
-                                        {{ lead.interested_visa_type ? 'Qualified' : 'Needs confirmation' }}
-                                    </span>
+                                    <p class="ui-kicker !mb-0">Pathway context</p>
+                                    <span class="text-xs font-medium text-slate-500">{{ leadOverviewCompletion.completed }}/{{ leadOverviewCompletion.total }} fields</span>
                                 </div>
                                 <div class="mt-4 space-y-3 text-sm">
                                     <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
@@ -419,12 +492,20 @@ const passportAny = computed(() =>
                                         <span class="text-right text-slate-900">{{ lead.source.label }}</span>
                                     </div>
                                     <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
+                                        <span class="font-medium text-slate-500">Pathway</span>
+                                        <span class="text-right text-slate-900">{{ lead.pathway_interest || 'Pathway still to be confirmed' }}</span>
+                                    </div>
+                                    <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
                                         <span class="font-medium text-slate-500">Visa type</span>
                                         <span class="text-right text-slate-900">{{ lead.interested_visa_type || 'Visa type still to be confirmed' }}</span>
                                     </div>
-                                    <div class="flex items-start justify-between gap-4">
+                                    <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
                                         <span class="font-medium text-slate-500">Citizenship</span>
                                         <span class="text-right text-slate-900">{{ lead.country_of_citizenship || 'Citizenship not captured yet' }}</span>
+                                    </div>
+                                    <div class="flex items-start justify-between gap-4">
+                                        <span class="font-medium text-slate-500">Target intake</span>
+                                        <span class="text-right text-slate-900">{{ lead.target_intake_date || 'Timing not captured yet' }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -701,10 +782,95 @@ const passportAny = computed(() =>
                         </div>
                     </div>
 
-                    <div>
-                        <InputLabel for="edit_interested_visa_type" value="Interested visa type" />
-                        <TextInput id="edit_interested_visa_type" v-model="editForm.interested_visa_type" />
-                        <InputError :message="editForm.errors.interested_visa_type" />
+                    <div class="space-y-4 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+                        <div>
+                            <p class="text-sm font-medium text-slate-900">Eligibility background</p>
+                            <p class="mt-1 text-sm text-slate-500">Capture the core qualification facts your team needs for Australia-focused intake.</p>
+                        </div>
+
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <InputLabel for="edit_pathway_interest" value="Pathway interest" />
+                                <select id="edit_pathway_interest" v-model="editForm.pathway_interest" class="ui-select">
+                                    <option value="">Choose a pathway</option>
+                                    <option v-for="pathway in pathwayOptions" :key="pathway" :value="pathway">
+                                        {{ pathway }}
+                                    </option>
+                                </select>
+                                <InputError :message="editForm.errors.pathway_interest" />
+                            </div>
+                            <div>
+                                <InputLabel for="edit_interested_visa_type" value="Interested visa type" />
+                                <TextInput id="edit_interested_visa_type" v-model="editForm.interested_visa_type" />
+                                <InputError :message="editForm.errors.interested_visa_type" />
+                            </div>
+                        </div>
+
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <InputLabel for="edit_current_country" value="Current country" />
+                                <TextInput id="edit_current_country" v-model="editForm.current_country" />
+                                <InputError :message="editForm.errors.current_country" />
+                            </div>
+                            <div>
+                                <InputLabel for="edit_relationship_status" value="Relationship status" />
+                                <select id="edit_relationship_status" v-model="editForm.relationship_status" class="ui-select">
+                                    <option value="">Choose a status</option>
+                                    <option v-for="relationship in relationshipOptions" :key="relationship" :value="relationship">
+                                        {{ relationship }}
+                                    </option>
+                                </select>
+                                <InputError :message="editForm.errors.relationship_status" />
+                            </div>
+                        </div>
+
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <InputLabel for="edit_english_test_status" value="English test status" />
+                                <select id="edit_english_test_status" v-model="editForm.english_test_status" class="ui-select">
+                                    <option value="">Choose test status</option>
+                                    <option v-for="option in englishTestOptions" :key="option" :value="option">
+                                        {{ option }}
+                                    </option>
+                                </select>
+                                <InputError :message="editForm.errors.english_test_status" />
+                            </div>
+                            <div>
+                                <InputLabel for="edit_highest_education" value="Highest education" />
+                                <TextInput id="edit_highest_education" v-model="editForm.highest_education" placeholder="Bachelor" />
+                                <InputError :message="editForm.errors.highest_education" />
+                            </div>
+                        </div>
+
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <InputLabel for="edit_years_of_experience" value="Years of experience" />
+                                <TextInput id="edit_years_of_experience" v-model="editForm.years_of_experience" type="number" min="0" max="60" />
+                                <InputError :message="editForm.errors.years_of_experience" />
+                            </div>
+                            <div>
+                                <InputLabel for="edit_target_intake_date" value="Target intake or travel date" />
+                                <TextInput id="edit_target_intake_date" v-model="editForm.target_intake_date" type="date" />
+                                <InputError :message="editForm.errors.target_intake_date" />
+                            </div>
+                        </div>
+
+                        <div class="grid gap-4 sm:grid-cols-2">
+                            <div>
+                                <InputLabel for="edit_budget_range" value="Budget range" />
+                                <select id="edit_budget_range" v-model="editForm.budget_range" class="ui-select">
+                                    <option value="">Choose a range</option>
+                                    <option v-for="range in budgetOptions" :key="range" :value="range">
+                                        {{ range }}
+                                    </option>
+                                </select>
+                                <InputError :message="editForm.errors.budget_range" />
+                            </div>
+                            <label class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700">
+                                <input v-model="editForm.has_refusal_history" type="checkbox" class="rounded border-slate-300 text-brand-primary focus:ring-brand-primary" />
+                                Previous refusal history
+                            </label>
+                        </div>
                     </div>
 
                     <div>

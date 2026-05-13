@@ -61,6 +61,79 @@ const orderedDocuments = computed(() => [
 ]);
 const nextAttentionCount = computed(() => openTasks.value.length + portalCase.summary.documents_waiting_count);
 const latestMessages = computed(() => [...portalCase.messages].sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()));
+const priorityDocuments = computed(() => orderedDocuments.value.filter((document) => document.status_value === 'pending' || document.status_value === 'rejected'));
+const overdueInvoices = computed(() => portalCase.invoices.filter((invoice) => invoice.status === 'overdue'));
+const waitingPaymentInvoices = computed(() => portalCase.invoices.filter((invoice) => invoice.status === 'sent' || invoice.status === 'partially_paid'));
+const primaryActionLabel = computed(() => {
+    if (priorityDocuments.value.length) {
+        return 'Upload documents';
+    }
+
+    if (openTasks.value.length) {
+        return 'Review checklist';
+    }
+
+    if (waitingPaymentInvoices.value.length) {
+        return 'Review payment';
+    }
+
+    return 'Send message';
+});
+
+const primaryActionTab = computed(() => {
+    if (priorityDocuments.value.length) {
+        return 'documents';
+    }
+
+    if (waitingPaymentInvoices.value.length) {
+        return 'billing';
+    }
+
+    if (openTasks.value.length) {
+        return 'overview';
+    }
+
+    return 'messages';
+});
+
+const nextActionSummary = computed(() => {
+    if (priorityDocuments.value.length) {
+        return `Please send ${priorityDocuments.value.length} document${priorityDocuments.value.length === 1 ? '' : 's'} so your case can keep moving.`;
+    }
+
+    if (openTasks.value.length) {
+        return `You still have ${openTasks.value.length} checklist item${openTasks.value.length === 1 ? '' : 's'} open.`;
+    }
+
+    if (waitingPaymentInvoices.value.length) {
+        return `There ${waitingPaymentInvoices.value.length === 1 ? 'is' : 'are'} ${waitingPaymentInvoices.value.length} invoice${waitingPaymentInvoices.value.length === 1 ? '' : 's'} waiting for payment attention.`;
+    }
+
+    return 'Everything important is up to date right now.';
+});
+
+const quickFacts = computed(() => [
+    {
+        label: 'Current stage',
+        value: portalCase.stage || 'In progress',
+        helper: 'Your case is moving through this step now.',
+    },
+    {
+        label: 'Next appointment',
+        value: portalCase.summary.next_appointment_at || 'Nothing scheduled yet',
+        helper: 'If your team books a meeting, it will show here.',
+    },
+    {
+        label: 'Balance due',
+        value: `$${portalCase.summary.balance_due}`,
+        helper: overdueInvoices.value.length ? 'A payment is overdue.' : 'Any invoice payments will appear here.',
+    },
+]);
+
+const openPrimaryTab = () => {
+    activeTab.value = primaryActionTab.value;
+};
+
 const tabs = computed(() => [
     { key: 'overview', label: t('common.overview') },
     { key: 'documents', label: `${t('common.documents')} (${portalCase.summary.documents_waiting_count})` },
@@ -116,26 +189,34 @@ const { t } = useLocale();
 
 <template>
     <PortalLayout :title="portalCase.reference_code" :business="business" :applicant="applicant">
-        <section class="rounded-[28px] border border-orange-100 bg-white px-6 py-6 shadow-[0_18px_40px_rgba(15,23,42,0.06)] sm:px-8">
+        <section class="portal-hero">
             <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                 <div class="min-w-0">
                     <p class="ui-kicker text-orange-500">{{ t('pages.portal.yourCase') }}</p>
                     <div class="mt-2 flex flex-wrap items-center gap-3">
-                        <h1 class="text-[32px] leading-tight">{{ portalCase.reference_code }}</h1>
-                        <span class="rounded-full bg-orange-50 px-3 py-1 text-sm font-medium text-orange-700">
+                        <h1 class="text-[30px] leading-tight text-slate-900 sm:text-[34px]">{{ portalCase.reference_code }}</h1>
+                        <span class="portal-chip-brand">
                             {{ portalCase.stage || t('pages.portal.inProgress') }}
                         </span>
                     </div>
                     <p class="mt-2 text-sm text-brand-muted">{{ portalCase.country }} • {{ portalCase.visa_type }}</p>
-                    <p class="mt-4 max-w-3xl text-base leading-7 text-brand-text">{{ portalCase.stage_copy }}</p>
+                    <p class="mt-4 max-w-3xl text-[15px] leading-7 text-brand-text">{{ portalCase.stage_copy }}</p>
                     <p class="mt-3 text-sm font-medium text-brand-text">{{ portalCase.next_step_copy }}</p>
                     <div class="mt-4 flex flex-wrap gap-2">
-                        <span v-if="nextAttentionCount" class="rounded-full bg-amber-50 px-3 py-1 text-sm font-medium text-amber-700">
+                        <span v-if="nextAttentionCount" class="portal-chip-warm">
                             {{ nextAttentionCount }} item{{ nextAttentionCount === 1 ? '' : 's' }} may need your attention
                         </span>
-                        <span v-if="portalCase.summary.next_appointment_at" class="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700">
+                        <span v-if="portalCase.summary.next_appointment_at" class="portal-chip-muted">
                             Next appointment: {{ portalCase.summary.next_appointment_at }}
                         </span>
+                    </div>
+                    <div class="mt-5 flex flex-wrap gap-3">
+                        <button type="button" class="ui-button-primary" @click="openPrimaryTab">
+                            {{ primaryActionLabel }}
+                        </button>
+                        <button type="button" class="ui-button-secondary" @click="activeTab = 'messages'">
+                            Ask a question
+                        </button>
                     </div>
                 </div>
 
@@ -143,22 +224,28 @@ const { t } = useLocale();
             </div>
 
             <div class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                <div class="portal-metric-card">
                     <p class="text-sm text-brand-muted">{{ t('pages.portal.progress') }}</p>
-                    <p class="mt-2 text-2xl font-semibold text-brand-text">{{ portalCase.progress_percent }}%</p>
+                    <p class="portal-kpi-value">{{ portalCase.progress_percent }}%</p>
                 </div>
-                <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                <div class="portal-metric-card">
                     <p class="text-sm text-brand-muted">{{ t('common.documents') }}</p>
-                    <p class="mt-2 text-2xl font-semibold text-brand-text">{{ portalCase.summary.documents_verified }}/{{ portalCase.summary.documents_total }}</p>
+                    <p class="portal-kpi-value">{{ portalCase.summary.documents_verified }}/{{ portalCase.summary.documents_total }}</p>
                 </div>
-                <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                <div class="portal-metric-card">
                     <p class="text-sm text-brand-muted">{{ t('common.checklist') }}</p>
-                    <p class="mt-2 text-2xl font-semibold text-brand-text">{{ portalCase.summary.completed_tasks_count }}/{{ portalCase.tasks.length }}</p>
+                    <p class="portal-kpi-value">{{ portalCase.summary.completed_tasks_count }}/{{ portalCase.tasks.length }}</p>
                 </div>
-                <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                <div class="portal-metric-card">
                     <p class="text-sm text-brand-muted">{{ t('pages.portal.balanceDue') }}</p>
-                    <p class="mt-2 text-2xl font-semibold text-brand-text">${{ portalCase.summary.balance_due }}</p>
+                    <p class="portal-kpi-value">${{ portalCase.summary.balance_due }}</p>
                 </div>
+            </div>
+
+            <div class="portal-soft-panel mt-6">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">What to do next</p>
+                <p class="mt-2 text-base font-medium text-slate-900">{{ nextActionSummary }}</p>
+                <p class="mt-1 text-sm text-slate-500">If something is unclear, send a message and your visa team will guide you.</p>
             </div>
 
             <div class="mt-6">
@@ -185,7 +272,7 @@ const { t } = useLocale();
                         v-for="tab in tabs"
                         :key="tab.key"
                         type="button"
-                        class="ui-tab-button"
+                        class="ui-tab-button rounded-full px-3 py-2"
                         :class="activeTab === tab.key ? 'ui-tab-button-active' : 'ui-tab-button-inactive'"
                         @click="activeTab = tab.key"
                     >
@@ -194,6 +281,30 @@ const { t } = useLocale();
                 </div>
 
                 <div v-if="activeTab === 'overview'" class="space-y-6">
+                    <AppCard title="What needs your attention now">
+                        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                            <div class="portal-soft-panel !bg-white">
+                                <p class="text-sm text-brand-muted">Documents to send or fix</p>
+                                <p class="mt-2 text-2xl font-semibold text-brand-text">{{ priorityDocuments.length }}</p>
+                                <button type="button" class="mt-3 text-sm font-medium text-brand-primary hover:underline" @click="activeTab = 'documents'">
+                                    Open documents
+                                </button>
+                            </div>
+                            <div class="portal-soft-panel !bg-white">
+                                <p class="text-sm text-brand-muted">Checklist items still open</p>
+                                <p class="mt-2 text-2xl font-semibold text-brand-text">{{ openTasks.length }}</p>
+                                <p class="mt-3 text-sm text-brand-muted">These are the actions still holding the case open.</p>
+                            </div>
+                            <div class="portal-soft-panel !bg-white">
+                                <p class="text-sm text-brand-muted">Payment items to review</p>
+                                <p class="mt-2 text-2xl font-semibold text-brand-text">{{ waitingPaymentInvoices.length + overdueInvoices.length }}</p>
+                                <button type="button" class="mt-3 text-sm font-medium text-brand-primary hover:underline" @click="activeTab = 'billing'">
+                                    Open billing
+                                </button>
+                            </div>
+                        </div>
+                    </AppCard>
+
                     <AppCard :title="t('common.checklist')">
                         <div v-if="openTasks.length" class="space-y-3">
                             <p class="text-sm text-brand-muted">{{ openTasks.length }} open item{{ openTasks.length === 1 ? '' : 's' }} to keep this case moving.</p>
@@ -313,6 +424,13 @@ const { t } = useLocale();
                             </div>
                         </template>
 
+                        <div v-if="priorityDocuments.length" class="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
+                            <p class="text-sm font-medium text-amber-900">Start with these documents</p>
+                            <p class="mt-1 text-sm text-amber-700">
+                                These are the files still waiting on you or need to be corrected before your case can move forward.
+                            </p>
+                        </div>
+
                         <div v-if="portalCase.documents.length" class="space-y-4">
                             <div
                                 v-for="document in orderedDocuments"
@@ -414,6 +532,13 @@ const { t } = useLocale();
 
                 <div v-else-if="activeTab === 'billing'" class="space-y-6">
                     <AppCard title="Payments and invoices">
+                        <div class="portal-soft-panel mb-5">
+                            <p class="text-sm font-medium text-brand-text">How to pay</p>
+                            <p class="mt-1 text-sm text-brand-muted">
+                                Review your invoice below, then use the bank details if you are paying by transfer. If you have already paid, your team will record it here.
+                            </p>
+                        </div>
+
                         <div class="grid gap-3 sm:grid-cols-3">
                             <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
                                 <p class="text-sm text-brand-muted">Total paid</p>
@@ -541,31 +666,27 @@ const { t } = useLocale();
             </div>
 
             <div class="space-y-6 xl:sticky xl:top-8 xl:self-start">
-                <AppCard title="At a glance">
+                <AppCard title="Quick facts">
                     <div class="space-y-4 text-sm">
-                        <div class="rounded-xl bg-slate-50 px-4 py-4">
-                            <p class="text-brand-muted">What needs your attention</p>
-                            <p class="mt-1 font-medium text-brand-text">{{ nextAttentionCount }} item{{ nextAttentionCount === 1 ? '' : 's' }}</p>
+                        <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4">
+                            <p class="text-amber-800">Next action</p>
+                            <p class="mt-1 font-medium text-amber-900">{{ primaryActionLabel }}</p>
+                            <p class="mt-2 text-sm text-amber-800">{{ nextActionSummary }}</p>
+                            <button type="button" class="mt-3 text-sm font-medium text-amber-900 hover:underline" @click="openPrimaryTab">
+                                Open this section
+                            </button>
                         </div>
-                        <div class="rounded-xl bg-slate-50 px-4 py-4">
-                            <p class="text-brand-muted">Current stage</p>
-                            <p class="mt-1 font-medium text-brand-text">{{ portalCase.stage || 'In progress' }}</p>
-                        </div>
-                        <div class="rounded-xl bg-slate-50 px-4 py-4">
-                            <p class="text-brand-muted">Still needed</p>
-                            <p class="mt-1 font-medium text-brand-text">{{ openTasks.length }} checklist items</p>
-                            <p class="mt-1 font-medium text-brand-text">{{ portalCase.summary.documents_waiting_count }} documents</p>
-                        </div>
-                        <div class="rounded-xl bg-slate-50 px-4 py-4">
-                            <p class="text-brand-muted">Next appointment</p>
+                        <div v-for="fact in quickFacts" :key="fact.label" class="portal-soft-panel">
+                            <p class="text-brand-muted">{{ fact.label }}</p>
                             <p class="mt-1 font-medium text-brand-text">
-                                {{ portalCase.summary.next_appointment_at || 'Nothing scheduled yet' }}
+                                {{ fact.value }}
                             </p>
+                            <p class="mt-2 text-sm text-brand-muted">{{ fact.helper }}</p>
                         </div>
                     </div>
                 </AppCard>
 
-                <AppCard title="Need help?">
+                <AppCard title="Contact your team">
                     <p class="text-sm leading-6 text-brand-text">
                         If something is unclear, send a message in the portal and your visa team will guide you on the next step.
                     </p>
@@ -573,6 +694,9 @@ const { t } = useLocale();
                         <p v-if="business.email">{{ business.email }}</p>
                         <p v-if="business.phone">{{ business.phone }}</p>
                     </div>
+                    <button type="button" class="mt-4 ui-button-secondary" @click="activeTab = 'messages'">
+                        Open messages
+                    </button>
                 </AppCard>
             </div>
         </div>

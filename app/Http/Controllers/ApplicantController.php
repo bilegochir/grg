@@ -52,7 +52,7 @@ class ApplicantController extends Controller
         $this->workspace()->assertApplicantAccess(request()->user(), $applicant);
 
         $applicant->load([
-            'lead:id,first_name,last_name',
+            'lead:id,first_name,last_name,source,country_of_citizenship,pathway_interest,current_country,relationship_status,english_test_status,highest_education,years_of_experience,has_refusal_history,target_intake_date,budget_range,interested_visa_type',
             'tags:id,name,slug,color',
             'visaCases' => fn ($query) => $this->workspace()->scopeCases($query, request()->user()),
             'visaCases.country:id,name,slug',
@@ -72,6 +72,21 @@ class ApplicantController extends Controller
                 'lead' => $applicant->lead ? [
                     'id' => $applicant->lead->id,
                     'name' => $applicant->lead->full_name,
+                    'source' => $applicant->lead->source ? [
+                        'value' => $applicant->lead->source->value,
+                        'label' => $applicant->lead->source->label(),
+                    ] : null,
+                    'country_of_citizenship' => $applicant->lead->country_of_citizenship,
+                    'pathway_interest' => $applicant->lead->pathway_interest,
+                    'current_country' => $applicant->lead->current_country,
+                    'relationship_status' => $applicant->lead->relationship_status,
+                    'english_test_status' => $applicant->lead->english_test_status,
+                    'highest_education' => $applicant->lead->highest_education,
+                    'years_of_experience' => $applicant->lead->years_of_experience,
+                    'has_refusal_history' => $applicant->lead->has_refusal_history,
+                    'target_intake_date' => $applicant->lead->target_intake_date?->toDateString(),
+                    'budget_range' => $applicant->lead->budget_range,
+                    'interested_visa_type' => $applicant->lead->interested_visa_type,
                 ] : null,
                 'date_of_birth' => $applicant->date_of_birth?->toDateString(),
                 'nationality' => $applicant->nationality,

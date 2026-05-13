@@ -76,10 +76,48 @@ class VisaCaseController extends Controller
             'caseMeta' => [
                 'applicants' => $this->workspace()->scopeApplicants(Applicant::query(), $request->user())->orderBy('first_name')->get(['id', 'first_name', 'last_name']),
                 'visaTypes' => VisaType::query()
-                    ->with('country:id,name')
+                    ->with(['country:id,name', 'workflowStages:id,visa_type_id,name,is_default,position'])
+                    ->withCount(['documentTemplates', 'taskTemplates', 'workflowStages'])
                     ->where('is_active', true)
                     ->orderBy('name')
-                    ->get(['id', 'name', 'target_country_id']),
+                    ->get([
+                        'id',
+                        'name',
+                        'code',
+                        'official_subclass',
+                        'target_country_id',
+                        'biometrics_required',
+                        'medical_required',
+                        'police_clearance_required',
+                        'financial_proof_required',
+                        'interview_required',
+                    ])
+                    ->map(function (VisaType $visaType): array {
+                        $defaultStage = $visaType->workflowStages
+                            ->firstWhere('is_default', true)
+                            ?? $visaType->workflowStages->sortBy('position')->first();
+
+                        return [
+                            'id' => $visaType->id,
+                            'name' => $visaType->name,
+                            'country' => [
+                                'id' => $visaType->country->id,
+                                'name' => $visaType->country->name,
+                            ],
+                            'pathway' => $this->inferPathway($visaType),
+                            'default_stage_name' => $defaultStage?->name,
+                            'workflow_stages_count' => $visaType->workflow_stages_count,
+                            'document_templates_count' => $visaType->document_templates_count,
+                            'task_templates_count' => $visaType->task_templates_count,
+                            'requirements' => array_values(array_filter([
+                                $visaType->financial_proof_required ? 'Financial evidence' : null,
+                                $visaType->medical_required ? 'Medical checks' : null,
+                                $visaType->police_clearance_required ? 'Police clearance' : null,
+                                $visaType->biometrics_required ? 'Biometrics' : null,
+                                $visaType->interview_required ? 'Interview readiness' : null,
+                            ])),
+                        ];
+                    })->values(),
                 'staff' => $this->workspace()->scopeUsers(User::query(), $request->user())->orderBy('name')->get(['id', 'name']),
                 'branches' => ($this->workspace()->hasGlobalBranchAccess($request->user())
                     ? Branch::query()
@@ -89,6 +127,24 @@ class VisaCaseController extends Controller
                     ->get(['id', 'name']),
             ],
         ]);
+    }
+
+    private function inferPathway(VisaType $visaType): string
+    {
+        $haystack = strtolower(implode(' ', array_filter([
+            $visaType->name,
+            $visaType->code,
+            $visaType->official_subclass,
+        ])));
+
+        return match (true) {
+            str_contains($haystack, 'student') || str_contains($haystack, '500') => 'Student',
+            str_contains($haystack, 'visitor') || str_contains($haystack, 'tourist') || str_contains($haystack, '600') => 'Visitor',
+            str_contains($haystack, 'partner') || str_contains($haystack, '309') || str_contains($haystack, '820') || str_contains($haystack, '801') || str_contains($haystack, '300') => 'Partner',
+            str_contains($haystack, '482') || str_contains($haystack, '186') || str_contains($haystack, '494') || str_contains($haystack, 'employer') || str_contains($haystack, 'sponsor') => 'Employer-sponsored',
+            str_contains($haystack, '189') || str_contains($haystack, '190') || str_contains($haystack, '491') || str_contains($haystack, '485') || str_contains($haystack, 'graduate') || str_contains($haystack, 'skilled') => 'Skilled',
+            default => 'Other',
+        };
     }
 
     public function store(StoreVisaCaseRequest $request, CreateVisaCaseAction $createVisaCase): RedirectResponse

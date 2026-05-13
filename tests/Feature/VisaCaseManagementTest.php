@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\VisaCase;
 use App\Models\VisaType;
 use App\Models\VisaWorkflowStage;
+use Inertia\Testing\AssertableInertia as Assert;
 
 function visaCaseSetup(): array
 {
@@ -97,4 +98,30 @@ it('updates a visa case stage and records history', function () {
     expect($visaCase->current_stage_id)->toBe($review->id);
     expect($visaCase->stageHistories()->count())->toBe(1);
     expect($visaCase->activities()->count())->toBe(2);
+});
+
+it('includes pathway and setup preview metadata for case creation', function () {
+    $user = User::factory()->create();
+    grantPermissions($user, ['cases.view']);
+
+    [$country, $visaType, $pending] = visaCaseSetup();
+
+    $visaType->update([
+        'name' => 'Student 500',
+        'official_subclass' => 'Subclass 500',
+        'financial_proof_required' => true,
+        'medical_required' => true,
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->get(route('cases.index'));
+
+    $response->assertOk();
+    $response->assertInertia(fn (Assert $page) => $page
+        ->component('Cases/Index')
+        ->where('caseMeta.visaTypes.0.pathway', 'Student')
+        ->where('caseMeta.visaTypes.0.default_stage_name', $pending->name)
+        ->where('caseMeta.visaTypes.0.workflow_stages_count', 2)
+    );
 });

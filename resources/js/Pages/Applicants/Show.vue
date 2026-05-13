@@ -94,6 +94,38 @@ const passportExpiringSoon = computed(() => {
     return expiry <= sixMonthsOut;
 });
 
+const leadContextMissing = computed(() => {
+    if (!props.applicant.lead) {
+        return [];
+    }
+
+    const items = [];
+
+    if (!props.applicant.lead.pathway_interest) items.push('Pathway');
+    if (!props.applicant.lead.interested_visa_type) items.push('Visa type');
+    if (!props.applicant.lead.english_test_status) items.push('English readiness');
+    if (!props.applicant.lead.target_intake_date) items.push('Target intake');
+
+    return items;
+});
+
+const leadContextFlags = computed(() => {
+    if (!props.applicant.lead) {
+        return [];
+    }
+
+    const items = [];
+
+    if (props.applicant.lead.has_refusal_history) items.push('Refusal history');
+    if (!props.applicant.lead.current_country) items.push('Current country unclear');
+    if ((props.applicant.lead.pathway_interest === 'Skilled' || props.applicant.lead.pathway_interest === 'Employer-sponsored')
+        && !props.applicant.lead.years_of_experience) {
+        items.push('Experience not quantified');
+    }
+
+    return items;
+});
+
 // Unified activity + notes thread, newest first
 const unifiedTimeline = computed(() => {
     const notes = (props.applicant.notes || []).map((n) => ({
@@ -439,6 +471,48 @@ const submitNote = () => {
             <!-- RIGHT SIDEBAR                                            -->
             <!-- ═══════════════════════════════════════════════════════ -->
             <div class="space-y-6">
+
+                <AppCard v-if="applicant.lead" title="Pathway context" subtitle="Useful intake detail carried over from the original lead.">
+                    <div class="space-y-3 text-sm">
+                        <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
+                            <span class="font-medium text-slate-500">Source lead</span>
+                            <Link :href="route('leads.show', applicant.lead.id)" class="text-right text-brand-primary hover:underline">
+                                {{ applicant.lead.name }}
+                            </Link>
+                        </div>
+                        <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
+                            <span class="font-medium text-slate-500">Lead source</span>
+                            <span class="text-right text-slate-900">{{ applicant.lead.source?.label || 'Not captured' }}</span>
+                        </div>
+                        <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
+                            <span class="font-medium text-slate-500">Pathway</span>
+                            <span class="text-right text-slate-900">{{ applicant.lead.pathway_interest || 'Still to confirm' }}</span>
+                        </div>
+                        <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
+                            <span class="font-medium text-slate-500">Visa type</span>
+                            <span class="text-right text-slate-900">{{ applicant.lead.interested_visa_type || 'Still to confirm' }}</span>
+                        </div>
+                        <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
+                            <span class="font-medium text-slate-500">Current country</span>
+                            <span class="text-right text-slate-900">{{ applicant.lead.current_country || 'Not captured' }}</span>
+                        </div>
+                        <div class="flex items-start justify-between gap-4 border-b border-slate-200/80 pb-3">
+                            <span class="font-medium text-slate-500">English test</span>
+                            <span class="text-right text-slate-900">{{ applicant.lead.english_test_status || 'Not captured' }}</span>
+                        </div>
+                        <div class="flex items-start justify-between gap-4">
+                            <span class="font-medium text-slate-500">Target intake</span>
+                            <span class="text-right text-slate-900">{{ applicant.lead.target_intake_date || 'Not captured' }}</span>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 rounded-lg border border-slate-200 bg-slate-50/60 px-4 py-3">
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Attention</p>
+                        <p class="mt-2 text-sm text-slate-600">
+                            {{ leadContextFlags.length ? leadContextFlags.join(', ') : leadContextMissing.length ? `Still missing: ${leadContextMissing.join(', ')}` : 'Lead qualification context is in good shape.' }}
+                        </p>
+                    </div>
+                </AppCard>
 
                 <!-- Applicant portal -->
                 <AppCard title="Applicant portal" subtitle="The client's self-service view of their cases and documents.">
