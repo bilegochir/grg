@@ -273,6 +273,15 @@ const likelyPathway = computed(() => {
     return 'Needs review';
 });
 
+const leadStatusBadgeClass = computed(() => ({
+    'ui-status-badge-new': props.lead.status.value === 'new',
+    'ui-status-badge-contacted': props.lead.status.value === 'contacted',
+    'ui-status-badge-qualified': props.lead.status.value === 'qualified',
+    'ui-status-badge-applied': props.lead.status.value === 'applied',
+    'ui-status-badge-approved': props.lead.status.value === 'approved',
+    'ui-status-badge-rejected': props.lead.status.value === 'rejected',
+}));
+
 // ── Status form ────────────────────────────────────────────────────────────
 const statusForm = useForm({
     status: props.lead.status.value,
@@ -345,14 +354,10 @@ const passportAny = computed(() =>
                     
                     <div class="mt-3 flex flex-wrap items-center gap-2.5">
                         <div
-                            class="ui-header-badge"
-                            :class="{
-                                'bg-slate-100 text-slate-500': lead.status.value === 'new',
-                                'bg-blue-50 text-blue-700': lead.status.value === 'contacted',
-                                'bg-emerald-50 text-emerald-700': lead.status.value === 'converted',
-                                'bg-rose-50 text-rose-700': lead.status.value === 'closed',
-                            }"
+                            class="ui-status-badge"
+                            :class="leadStatusBadgeClass"
                         >
+                            <span class="ui-status-badge-dot"></span>
                             {{ lead.status.label }}
                         </div>
 

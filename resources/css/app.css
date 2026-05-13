@@ -147,6 +147,46 @@
         @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium;
     }
 
+    .ui-status-badge {
+        @apply inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[9px] font-semibold tracking-[0.01em] whitespace-nowrap;
+    }
+
+    .ui-status-badge-dot {
+        @apply h-1.5 w-1.5 rounded-full bg-current;
+    }
+
+    .ui-status-badge-new {
+        @apply bg-white text-slate-700 ring-1 ring-slate-300;
+    }
+
+    .ui-status-badge-contacted {
+        @apply bg-amber-100 text-amber-800 ring-1 ring-amber-200;
+    }
+
+    .ui-status-badge-converted {
+        @apply bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200;
+    }
+
+    .ui-status-badge-closed {
+        @apply bg-rose-100 text-rose-800 ring-1 ring-rose-200;
+    }
+
+    .ui-status-badge-qualified {
+        @apply bg-blue-100 text-blue-800 ring-1 ring-blue-200;
+    }
+
+    .ui-status-badge-applied {
+        @apply bg-violet-100 text-violet-800 ring-1 ring-violet-200;
+    }
+
+    .ui-status-badge-approved {
+        @apply bg-emerald-100 text-emerald-800 ring-1 ring-emerald-200;
+    }
+
+    .ui-status-badge-rejected {
+        @apply bg-rose-100 text-rose-800 ring-1 ring-rose-200;
+    }
+
     .ui-page-body {
         @apply space-y-5;
     }

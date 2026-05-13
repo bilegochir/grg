@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Enums\LeadStatus;
 use App\Models\Invoice;
 use App\Models\Lead;
-use App\Models\TargetCountry;
 use App\Models\User;
 use App\Models\VisaCase;
 use App\Models\VisaCaseTask;
@@ -87,15 +86,17 @@ class ReportsController extends Controller
                 ->sum('amount'),
         ];
 
-        $countryDemand = TargetCountry::query()
-            ->withCount('visaTypes')
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn (TargetCountry $country): array => [
-                'label' => $country->name,
-                'value' => $this->workspace()->scopeCases(VisaCase::query(), $request->user())->where('target_country_id', $country->id)->count(),
+        $countryDemand = $this->workspace()->scopeCases(VisaCase::query(), $request->user())
+            ->select('target_country_id', DB::raw('count(*) as total'))
+            ->with('country:id,name')
+            ->whereNull('closed_at')
+            ->groupBy('target_country_id')
+            ->orderByDesc('total')
+            ->get()
+            ->map(fn (VisaCase $visaCase): array => [
+                'label' => $visaCase->country?->name ?? 'Unassigned country',
+                'value' => (int) $visaCase->total,
             ])
-            ->filter(fn (array $row) => $row['value'] > 0)
             ->values();
 
         return Inertia::render('Reports/Index', [

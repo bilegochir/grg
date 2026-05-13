@@ -71,6 +71,15 @@ const submit = () => {
         },
     });
 };
+
+const leadStatusBadgeClass = (status) => ({
+    'ui-status-badge-new': status === 'new',
+    'ui-status-badge-contacted': status === 'contacted',
+    'ui-status-badge-qualified': status === 'qualified',
+    'ui-status-badge-applied': status === 'applied',
+    'ui-status-badge-approved': status === 'approved',
+    'ui-status-badge-rejected': status === 'rejected',
+});
 </script>
 
 <template>
@@ -153,7 +162,8 @@ const submit = () => {
                                     <p class="text-[11px] text-slate-500">{{ lead.phone }}</p>
                                 </td>
                                 <td class="px-4 py-3">
-                                    <span class="rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600">
+                                    <span class="ui-status-badge" :class="leadStatusBadgeClass(lead.status.value)">
+                                        <span class="ui-status-badge-dot"></span>
                                         {{ lead.status.label }}
                                     </span>
                                 </td>
