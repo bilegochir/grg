@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AnalyticsPageController;
 use App\Http\Controllers\ApplicantController;
 use App\Http\Controllers\ApplicantPortalAuthController;
 use App\Http\Controllers\ApplicantPortalController;
@@ -96,6 +97,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/search/global', GlobalSearchController::class)->name('search.global');
     Route::post('/invoices/{invoice}/payments', [InvoiceController::class, 'recordPayment'])->middleware('permission:finance.view')->name('invoices.payments.store');
     Route::post('/invoices/{invoice}/remind', [InvoiceController::class, 'remind'])->middleware('permission:communications.manage')->name('invoices.remind');
+
+    Route::middleware('permission:dashboard.view')->group(function () {
+        Route::get('/analytics', [AnalyticsPageController::class, 'index'])->name('analytics.index');
+        Route::get('/analytics/cases', [AnalyticsPageController::class, 'cases'])->name('analytics.cases');
+        Route::get('/analytics/finance', [AnalyticsPageController::class, 'finance'])->name('analytics.finance');
+        Route::get('/analytics/staff', [AnalyticsPageController::class, 'staff'])->name('analytics.staff');
+        Route::get('/analytics/leads', [AnalyticsPageController::class, 'leads'])->name('analytics.leads');
+        Route::get('/analytics/custom-reports', [AnalyticsPageController::class, 'customReports'])->name('analytics.custom-reports');
+    });
+
 
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::patch('/settings/business', [SettingsController::class, 'updateBusiness'])->middleware('permission:settings.manage')->name('settings.business.update');
