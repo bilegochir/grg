@@ -257,28 +257,27 @@
 
     .portal-shell {
         background:
-            radial-gradient(circle at top left, rgba(251, 191, 36, 0.16), transparent 26%),
-            linear-gradient(180deg, #fffaf2 0%, #f8fafc 18%, #f8fafc 100%);
+            linear-gradient(180deg, #f8fafc 0%, #f8fafc 100%);
     }
 
     .portal-frame {
-        @apply rounded-[28px] border border-orange-100/80 bg-white shadow-[0_20px_44px_rgba(15,23,42,0.06)];
+        @apply rounded-[20px] bg-white shadow-[0_10px_24px_rgba(15,23,42,0.05)] ring-1 ring-slate-200/80;
     }
 
     .portal-hero {
-        @apply portal-frame px-6 py-6 sm:px-8 sm:py-8;
+        @apply portal-frame px-4 py-4 sm:px-5 sm:py-5;
     }
 
     .portal-metric-card {
-        @apply rounded-2xl border border-slate-200/90 bg-slate-50/80 px-4 py-4;
+        @apply rounded-xl border border-slate-200/90 bg-slate-50/80 px-3 py-3;
     }
 
     .portal-kpi-value {
-        @apply mt-2 text-[28px] font-semibold tracking-tight text-slate-900;
+        @apply mt-1.5 text-[22px] font-semibold tracking-tight text-slate-900;
     }
 
     .portal-chip {
-        @apply inline-flex items-center rounded-full px-3 py-1 text-sm font-medium;
+        @apply inline-flex items-center rounded-full px-2.5 py-1 text-[12px] font-medium;
     }
 
     .portal-chip-muted {
@@ -286,11 +285,15 @@
     }
 
     .portal-chip-warm {
-        @apply portal-chip bg-amber-50 text-amber-700;
+        @apply portal-chip bg-sky-100 text-sky-800;
     }
 
     .portal-chip-brand {
-        @apply portal-chip bg-orange-50 text-orange-700;
+        @apply portal-chip bg-teal-600 text-white;
+    }
+
+    .portal-chip-success {
+        @apply portal-chip bg-green-50 text-green-700;
     }
 
     .portal-section-title {
@@ -302,6 +305,70 @@
     }
 
     .portal-soft-panel {
-        @apply rounded-2xl border border-slate-200/90 bg-slate-50/70 px-4 py-4;
+        @apply rounded-2xl bg-slate-50/80 px-4 py-4 ring-1 ring-slate-200/60;
+    }
+
+    .portal-top-strip {
+        @apply overflow-hidden rounded-[16px] bg-white ring-1 ring-slate-200/80;
+    }
+
+    .portal-top-strip-grid {
+        @apply grid divide-slate-100 md:divide-x;
+    }
+
+    .portal-top-strip-cell {
+        @apply px-4 py-3;
+    }
+
+    .portal-top-label {
+        @apply text-[12px] text-slate-500;
+    }
+
+    .portal-top-value {
+        @apply mt-1 text-[15px] font-semibold tracking-tight text-slate-900;
+    }
+
+    .portal-callout {
+        @apply rounded-[16px] bg-white px-4 py-4 ring-1 ring-slate-200/80 sm:px-5;
+    }
+
+    .portal-recommendation {
+        @apply rounded-xl bg-slate-50 px-3.5 py-3.5 ring-1 ring-slate-200/70;
+    }
+
+    .portal-choice-grid {
+        @apply grid gap-3 lg:grid-cols-3;
+    }
+
+    .portal-choice-card {
+        @apply rounded-[16px] bg-white px-3.5 py-3.5 ring-1 ring-slate-200/80 transition-all duration-150 hover:ring-slate-300 hover:shadow-[0_10px_22px_rgba(15,23,42,0.05)];
+    }
+
+    .portal-choice-card-active {
+        @apply bg-slate-50 ring-slate-300 shadow-[0_10px_22px_rgba(15,23,42,0.05)];
+    }
+
+    .portal-case-card {
+        @apply rounded-[16px] bg-white p-4 ring-1 ring-slate-200/80 transition-all duration-150 hover:ring-slate-300 hover:shadow-[0_10px_22px_rgba(15,23,42,0.05)];
+    }
+
+    .portal-case-card-active {
+        @apply bg-slate-50 ring-slate-300 shadow-[0_10px_22px_rgba(15,23,42,0.05)];
+    }
+
+    .portal-section-heading {
+        @apply text-[16px] font-semibold tracking-tight text-slate-900;
+    }
+
+    .portal-summary-card {
+        @apply rounded-[16px] bg-white px-4 py-4 ring-1 ring-slate-200/80;
+    }
+
+    .portal-stat-card {
+        @apply rounded-[14px] bg-slate-50 px-3.5 py-3 ring-1 ring-slate-200/70;
+    }
+
+    .portal-inline-link {
+        @apply text-[13px] font-medium text-slate-900 transition hover:text-slate-700 hover:underline;
     }
 }

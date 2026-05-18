@@ -15,6 +15,7 @@ const props = defineProps({
 });
 
 const caseRecord = props.case;
+const activeTab = ref('overview');
 
 const showTaskSlideOver = ref(false);
 const showMessageSlideOver = ref(false);
@@ -110,6 +111,7 @@ const paymentForms = reactive(
     ),
 );
 
+
 const totalBalanceDue = computed(() =>
     caseRecord.invoices.reduce((sum, invoice) => sum + Number(invoice.balance_due || 0), 0).toFixed(2));
 
@@ -139,6 +141,51 @@ const uploadedDocumentCount = computed(() => caseRecord.documents.filter((docume
 const documentsNeedingReviewCount = computed(() =>
     caseRecord.documents.filter((document) => ['uploaded', 'rejected'].includes(document.status.value)).length,
 );
+const requiredDocuments = computed(() => caseRecord.documents.filter((document) => document.is_required));
+const requiredDocumentsPending = computed(() =>
+    requiredDocuments.value.filter((document) => document.status.value !== 'verified'),
+);
+const documentsAwaitingReview = computed(() =>
+    caseRecord.documents.filter((document) => document.status.value === 'uploaded'),
+);
+const rejectedDocuments = computed(() =>
+    caseRecord.documents.filter((document) => document.status.value === 'rejected'),
+);
+const expiredDocuments = computed(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    return caseRecord.documents.filter((document) => {
+        if (!document.tracks_expiry || !document.expiry_date) return false;
+
+        const expiryDate = new Date(document.expiry_date);
+
+        if (Number.isNaN(expiryDate.getTime())) return false;
+
+        expiryDate.setHours(0, 0, 0, 0);
+
+        return expiryDate < today;
+    });
+});
+const expiringDocuments = computed(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const threshold = new Date(today);
+    threshold.setDate(threshold.getDate() + 30);
+
+    return caseRecord.documents.filter((document) => {
+        if (!document.tracks_expiry || !document.expiry_date) return false;
+
+        const expiryDate = new Date(document.expiry_date);
+
+        if (Number.isNaN(expiryDate.getTime())) return false;
+
+        expiryDate.setHours(0, 0, 0, 0);
+
+        return expiryDate >= today && expiryDate <= threshold;
+    });
+});
 
 const unifiedThread = computed(() => {
     const messages = (caseRecord.messages || []).map((message) => ({
@@ -189,6 +236,41 @@ const activitySummary = computed(() => ({
     notes: (caseRecord.internal_notes || []).length + (caseRecord.client_notes || []).length,
     updates: (caseRecord.activities || []).length,
 }));
+
+const tabs = computed(() => [
+    {
+        key: 'overview',
+        label: 'Overview',
+        badge: secondaryBlockers.value.length,
+        badgeClass: secondaryBlockers.value.length
+            ? 'bg-rose-100 text-rose-700'
+            : 'bg-emerald-100 text-emerald-700',
+    },
+    {
+        key: 'documents',
+        label: 'Documents',
+        badge: pendingDocumentCount.value,
+        badgeClass: pendingDocumentCount.value
+            ? 'bg-amber-100 text-amber-700'
+            : 'bg-emerald-100 text-emerald-700',
+    },
+    {
+        key: 'tasks',
+        label: 'Tasks',
+        badge: openTaskCount.value,
+        badgeClass: openTaskCount.value
+            ? 'bg-amber-100 text-amber-700'
+            : 'bg-emerald-100 text-emerald-700',
+    },
+    {
+        key: 'more',
+        label: 'More',
+        badge: unpaidInvoiceCount.value + (nextAppointment.value ? 1 : 0),
+        badgeClass: unpaidInvoiceCount.value
+            ? 'bg-amber-100 text-amber-700'
+            : 'bg-slate-100 text-slate-600',
+    },
+]);
 
 const submitStage = () => {
     stageForm.patch(route('cases.stage.update', caseRecord.id), {
@@ -408,6 +490,140 @@ const isTaskOverdue = (task) => {
     return dueDate < today;
 };
 
+const overdueTasks = computed(() => openTasks.value.filter((task) => isTaskOverdue(task)));
+
+const readinessBlockers = computed(() => {
+    const blockers = [];
+
+    if (requiredDocumentsPending.value.length) {
+        blockers.push({
+            key: 'required_documents',
+            label: `${requiredDocumentsPending.value.length} required document${requiredDocumentsPending.value.length === 1 ? '' : 's'} still not verified`,
+            detail: requiredDocumentsPending.value.slice(0, 3).map((document) => document.name).join(', '),
+        });
+    }
+
+    if (documentsAwaitingReview.value.length) {
+        blockers.push({
+            key: 'awaiting_review',
+            label: `${documentsAwaitingReview.value.length} upload${documentsAwaitingReview.value.length === 1 ? '' : 's'} waiting for review`,
+            detail: documentsAwaitingReview.value.slice(0, 3).map((document) => document.name).join(', '),
+        });
+    }
+
+    if (rejectedDocuments.value.length) {
+        blockers.push({
+            key: 'rejected_documents',
+            label: `${rejectedDocuments.value.length} rejected document${rejectedDocuments.value.length === 1 ? '' : 's'} need replacement`,
+            detail: rejectedDocuments.value.slice(0, 3).map((document) => document.name).join(', '),
+        });
+    }
+
+    if (expiredDocuments.value.length) {
+        blockers.push({
+            key: 'expired_documents',
+            label: `${expiredDocuments.value.length} document${expiredDocuments.value.length === 1 ? '' : 's'} already expired`,
+            detail: expiredDocuments.value.slice(0, 3).map((document) => document.name).join(', '),
+        });
+    }
+
+    if (overdueTasks.value.length) {
+        blockers.push({
+            key: 'overdue_tasks',
+            label: `${overdueTasks.value.length} overdue task${overdueTasks.value.length === 1 ? '' : 's'}`,
+            detail: overdueTasks.value.slice(0, 3).map((task) => task.name).join(', '),
+        });
+    }
+
+    if (expiringDocuments.value.length) {
+        blockers.push({
+            key: 'expiring_documents',
+            label: `${expiringDocuments.value.length} document${expiringDocuments.value.length === 1 ? '' : 's'} expiring within 30 days`,
+            detail: expiringDocuments.value.slice(0, 3).map((document) => document.name).join(', '),
+        });
+    }
+
+    return blockers;
+});
+
+const caseReadyToLodge = computed(() =>
+    caseRecord.documents.length > 0 && readinessBlockers.value.length === 0,
+);
+
+const primaryAction = computed(() => {
+    if (overdueTasks.value.length) {
+        return {
+            key: 'overdue_tasks',
+            title: 'Resolve overdue work',
+            detail: `${overdueTasks.value[0].name}${overdueTasks.value.length > 1 ? ` and ${overdueTasks.value.length - 1} more overdue task${overdueTasks.value.length === 2 ? '' : 's'}` : ''}.`,
+            tone: 'text-rose-700',
+            panel: 'border-rose-200 bg-rose-50/70',
+        };
+    }
+
+    if (rejectedDocuments.value.length) {
+        return {
+            key: 'rejected_documents',
+            title: 'Replace rejected evidence',
+            detail: `${rejectedDocuments.value[0].name}${rejectedDocuments.value.length > 1 ? ` and ${rejectedDocuments.value.length - 1} more item${rejectedDocuments.value.length === 2 ? '' : 's'}` : ''} need attention.`,
+            tone: 'text-rose-700',
+            panel: 'border-rose-200 bg-rose-50/70',
+        };
+    }
+
+    if (expiredDocuments.value.length) {
+        return {
+            key: 'expired_documents',
+            title: 'Replace expired documents',
+            detail: `${expiredDocuments.value[0].name}${expiredDocuments.value.length > 1 ? ` and ${expiredDocuments.value.length - 1} more expired item${expiredDocuments.value.length === 2 ? '' : 's'}` : ''} can no longer be relied on.`,
+            tone: 'text-rose-700',
+            panel: 'border-rose-200 bg-rose-50/70',
+        };
+    }
+
+    if (documentsAwaitingReview.value.length) {
+        return {
+            key: 'awaiting_review',
+            title: 'Review uploaded documents',
+            detail: `${documentsAwaitingReview.value.length} document${documentsAwaitingReview.value.length === 1 ? '' : 's'} are waiting for verification.`,
+            tone: 'text-blue-700',
+            panel: 'border-blue-200 bg-blue-50/70',
+        };
+    }
+
+    if (requiredDocumentsPending.value.length) {
+        return {
+            key: 'required_documents',
+            title: 'Collect remaining required documents',
+            detail: `${requiredDocumentsPending.value.length} required item${requiredDocumentsPending.value.length === 1 ? '' : 's'} still need to be completed.`,
+            tone: 'text-amber-700',
+            panel: 'border-amber-200 bg-amber-50/70',
+        };
+    }
+
+    if (caseReadyToLodge.value) {
+        return {
+            key: 'ready_to_lodge',
+            title: 'Ready for lodgement review',
+            detail: 'Core requirements look complete and nothing urgent is blocking the case.',
+            tone: 'text-emerald-700',
+            panel: 'border-emerald-200 bg-emerald-50/70',
+        };
+    }
+
+    return {
+        key: 'general_progress',
+        title: 'Keep the case moving',
+        detail: 'No urgent blockers are flagged, but the case still needs regular progress updates.',
+        tone: 'text-slate-700',
+        panel: 'border-slate-200 bg-slate-50/80',
+    };
+});
+
+const secondaryBlockers = computed(() =>
+    readinessBlockers.value.filter((blocker) => blocker.key !== primaryAction.value.key),
+);
+
 const groupForm = useForm({
     name: '',
     notes: '',
@@ -499,165 +715,144 @@ const removeFromGroup = () => {
             </div>
         </template>
 
-        <div class="ui-detail-grid">
+        <div class="ui-page-body space-y-5">
+            <div class="flex flex-wrap gap-2">
+                <button
+                    v-for="tab in tabs"
+                    :key="tab.key"
+                    type="button"
+                    class="ui-tab-button rounded-full px-3 py-2"
+                    :class="activeTab === tab.key ? 'ui-tab-button-active' : 'ui-tab-button-inactive'"
+                    @click="activeTab = tab.key"
+                >
+                    {{ tab.label }}
+                    <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold" :class="tab.badgeClass">
+                        {{ tab.badge }}
+                    </span>
+                </button>
+            </div>
+
+            <div class="ui-detail-grid">
             <div class="space-y-6">
-                <AppCard title="Summary" subtitle="A short snapshot of what this case is and what still matters right now.">
-                    <div class="grid gap-4 md:grid-cols-3">
-                        <div class="rounded-lg bg-brand-neutral px-4 py-4">
-                            <p class="ui-kicker">Applicant</p>
-                            <p class="mt-2 font-medium text-brand-text">{{ caseRecord.applicant.name }}</p>
-                            <p class="mt-1 text-sm text-brand-muted">{{ caseRecord.applicant.email || 'No email on file yet' }}</p>
+                <AppCard v-if="activeTab === 'overview'" title="What matters now" subtitle="Start here before diving into the full record.">
+                    <div class="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.9fr)]">
+                        <div class="rounded-xl border px-4 py-4" :class="primaryAction.panel">
+                            <p class="ui-kicker">Next focus</p>
+                            <p class="mt-2 text-lg font-semibold" :class="primaryAction.tone">{{ primaryAction.title }}</p>
+                            <p class="mt-1.5 text-sm text-slate-600">{{ primaryAction.detail }}</p>
                         </div>
+
+                        <div class="rounded-xl border px-4 py-4" :class="caseReadyToLodge ? 'border-emerald-200 bg-emerald-50/70' : 'border-slate-200 bg-slate-50/80'">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="ui-kicker">Readiness</p>
+                                    <p class="mt-2 text-lg font-semibold" :class="caseReadyToLodge ? 'text-emerald-700' : 'text-slate-900'">
+                                        {{ caseReadyToLodge ? 'Ready to lodge' : 'Not ready yet' }}
+                                    </p>
+                                </div>
+                                <span class="rounded-full bg-white/80 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                                    {{ documentCompletion }}%
+                                </span>
+                            </div>
+                            <p class="mt-1.5 text-sm text-slate-600">
+                                {{ verifiedDocumentCount }} of {{ caseRecord.documents.length }} documents verified
+                            </p>
+                            <div class="mt-3 h-2 overflow-hidden rounded-full bg-white/80">
+                                <div class="h-full rounded-full bg-brand-primary transition-all" :style="{ width: `${documentCompletion}%` }"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 grid gap-3 md:grid-cols-3">
                         <div class="rounded-lg bg-brand-neutral px-4 py-4">
-                            <p class="ui-kicker">Next milestone</p>
-                            <p class="mt-2 font-medium text-brand-text">{{ caseRecord.expected_submission_at || 'Not scheduled' }}</p>
+                            <p class="ui-kicker">Deadlines</p>
+                            <p class="mt-2 font-medium text-brand-text">{{ caseRecord.expected_submission_at || 'Submission not scheduled' }}</p>
                             <p class="mt-1 text-sm text-brand-muted">Decision target: {{ caseRecord.expected_decision_at || 'Not scheduled' }}</p>
                         </div>
                         <div class="rounded-lg bg-brand-neutral px-4 py-4">
-                            <p class="ui-kicker">Attention needed</p>
+                            <p class="ui-kicker">Work queue</p>
                             <p class="mt-2 font-medium text-brand-text">{{ openTaskCount }} open tasks</p>
-                            <p class="mt-1 text-sm text-brand-muted">{{ pendingDocumentCount }} pending documents • {{ unpaidInvoiceCount }} unpaid invoices</p>
+                            <p class="mt-1 text-sm text-brand-muted">{{ overdueTasks.length }} overdue • {{ completedTaskCount }} completed</p>
+                        </div>
+                        <div class="rounded-lg bg-brand-neutral px-4 py-4">
+                            <p class="ui-kicker">Client-facing items</p>
+                            <p class="mt-2 font-medium text-brand-text">{{ unpaidInvoiceCount }} unpaid invoice{{ unpaidInvoiceCount === 1 ? '' : 's' }}</p>
+                            <p class="mt-1 text-sm text-brand-muted">{{ nextAppointment ? `Next appointment ${formatTimestamp(nextAppointment.starts_at)}` : 'No appointment scheduled' }}</p>
                         </div>
                     </div>
-                    <div class="mt-5 rounded-lg border border-brand-border bg-white px-4 py-4">
+
+                    <div class="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-4">
                         <div class="flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <p class="ui-kicker">Document progress</p>
-                                <p class="text-sm text-brand-muted">
-                                    {{ verifiedDocumentCount }} of {{ caseRecord.documents.length }} verified by your team
-                                    <span v-if="uploadedDocumentCount" class="hidden sm:inline">• {{ uploadedDocumentCount }} uploaded</span>
-                                </p>
+                                <p class="text-sm font-semibold text-slate-900">Recent activity</p>
+                                <p class="mt-1 text-sm text-slate-500">The latest communication, notes, and system updates on this case.</p>
                             </div>
-                            <p class="text-lg font-semibold text-brand-text">{{ documentCompletion }}%</p>
+                            <button type="button" class="ui-button-secondary !h-8 px-3 text-[12px]" @click="showMessageSlideOver = true">
+                                Message client
+                            </button>
                         </div>
-                        <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
-                            <div class="h-full rounded-full bg-brand-primary transition-all" :style="{ width: `${documentCompletion}%` }"></div>
-                        </div>
-                    </div>
-                </AppCard>
 
-                <AppCard title="Activity">
-                    <template #action>
-                        <div class="flex flex-wrap items-center gap-2">
+                        <div v-if="showActivityComposer" class="mt-4 rounded-lg border border-brand-border bg-brand-neutral/40 p-4 space-y-3">
+                            <div>
+                                <InputLabel value="Add note" />
+                                <textarea v-model="internalNoteForm.body" rows="3" class="ui-textarea" placeholder="Capture what changed, what was promised, or what still needs follow-up."></textarea>
+                                <InputError :message="internalNoteForm.errors.body" />
+                            </div>
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <label class="flex items-center gap-2 text-sm text-brand-muted">
+                                    <input v-model="internalNoteForm.is_client_visible" type="checkbox" class="rounded text-brand-primary" />
+                                    Client visible
+                                </label>
+                                <div class="flex items-center gap-2">
+                                    <button type="button" class="ui-button-ghost !h-9 px-3 text-[12px]" @click="showActivityComposer = false">Cancel</button>
+                                    <PrimaryButton :loading="internalNoteForm.processing" @click="submitInternalNote">Save note</PrimaryButton>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex flex-wrap items-center gap-2">
                             <button type="button" class="ui-button-ghost !h-8 px-3 text-[12px]" @click="showActivityComposer = !showActivityComposer">
                                 {{ showActivityComposer ? 'Close note' : 'Add note' }}
                             </button>
-                            <button type="button" class="ui-button-secondary" @click="showMessageSlideOver = true">Message client</button>
                         </div>
-                    </template>
 
-                    <form v-if="showActivityComposer" class="mb-5 rounded-lg border border-brand-border bg-brand-neutral/40 p-4 space-y-3" @submit.prevent="submitInternalNote">
-                        <div>
-                            <InputLabel value="Add note" />
-                            <textarea v-model="internalNoteForm.body" rows="3" class="ui-textarea" placeholder="Capture what changed, what was promised, or what still needs follow-up."></textarea>
-                            <InputError :message="internalNoteForm.errors.body" />
-                        </div>
-                        <div class="flex flex-wrap items-center justify-between gap-3">
-                            <label class="flex items-center gap-2 text-sm text-brand-muted">
-                                <input v-model="internalNoteForm.is_client_visible" type="checkbox" class="rounded text-brand-primary" />
-                                Client visible
-                            </label>
-                            <div class="flex items-center gap-2">
-                                <button type="button" class="ui-button-ghost !h-9 px-3 text-[12px]" @click="showActivityComposer = false">Cancel</button>
-                                <PrimaryButton :loading="internalNoteForm.processing">Save note</PrimaryButton>
-                            </div>
-                        </div>
-                    </form>
-
-                    <div v-if="unifiedThread.length" class="space-y-1.5">
-                        <div
-                            v-for="item in unifiedThread"
-                            :key="item.id"
-                            class="rounded-2xl px-3 py-3"
-                            :class="{
-                                'bg-blue-50/60': item.kind === 'Message',
-                                'bg-amber-50/70': item.kind === 'Internal note' || item.kind === 'Client note',
-                                'bg-slate-50': item.kind === 'Activity',
-                            }"
-                        >
-                            <div class="flex items-center justify-between text-[12px]">
-                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                    <span class="font-medium text-brand-text">{{ item.actor }}</span>
-                                    <span class="text-slate-300">•</span>
-                                    <span
-                                        class="font-medium"
-                                        :class="{
-                                            'text-blue-700': item.kind === 'Message',
-                                            'text-amber-700': item.kind === 'Internal note' || item.kind === 'Client note',
-                                            'text-slate-600': item.kind === 'Activity',
-                                        }"
-                                    >
-                                        {{ item.kind }}
-                                    </span>
-                                    <template v-if="item.subject_name">
+                        <div v-if="unifiedThread.length" class="mt-4 space-y-1.5">
+                            <div
+                                v-for="item in unifiedThread.slice(0, 6)"
+                                :key="item.id"
+                                class="rounded-2xl px-3 py-3"
+                                :class="{
+                                    'bg-blue-50/60': item.kind === 'Message',
+                                    'bg-amber-50/70': item.kind === 'Internal note' || item.kind === 'Client note',
+                                    'bg-slate-50': item.kind === 'Activity',
+                                }"
+                            >
+                                <div class="flex items-center justify-between text-[12px]">
+                                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                                        <span class="font-medium text-brand-text">{{ item.actor }}</span>
                                         <span class="text-slate-300">•</span>
-                                        <span class="text-brand-primary">{{ item.subject_name }}</span>
-                                    </template>
-                                </div>
-                                <div>
+                                        <span
+                                            class="font-medium"
+                                            :class="{
+                                                'text-blue-700': item.kind === 'Message',
+                                                'text-amber-700': item.kind === 'Internal note' || item.kind === 'Client note',
+                                                'text-slate-600': item.kind === 'Activity',
+                                            }"
+                                        >
+                                            {{ item.kind }}
+                                        </span>
+                                    </div>
                                     <span class="text-brand-muted">{{ formatTimestamp(item.timestamp) }}</span>
                                 </div>
+                                <p class="mt-1.5 whitespace-pre-line text-sm leading-6 text-brand-text">{{ item.body }}</p>
                             </div>
-                            <p class="mt-1.5 whitespace-pre-line pl-0 text-sm leading-6 text-brand-text">{{ item.body }}</p>
                         </div>
+                        <EmptyState v-else icon="document" title="No activity yet" description="Notes, messages, and system updates will appear here." />
                     </div>
-                    <EmptyState v-else icon="document" title="No activity yet" description="Notes, messages, and system updates will appear here." />
+
                 </AppCard>
 
-                <AppCard title="Tasks" subtitle="Keep the next actions lightweight and easy to complete.">
-                    <template #action>
-                        <button type="button" class="ui-button-secondary" @click="showTaskSlideOver = true">+ Add task</button>
-                    </template>
-
-                    <div v-if="caseRecord.tasks.length" class="space-y-3">
-                        <div v-if="openTasks.length" class="space-y-3">
-                            <p class="text-sm font-medium text-brand-text">Open tasks</p>
-                            <div v-for="task in openTasks" :key="task.id" class="flex items-start justify-between gap-4 rounded-lg border border-brand-border px-4 py-4">
-                                <div class="min-w-0 flex-1">
-                                    <div class="flex flex-wrap items-center gap-2">
-                                        <p class="font-medium text-brand-text">{{ task.name }}</p>
-                                        <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{{ task.status.replaceAll('_', ' ') }}</span>
-                                        <span v-if="isTaskOverdue(task)" class="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700">Overdue</span>
-                                    </div>
-                                    <p v-if="task.description" class="mt-1 text-sm text-brand-muted">{{ task.description }}</p>
-                                    <p class="mt-2 text-sm text-brand-muted">
-                                        {{ task.assigned_to || 'Unassigned' }}
-                                        <span v-if="task.due_at">• Due {{ task.due_at }}</span>
-                                        <span v-if="task.stage_name">• {{ task.stage_name }}</span>
-                                    </p>
-                                </div>
-                                <PrimaryButton class="shrink-0 !h-9 px-4" @click="markTaskDone(task.id)">Mark done</PrimaryButton>
-                            </div>
-                        </div>
-                        <details v-if="completedTasks.length" class="rounded-lg border border-brand-border px-4 py-4">
-                            <summary class="cursor-pointer list-none text-sm font-medium text-brand-text">
-                                {{ completedTasks.length }} completed task{{ completedTasks.length === 1 ? '' : 's' }}
-                            </summary>
-                            <div class="mt-4 space-y-3">
-                                <div v-for="task in completedTasks" :key="task.id" class="flex items-start justify-between gap-4 rounded-lg bg-brand-neutral px-4 py-4">
-                                    <div class="min-w-0 flex-1">
-                                        <div class="flex flex-wrap items-center gap-2">
-                                            <p class="font-medium text-brand-muted line-through">{{ task.name }}</p>
-                                            <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{{ task.status.replaceAll('_', ' ') }}</span>
-                                        </div>
-                                        <p v-if="task.description" class="mt-1 text-sm text-brand-muted">{{ task.description }}</p>
-                                        <p class="mt-2 text-sm text-brand-muted">
-                                            {{ task.assigned_to || 'Unassigned' }}
-                                            <span v-if="task.due_at">• Due {{ task.due_at }}</span>
-                                            <span v-if="task.stage_name">• {{ task.stage_name }}</span>
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </details>
-                        <div v-else-if="caseRecord.tasks.length" class="rounded-lg bg-brand-neutral px-4 py-4 text-sm text-brand-muted">
-                            All current tasks are completed.
-                        </div>
-                    </div>
-                    <EmptyState v-else icon="task" title="No tasks yet" description="Add a task to capture the next action for this case." />
-                </AppCard>
-
-                <AppCard title="Documents" subtitle="Keep uploads and review simple: one row per requirement, one place to act.">
+                <AppCard v-else-if="activeTab === 'documents'" title="Documents" subtitle="Keep uploads and review simple: one row per requirement, one place to act.">
                     <template #action>
                         <div class="flex flex-wrap items-center gap-2">
                             <span v-if="documentsNeedingReviewCount" class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
@@ -673,12 +868,12 @@ const removeFromGroup = () => {
                             <p class="mt-1.5 text-xl font-bold text-brand-text">{{ documentCompletion }}%</p>
                         </div>
                         <div class="rounded-lg bg-brand-neutral px-3.5 py-3">
-                            <p class="ui-kicker">Awaiting review</p>
-                            <p class="mt-1.5 text-xl font-bold text-brand-text">{{ pendingDocumentCount }}</p>
+                            <p class="ui-kicker">Required still open</p>
+                            <p class="mt-1.5 text-xl font-bold text-brand-text">{{ requiredDocumentsPending.length }}</p>
                         </div>
                         <div class="rounded-lg bg-brand-neutral px-3.5 py-3">
-                            <p class="ui-kicker">Verified</p>
-                            <p class="mt-1.5 text-xl font-bold text-brand-text">{{ verifiedDocumentCount }}</p>
+                            <p class="ui-kicker">Awaiting review</p>
+                            <p class="mt-1.5 text-xl font-bold text-brand-text">{{ documentsAwaitingReview.length }}</p>
                         </div>
                         <div class="rounded-lg bg-brand-neutral px-3.5 py-3">
                             <p class="ui-kicker">Uploaded</p>
@@ -704,6 +899,15 @@ const removeFromGroup = () => {
                                         </span>
                                         <span v-else>No file uploaded yet</span>
                                         <span>{{ document.max_file_size_mb }}MB max</span>
+                                    </div>
+
+                                    <div v-if="document.tracks_expiry && document.expiry_date" class="text-[12px]">
+                                        <span v-if="expiredDocuments.some((item) => item.id === document.id)" class="rounded-md border border-rose-200 bg-rose-50 px-2.5 py-1 font-medium text-rose-700">
+                                            Expired on {{ document.expiry_date }}
+                                        </span>
+                                        <span v-else-if="expiringDocuments.some((item) => item.id === document.id)" class="rounded-md border border-amber-200 bg-amber-50 px-2.5 py-1 font-medium text-amber-700">
+                                            Expires soon on {{ document.expiry_date }}
+                                        </span>
                                     </div>
                                 </div>
 
@@ -764,10 +968,205 @@ const removeFromGroup = () => {
                     </div>
                     <EmptyState v-else icon="document" title="No documents yet" description="Case documents will appear here once the checklist is available." />
                 </AppCard>
+
+                <AppCard v-else-if="activeTab === 'tasks'" title="Tasks" subtitle="Keep the next actions lightweight and easy to complete.">
+                    <template #action>
+                        <button type="button" class="ui-button-secondary" @click="showTaskSlideOver = true">+ Add task</button>
+                    </template>
+
+                    <div v-if="caseRecord.tasks.length" class="space-y-3">
+                        <div v-if="openTasks.length" class="space-y-3">
+                            <p class="text-sm font-medium text-brand-text">Open tasks</p>
+                            <div v-for="task in openTasks" :key="task.id" class="flex items-start justify-between gap-4 rounded-lg border border-brand-border px-4 py-4">
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <p class="font-medium text-brand-text">{{ task.name }}</p>
+                                        <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{{ task.status.replaceAll('_', ' ') }}</span>
+                                        <span v-if="isTaskOverdue(task)" class="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-medium text-rose-700">Overdue</span>
+                                    </div>
+                                    <p v-if="task.description" class="mt-1 text-sm text-brand-muted">{{ task.description }}</p>
+                                    <p class="mt-2 text-sm text-brand-muted">
+                                        {{ task.assigned_to || 'Unassigned' }}
+                                        <span v-if="task.due_at">• Due {{ task.due_at }}</span>
+                                        <span v-if="task.stage_name">• {{ task.stage_name }}</span>
+                                    </p>
+                                </div>
+                                <PrimaryButton class="shrink-0 !h-9 px-4" @click="markTaskDone(task.id)">Mark done</PrimaryButton>
+                            </div>
+                        </div>
+                        <details v-if="completedTasks.length" class="rounded-lg border border-brand-border px-4 py-4">
+                            <summary class="cursor-pointer list-none text-sm font-medium text-brand-text">
+                                {{ completedTasks.length }} completed task{{ completedTasks.length === 1 ? '' : 's' }}
+                            </summary>
+                            <div class="mt-4 space-y-3">
+                                <div v-for="task in completedTasks" :key="task.id" class="flex items-start justify-between gap-4 rounded-lg bg-brand-neutral px-4 py-4">
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <p class="font-medium text-brand-muted line-through">{{ task.name }}</p>
+                                            <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{{ task.status.replaceAll('_', ' ') }}</span>
+                                        </div>
+                                        <p v-if="task.description" class="mt-1 text-sm text-brand-muted">{{ task.description }}</p>
+                                        <p class="mt-2 text-sm text-brand-muted">
+                                            {{ task.assigned_to || 'Unassigned' }}
+                                            <span v-if="task.due_at">• Due {{ task.due_at }}</span>
+                                            <span v-if="task.stage_name">• {{ task.stage_name }}</span>
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+                        <div v-else-if="caseRecord.tasks.length" class="rounded-lg bg-brand-neutral px-4 py-4 text-sm text-brand-muted">
+                            All current tasks are completed.
+                        </div>
+                    </div>
+                    <EmptyState v-else icon="task" title="No tasks yet" description="Add a task to capture the next action for this case." />
+                </AppCard>
+
+                <AppCard v-if="activeTab === 'more'" title="Supporting details" subtitle="Useful case information that should stay available, but not compete with the main workflow.">
+                    <div class="space-y-3">
+                        <details class="rounded-lg border border-slate-200 px-4 py-3" open>
+                            <summary class="cursor-pointer list-none text-sm font-semibold text-slate-900">Billing</summary>
+                            <div class="mt-4 space-y-4">
+                                <div class="flex items-center justify-between gap-3">
+                                    <p class="text-sm text-slate-500">Only the financial details that need attention.</p>
+                                    <button type="button" class="ui-button-secondary !h-8 px-3 text-[12px]" @click="showInvoiceSlideOver = true">Create invoice</button>
+                                </div>
+                                <div v-if="caseRecord.invoices.length" class="grid gap-3 sm:grid-cols-2">
+                                    <div class="rounded-lg bg-brand-neutral px-4 py-3">
+                                        <p class="ui-kicker">Outstanding</p>
+                                        <p class="font-medium text-brand-text">{{ formatMoney('USD', totalBalanceDue) }}</p>
+                                    </div>
+                                    <div class="rounded-lg bg-brand-neutral px-4 py-3">
+                                        <p class="ui-kicker">Unpaid invoices</p>
+                                        <p class="font-medium text-brand-text">{{ unpaidInvoiceCount }}</p>
+                                    </div>
+                                </div>
+                                <div v-if="caseRecord.invoices.length" class="space-y-4">
+                                    <div v-for="invoice in caseRecord.invoices" :key="invoice.id" class="rounded-lg border border-brand-border px-4 py-4">
+                                        <div class="flex items-start justify-between gap-4">
+                                            <div>
+                                                <p class="font-medium text-brand-text">Invoice #{{ invoice.number || invoice.id }}</p>
+                                                <p class="mt-1 text-sm text-brand-muted">Issued {{ invoice.issued_at || 'Not set' }}</p>
+                                            </div>
+                                            <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{{ invoice.status.replaceAll('_', ' ') }}</span>
+                                        </div>
+                                        <p class="mt-2 text-sm text-brand-muted">Balance {{ formatMoney(invoice.currency, invoice.balance_due) }}</p>
+                                        <div class="mt-3 flex flex-wrap items-center gap-2">
+                                            <button type="button" class="ui-button-ghost !h-8 px-3 text-[12px]" @click="sendInvoiceReminder(invoice.id)">Send reminder</button>
+                                            <button v-if="invoiceHasBalance(invoice)" type="button" class="ui-button-secondary !h-8 px-3 text-[12px]" @click="expandedPayments[invoice.id] = !expandedPayments[invoice.id]">
+                                                {{ expandedPayments[invoice.id] ? 'Cancel' : 'Record payment' }}
+                                            </button>
+                                        </div>
+                                        <form v-if="expandedPayments[invoice.id]" class="mt-4 grid gap-4" @submit.prevent="submitPayment(invoice.id)">
+                                            <div>
+                                                <InputLabel value="Amount" />
+                                                <input v-model="paymentForms[invoice.id].amount" class="ui-input" />
+                                            </div>
+                                            <div>
+                                                <InputLabel value="Method" />
+                                                <select v-model="paymentForms[invoice.id].method" class="ui-select">
+                                                    <option v-for="method in caseRecord.payment_methods" :key="method" :value="method">{{ method }}</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <InputLabel value="Reference" />
+                                                <input v-model="paymentForms[invoice.id].reference" class="ui-input" />
+                                            </div>
+                                            <div>
+                                                <InputLabel value="Paid at" />
+                                                <input v-model="paymentForms[invoice.id].paid_at" type="datetime-local" class="ui-input" />
+                                            </div>
+                                            <PrimaryButton class="!h-10 px-4" :loading="paymentForms[invoice.id].processing">Save payment</PrimaryButton>
+                                        </form>
+                                    </div>
+                                </div>
+                                <EmptyState v-else icon="inbox" title="No invoices yet" description="Create invoices here when the case reaches a billing step." />
+                            </div>
+                        </details>
+
+                        <details class="rounded-lg border border-slate-200 px-4 py-3">
+                            <summary class="cursor-pointer list-none text-sm font-semibold text-slate-900">Appointments</summary>
+                            <div class="mt-4 space-y-3">
+                                <div class="flex items-center justify-between gap-3">
+                                    <p class="text-sm text-slate-500">Keep scheduled events visible but secondary.</p>
+                                    <button type="button" class="ui-button-secondary !h-8 px-3 text-[12px]" @click="showAppointmentSlideOver = true">Schedule</button>
+                                </div>
+                                <div v-if="caseRecord.appointments.length" class="space-y-3">
+                                    <div v-for="appointment in caseRecord.appointments" :key="appointment.id" class="rounded-lg border border-brand-border px-4 py-4">
+                                        <div class="flex flex-wrap items-start justify-between gap-3">
+                                            <div>
+                                                <p class="font-medium text-brand-text">{{ appointment.title }}</p>
+                                                <p class="mt-1 text-sm text-brand-muted">{{ formatTimestamp(appointment.starts_at) }}</p>
+                                            </div>
+                                            <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{{ appointment.status }}</span>
+                                        </div>
+                                        <p class="mt-1 text-sm text-brand-muted">{{ appointment.location || appointment.meeting_link || 'Location not added yet' }}</p>
+                                        <div class="mt-3 flex flex-wrap items-center gap-2">
+                                            <button type="button" class="ui-button-ghost !h-8 px-3 text-[12px]" @click="sendAppointmentReminder(appointment.id)">Send reminder</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <EmptyState v-else icon="clock" title="No appointments yet" description="Schedule interviews, biometrics, or consultations from here." />
+                            </div>
+                        </details>
+
+                        <details class="rounded-lg border border-slate-200 px-4 py-3">
+                            <summary class="cursor-pointer list-none text-sm font-semibold text-slate-900">Family group</summary>
+                            <div class="mt-4 space-y-3">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                    <p class="text-sm text-slate-500">Link related applications to process them together.</p>
+                                    <div v-if="caseRecord.group" class="flex flex-wrap items-center gap-3">
+                                        <button type="button" class="text-sm font-medium text-brand-primary hover:underline" @click="showAddGroupMemberSlideOver = true">Add member</button>
+                                        <button type="button" class="text-sm font-medium text-red-500 hover:underline" @click="removeFromGroup">Leave group</button>
+                                    </div>
+                                    <button v-else type="button" class="text-sm font-medium text-brand-primary hover:underline" @click="showGroupSlideOver = true">Create group</button>
+                                </div>
+
+                                <div v-if="caseRecord.group">
+                                    <p class="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">{{ caseRecord.group.name }}</p>
+                                    <div class="space-y-2">
+                                        <Link
+                                            v-for="member in caseRecord.group_members"
+                                            :key="member.id"
+                                            :href="route('cases.show', member.id)"
+                                            class="flex items-center justify-between rounded-lg border border-brand-border px-3 py-2.5 transition hover:bg-slate-50"
+                                        >
+                                            <div>
+                                                <p class="text-[13px] font-semibold text-slate-900">{{ member.applicant_name }}</p>
+                                                <p class="text-[11px] text-slate-500">{{ member.visa_type }} • {{ member.reference_code }}</p>
+                                            </div>
+                                            <span v-if="member.is_group_primary" class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">Primary</span>
+                                        </Link>
+                                    </div>
+                                </div>
+                                <EmptyState v-else icon="users" title="No group yet" description="Create a group to link family members sharing this application journey." />
+                            </div>
+                        </details>
+
+                        <details v-if="caseRecord.form_templates?.length" class="rounded-lg border border-slate-200 px-4 py-3">
+                            <summary class="cursor-pointer list-none text-sm font-semibold text-slate-900">Government forms</summary>
+                            <div class="mt-4 space-y-2">
+                                <a
+                                    v-for="form in caseRecord.form_templates"
+                                    :key="form.id"
+                                    :href="route('cases.form-templates.generate', { case: caseRecord.id, formTemplate: form.id })"
+                                    target="_blank"
+                                    class="flex items-center justify-between rounded-lg border border-brand-border px-3 py-2.5 transition hover:bg-slate-50"
+                                >
+                                    <div>
+                                        <p class="text-[13px] font-semibold text-slate-900">{{ form.name }}</p>
+                                        <p class="text-[11px] text-slate-500">{{ form.description || 'Pre-filled PDF form.' }}</p>
+                                    </div>
+                                    <AppIcon name="externalLink" :size="14" class="text-slate-400" />
+                                </a>
+                            </div>
+                        </details>
+                    </div>
+                </AppCard>
             </div>
 
             <div class="space-y-6 ui-sidebar-sticky">
-                <AppCard title="Case details" subtitle="Editable metadata that supports the main workflow.">
+                <AppCard title="Case control" subtitle="The key facts and controls you need most often.">
                     <div class="space-y-4">
                         <div>
                             <InputLabel value="Current stage" />
@@ -775,179 +1174,47 @@ const removeFromGroup = () => {
                                 <option v-for="stage in caseRecord.workflow" :key="stage.id" :value="stage.id">{{ stage.name }}</option>
                             </select>
                         </div>
-                        <div class="ui-meta-list">
-                            <p>Assigned to: {{ caseRecord.assigned_to || 'Unassigned' }}</p>
-                            <p>Branch: {{ caseRecord.branch || 'Corporate' }}</p>
-                            <p>Submission target: {{ caseRecord.expected_submission_at || 'Not scheduled' }}</p>
-                            <p>Decision target: {{ caseRecord.expected_decision_at || 'Not scheduled' }}</p>
-                        </div>
-                    </div>
-                </AppCard>
 
-                <AppCard title="Progress" subtitle="A small sidebar snapshot, not a dashboard.">
-                    <div class="space-y-4">
-                        <div class="rounded-lg bg-brand-neutral px-4 py-4">
-                            <p class="ui-kicker">Open tasks</p>
-                            <p class="mt-2 text-lg font-medium text-brand-text">{{ openTaskCount }}</p>
-                            <p class="mt-1 text-sm text-brand-muted">{{ completedTaskCount }} completed</p>
-                        </div>
-                        <div class="rounded-lg bg-brand-neutral px-4 py-4">
-                            <p class="ui-kicker">Document progress</p>
-                            <p class="mt-2 text-lg font-medium text-brand-text">{{ documentCompletion }}%</p>
-                            <p class="mt-1 text-sm text-brand-muted">{{ verifiedDocumentCount }} verified • {{ pendingDocumentCount }} pending</p>
-                        </div>
-                        <div class="rounded-lg bg-brand-neutral px-4 py-4">
-                            <p class="ui-kicker">Outstanding balance</p>
-                            <p class="mt-2 text-lg font-medium text-brand-text">{{ formatMoney('USD', totalBalanceDue) }}</p>
-                            <p class="mt-1 text-sm text-brand-muted">{{ unpaidInvoiceCount }} invoice{{ unpaidInvoiceCount === 1 ? '' : 's' }} unpaid</p>
-                        </div>
-                        <div class="rounded-lg bg-brand-neutral px-4 py-4">
-                            <p class="ui-kicker">Next appointment</p>
-                            <p class="mt-2 text-lg font-medium text-brand-text">{{ nextAppointment ? formatTimestamp(nextAppointment.starts_at) : 'Nothing scheduled' }}</p>
-                        </div>
-                    </div>
-                </AppCard>
-
-                <AppCard title="Billing" subtitle="Only the financial details that need attention.">
-                    <template #action>
-                        <button type="button" class="ui-button-secondary" @click="showInvoiceSlideOver = true">Create invoice</button>
-                    </template>
-                    <div v-if="caseRecord.invoices.length" class="mb-4 grid gap-3 sm:grid-cols-2">
-                        <div class="rounded-lg bg-brand-neutral px-4 py-3">
-                            <p class="ui-kicker">Outstanding</p>
-                            <p class="font-medium text-brand-text">{{ formatMoney('USD', totalBalanceDue) }}</p>
-                        </div>
-                        <div class="rounded-lg bg-brand-neutral px-4 py-3">
-                            <p class="ui-kicker">Unpaid invoices</p>
-                            <p class="font-medium text-brand-text">{{ unpaidInvoiceCount }}</p>
-                        </div>
-                    </div>
-                    <div v-if="caseRecord.invoices.length" class="space-y-4">
-                        <div v-for="invoice in caseRecord.invoices" :key="invoice.id" class="rounded-lg border border-brand-border px-4 py-4">
-                            <div class="flex items-start justify-between gap-4">
-                                <div>
-                                    <p class="font-medium text-brand-text">Invoice #{{ invoice.number || invoice.id }}</p>
-                                    <p class="mt-1 text-sm text-brand-muted">Issued {{ invoice.issued_at || 'Not set' }}</p>
-                                </div>
-                                <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{{ invoice.status.replaceAll('_', ' ') }}</span>
+                        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                            <div class="rounded-lg bg-brand-neutral px-4 py-4">
+                                <p class="ui-kicker">Applicant</p>
+                                <p class="mt-2 font-medium text-brand-text">{{ caseRecord.applicant.name }}</p>
+                                <p class="mt-1 text-sm text-brand-muted">{{ caseRecord.applicant.email || 'No email on file yet' }}</p>
+                                <p class="mt-1 text-sm text-brand-muted">{{ caseRecord.applicant.phone || 'No phone number on file yet' }}</p>
                             </div>
-                            <p class="mt-2 text-sm text-brand-muted">Balance {{ formatMoney(invoice.currency, invoice.balance_due) }}</p>
-                            <div class="mt-3 flex flex-wrap items-center gap-2">
-                                <button type="button" class="ui-button-ghost !h-8 px-3 text-[12px]" @click="sendInvoiceReminder(invoice.id)">Send reminder</button>
-                                <button v-if="invoiceHasBalance(invoice)" type="button" class="ui-button-secondary !h-8 px-3 text-[12px]" @click="expandedPayments[invoice.id] = !expandedPayments[invoice.id]">
-                                    {{ expandedPayments[invoice.id] ? 'Cancel' : 'Record payment' }}
-                                </button>
-                            </div>
-                            <form v-if="expandedPayments[invoice.id]" class="mt-4 grid gap-4" @submit.prevent="submitPayment(invoice.id)">
-                                <div>
-                                    <InputLabel value="Amount" />
-                                    <input v-model="paymentForms[invoice.id].amount" class="ui-input" />
-                                </div>
-                                <div>
-                                    <InputLabel value="Method" />
-                                    <select v-model="paymentForms[invoice.id].method" class="ui-select">
-                                        <option v-for="method in caseRecord.payment_methods" :key="method" :value="method">{{ method }}</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <InputLabel value="Reference" />
-                                    <input v-model="paymentForms[invoice.id].reference" class="ui-input" />
-                                </div>
-                                <div>
-                                    <InputLabel value="Paid at" />
-                                    <input v-model="paymentForms[invoice.id].paid_at" type="datetime-local" class="ui-input" />
-                                </div>
-                                <PrimaryButton class="!h-10 px-4" :loading="paymentForms[invoice.id].processing">Save payment</PrimaryButton>
-                            </form>
-                        </div>
-                    </div>
-                    <EmptyState v-else icon="inbox" title="No invoices yet" description="Create invoices here when the case reaches a billing step." />
-                </AppCard>
-
-                <AppCard title="Appointments" subtitle="Keep scheduled events visible but secondary.">
-                    <template #action>
-                        <button type="button" class="ui-button-secondary" @click="showAppointmentSlideOver = true">Schedule</button>
-                    </template>
-                    <div v-if="caseRecord.appointments.length" class="space-y-3">
-                        <div v-for="appointment in caseRecord.appointments" :key="appointment.id" class="rounded-lg border border-brand-border px-4 py-4">
-                            <div class="flex flex-wrap items-start justify-between gap-3">
-                                <div>
-                                    <p class="font-medium text-brand-text">{{ appointment.title }}</p>
-                                    <p class="mt-1 text-sm text-brand-muted">{{ formatTimestamp(appointment.starts_at) }}</p>
-                                </div>
-                                <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">{{ appointment.status }}</span>
-                            </div>
-                            <p class="mt-1 text-sm text-brand-muted">{{ appointment.location || appointment.meeting_link || 'Location not added yet' }}</p>
-                            <div class="mt-3 flex flex-wrap items-center gap-2">
-                                <button type="button" class="ui-button-ghost !h-8 px-3 text-[12px]" @click="sendAppointmentReminder(appointment.id)">Send reminder</button>
+                            <div class="rounded-lg bg-brand-neutral px-4 py-4">
+                                <p class="ui-kicker">Ownership</p>
+                                <p class="mt-2 font-medium text-brand-text">{{ caseRecord.assigned_to || 'Unassigned' }}</p>
+                                <p class="mt-1 text-sm text-brand-muted">{{ caseRecord.branch || 'Corporate' }}</p>
                             </div>
                         </div>
-                    </div>
-                    <EmptyState v-else icon="clock" title="No appointments yet" description="Schedule interviews, biometrics, or consultations from here." />
-                </AppCard>
 
-                <AppCard title="Applicant contact" subtitle="Fast access to the person connected to this case.">
-                    <div class="ui-meta-list">
-                        <p>{{ caseRecord.applicant.name }}</p>
-                        <p>{{ caseRecord.applicant.email || 'No email on file yet' }}</p>
-                        <p>{{ caseRecord.applicant.phone || 'No phone number on file yet' }}</p>
-                    </div>
-                    <template #action>
-                        <Link v-if="caseRecord.applicant?.id" :href="route('applicants.show', caseRecord.applicant.id)" class="text-sm font-medium text-brand-primary hover:underline">
-                            Open applicant →
+                        <div class="rounded-lg border border-slate-200 px-4 py-4">
+                            <div class="space-y-2 text-sm text-slate-600">
+                                <div class="flex items-center justify-between gap-3">
+                                    <span>Submission target</span>
+                                    <span class="font-medium text-slate-900">{{ caseRecord.expected_submission_at || 'Not scheduled' }}</span>
+                                </div>
+                                <div class="flex items-center justify-between gap-3">
+                                    <span>Decision target</span>
+                                    <span class="font-medium text-slate-900">{{ caseRecord.expected_decision_at || 'Not scheduled' }}</span>
+                                </div>
+                                <div class="flex items-center justify-between gap-3">
+                                    <span>Outstanding balance</span>
+                                    <span class="font-medium text-slate-900">{{ formatMoney('USD', totalBalanceDue) }}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <Link v-if="caseRecord.applicant?.id" :href="route('applicants.show', caseRecord.applicant.id)" class="ui-button-secondary w-full justify-center">
+                            Open applicant
                         </Link>
-                    </template>
-                </AppCard>
-
-                <!-- Family / Group Panel -->
-                <AppCard title="Family group" subtitle="Link related applications to process them together.">
-                    <template #action>
-                        <button v-if="!caseRecord.group" type="button" class="text-sm font-medium text-brand-primary hover:underline" @click="showGroupSlideOver = true">Create group</button>
-                        <div v-else class="flex flex-wrap items-center gap-3">
-                            <button type="button" class="text-sm font-medium text-brand-primary hover:underline" @click="showAddGroupMemberSlideOver = true">Add member</button>
-                            <button type="button" class="text-sm font-medium text-red-500 hover:underline" @click="removeFromGroup">Leave group</button>
-                        </div>
-                    </template>
-
-                    <div v-if="caseRecord.group">
-                        <p class="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-400">{{ caseRecord.group.name }}</p>
-                        <div class="space-y-2">
-                            <Link
-                                v-for="member in caseRecord.group_members"
-                                :key="member.id"
-                                :href="route('cases.show', member.id)"
-                                class="flex items-center justify-between rounded-lg border border-brand-border px-3 py-2.5 transition hover:bg-slate-50"
-                            >
-                                <div>
-                                    <p class="text-[13px] font-semibold text-slate-900">{{ member.applicant_name }}</p>
-                                    <p class="text-[11px] text-slate-500">{{ member.visa_type }} • {{ member.reference_code }}</p>
-                                </div>
-                                <span v-if="member.is_group_primary" class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">Primary</span>
-                            </Link>
-                        </div>
-                    </div>
-                    <EmptyState v-else icon="users" title="No group yet" description="Create a group to link family members sharing this application journey." />
-                </AppCard>
-
-                <!-- PDF Forms Panel -->
-                <AppCard v-if="caseRecord.form_templates?.length" title="Government forms" subtitle="Pre-filled PDF forms ready to download for this visa type.">
-                    <div class="space-y-2">
-                        <a
-                            v-for="form in caseRecord.form_templates"
-                            :key="form.id"
-                            :href="route('cases.form-templates.generate', { case: caseRecord.id, formTemplate: form.id })"
-                            target="_blank"
-                            class="flex items-center justify-between rounded-lg border border-brand-border px-3 py-2.5 transition hover:bg-slate-50"
-                        >
-                            <div>
-                                <p class="text-[13px] font-semibold text-slate-900">{{ form.name }}</p>
-                                <p v-if="form.description" class="text-[11px] text-slate-500">{{ form.description }}</p>
-                            </div>
-                            <AppIcon name="externalLink" :size="14" class="text-slate-400" />
-                        </a>
                     </div>
                 </AppCard>
+
             </div>
+
+        </div>
         </div>
 
         <SlideOver :show="showGroupSlideOver" title="Create family group" description="Link this case with related applications e.g. spouse, child." @close="showGroupSlideOver = false">

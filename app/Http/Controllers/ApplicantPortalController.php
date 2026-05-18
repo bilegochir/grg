@@ -12,6 +12,7 @@ use App\Models\VisaCaseDocument;
 use App\Models\VisaCaseTask;
 use App\Models\VisaWorkflowStage;
 use App\Support\VisaCaseDocumentUrlGenerator;
+use Illuminate\Support\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -22,6 +23,7 @@ class ApplicantPortalController extends Controller
     public function dashboard(Request $request): Response
     {
         $applicant = $this->portalApplicant($request);
+        $portalSeenAt = $applicant->portal_last_seen_at;
         $applicant->load([
             'visaCases.country:id,name',
             'visaCases.visaType:id,name',
@@ -35,8 +37,10 @@ class ApplicantPortalController extends Controller
         ]);
 
         $casePayloads = $applicant->visaCases
-            ->map(fn (VisaCase $visaCase): array => $this->portalCaseSummary($visaCase))
+            ->map(fn (VisaCase $visaCase): array => $this->portalCaseSummary($visaCase, $portalSeenAt))
             ->values();
+
+        $this->markPortalSeen($applicant);
 
         return Inertia::render('Portal/Dashboard', [
             'business' => $this->businessPayload(),
@@ -44,11 +48,14 @@ class ApplicantPortalController extends Controller
                 'id' => $applicant->id,
                 'name' => $applicant->full_name,
                 'email' => $applicant->email,
+                'notification_channels' => $this->portalNotificationChannels($applicant),
             ],
             'summary' => [
                 'cases_count' => $casePayloads->count(),
                 'open_tasks_count' => $casePayloads->sum('open_tasks_count'),
                 'documents_waiting_count' => $casePayloads->sum('documents_waiting_count'),
+                'unread_messages_count' => $casePayloads->sum('unread_messages_count'),
+                'reminders_count' => $casePayloads->sum(fn (array $payload): int => count($payload['reminders'])),
                 'balance_due' => number_format((float) $applicant->visaCases->sum(fn (VisaCase $visaCase) => $visaCase->invoices->sum('balance_due')), 2, '.', ''),
             ],
             'cases' => $casePayloads,
@@ -62,6 +69,7 @@ class ApplicantPortalController extends Controller
     ): Response {
         $applicant = $this->portalApplicant($request);
         abort_unless($case->applicant_id === $applicant->id, 404);
+        $portalSeenAt = $applicant->portal_last_seen_at;
 
         $case->load([
             'country:id,name',
@@ -81,15 +89,20 @@ class ApplicantPortalController extends Controller
             'activities.causer:id,name',
         ]);
 
-        return Inertia::render('Portal/Case', [
+        $response = Inertia::render('Portal/Case', [
             'business' => $this->businessPayload(),
             'applicant' => [
                 'id' => $applicant->id,
                 'name' => $applicant->full_name,
                 'email' => $applicant->email,
+                'notification_channels' => $this->portalNotificationChannels($applicant),
             ],
-            'case' => $this->portalCaseDetail($case, $documentUrlGenerator),
+            'case' => $this->portalCaseDetail($case, $documentUrlGenerator, $portalSeenAt),
         ]);
+
+        $this->markPortalSeen($applicant);
+
+        return $response;
     }
 
     public function uploadDocument(
@@ -161,12 +174,13 @@ class ApplicantPortalController extends Controller
         ];
     }
 
-    private function portalCaseSummary(VisaCase $visaCase): array
+    private function portalCaseSummary(VisaCase $visaCase, ?Carbon $portalSeenAt = null): array
     {
         $documentsVerified = $visaCase->documents->filter(fn (VisaCaseDocument $document) => $document->status->value === 'verified')->count();
         $documentsWaiting = $visaCase->documents->filter(fn (VisaCaseDocument $document) => in_array($document->status->value, ['pending', 'rejected'], true))->count();
         $visibleTasks = $visaCase->tasks->where('is_client_visible', true);
         $openTasksCount = $visibleTasks->where('status', '!=', 'completed')->count();
+        $unreadMessagesCount = $this->unreadMessagesCount($visaCase, $portalSeenAt);
         $workflowStages = $visaCase->visaType->workflowStages->sortBy('position')->values();
         $currentStagePosition = $workflowStages->firstWhere('id', $visaCase->current_stage_id)?->position ?? 1;
         $progressPercent = $workflowStages->isNotEmpty()
@@ -186,19 +200,24 @@ class ApplicantPortalController extends Controller
             'documents_waiting_count' => $documentsWaiting,
             'open_tasks_count' => $openTasksCount,
             'appointments_count' => $visaCase->appointments->count(),
+            'unread_messages_count' => $unreadMessagesCount,
             'balance_due' => number_format((float) $visaCase->invoices->sum('balance_due'), 2, '.', ''),
             'latest_message_at' => optional($visaCase->messages->first())->sent_at?->diffForHumans(),
             'next_step' => $this->nextStepCopy($visaCase, $documentsWaiting, $openTasksCount),
+            'next_action' => $this->buildCaseNextAction($visaCase, $documentsWaiting, $openTasksCount, $unreadMessagesCount),
+            'reminders' => $this->buildCaseReminders($visaCase, $documentsWaiting, $openTasksCount, $unreadMessagesCount),
         ];
     }
 
-    private function portalCaseDetail(VisaCase $case, VisaCaseDocumentUrlGenerator $documentUrlGenerator): array
+    private function portalCaseDetail(VisaCase $case, VisaCaseDocumentUrlGenerator $documentUrlGenerator, ?Carbon $portalSeenAt = null): array
     {
         $workflowStages = $case->visaType->workflowStages->sortBy('position')->values();
         $currentStagePosition = $workflowStages->firstWhere('id', $case->current_stage_id)?->position ?? 1;
         $visibleTasks = $case->tasks->where('is_client_visible', true)->values();
         $documentsVerified = $case->documents->filter(fn (VisaCaseDocument $document) => $document->status->value === 'verified')->count();
         $documentsWaiting = $case->documents->filter(fn (VisaCaseDocument $document) => in_array($document->status->value, ['pending', 'rejected'], true))->count();
+        $openTasksCount = $visibleTasks->where('status', '!=', 'completed')->count();
+        $unreadMessagesCount = $this->unreadMessagesCount($case, $portalSeenAt);
         $nextAppointment = $case->appointments
             ->filter(fn ($appointment) => $appointment->starts_at && $appointment->starts_at->isFuture())
             ->sortBy('starts_at')
@@ -211,7 +230,9 @@ class ApplicantPortalController extends Controller
             'visa_type' => $case->visaType->name,
             'stage' => $case->currentStage?->name,
             'stage_copy' => $this->stageCopy($case->currentStage?->slug),
-            'next_step_copy' => $this->nextStepCopy($case, $documentsWaiting, $visibleTasks->where('status', '!=', 'completed')->count()),
+            'next_step_copy' => $this->nextStepCopy($case, $documentsWaiting, $openTasksCount),
+            'next_action' => $this->buildCaseNextAction($case, $documentsWaiting, $openTasksCount, $unreadMessagesCount),
+            'reminders' => $this->buildCaseReminders($case, $documentsWaiting, $openTasksCount, $unreadMessagesCount),
             'progress_percent' => $workflowStages->isNotEmpty()
                 ? (int) round(($currentStagePosition / max($workflowStages->count(), 1)) * 100)
                 : 0,
@@ -219,8 +240,9 @@ class ApplicantPortalController extends Controller
                 'documents_verified' => $documentsVerified,
                 'documents_total' => $case->documents->count(),
                 'documents_waiting_count' => $documentsWaiting,
-                'open_tasks_count' => $visibleTasks->where('status', '!=', 'completed')->count(),
+                'open_tasks_count' => $openTasksCount,
                 'completed_tasks_count' => $visibleTasks->where('status', 'completed')->count(),
+                'unread_messages_count' => $unreadMessagesCount,
                 'balance_due' => number_format((float) $case->invoices->sum('balance_due'), 2, '.', ''),
                 'next_appointment_at' => $nextAppointment?->starts_at?->toDayDateTimeString(),
             ],
@@ -256,22 +278,22 @@ class ApplicantPortalController extends Controller
                 'name' => $document->name,
                 'description' => $document->description,
                 'category' => $document->category,
+                'what_needed' => $document->description ?: $document->name,
+                'why_needed' => $document->client_instructions ?: 'Your visa team needs this document to review the next step on your application.',
                 'client_instructions' => $document->client_instructions,
                 'sample_hint' => $document->sample_hint,
                 'status' => $document->status->label(),
                 'status_value' => $document->status->value,
-                'status_copy' => match ($document->status->value) {
-                    'verified' => 'Your team reviewed this and it looks good.',
-                    'uploaded' => 'Received. Your team will review it shortly.',
-                    'rejected' => 'This needs one more update before it can be approved.',
-                    default => 'Still needed before the case can move forward.',
-                },
+                'status_copy' => $this->documentStatusCopy($document->status->value),
                 'accepted_file_types' => $document->accepted_file_types ?? [],
+                'accepted_file_types_label' => collect($document->accepted_file_types ?? [])->map(fn (string $type): string => strtoupper($type))->join(', '),
                 'max_file_size_mb' => $document->max_file_size_mb,
                 'is_required' => $document->is_required,
+                'action_required' => in_array($document->status->value, ['pending', 'rejected'], true),
                 'tracks_expiry' => $document->tracks_expiry,
                 'expiry_date' => $document->expiry_date?->toFormattedDateString(),
                 'rejection_reason' => $document->rejection_reason,
+                'what_to_fix' => $document->rejection_reason,
                 'latest_version' => $document->latestVersion ? [
                     'original_name' => $document->latestVersion->original_name,
                     'created_at' => $document->latestVersion->created_at?->toDayDateTimeString(),
@@ -326,6 +348,173 @@ class ApplicantPortalController extends Controller
             ])->values(),
             'timeline' => $this->portalTimeline($case),
         ];
+    }
+
+    private function buildCaseNextAction(VisaCase $case, int $documentsWaiting, int $openTasksCount, int $unreadMessagesCount): array
+    {
+        $nextAppointment = $case->appointments
+            ->first(fn ($appointment) => $appointment->starts_at && $appointment->starts_at->isFuture());
+        $balanceDue = (float) $case->invoices->sum('balance_due');
+
+        if ($documentsWaiting > 0) {
+            return [
+                'label' => $documentsWaiting === 1 ? 'Send 1 document' : "Send {$documentsWaiting} documents",
+                'description' => 'Your case is waiting on documents from you. Open the document checklist and upload the missing or corrected files first.',
+                'target_tab' => 'documents',
+                'button_label' => 'Open documents',
+                'tone' => 'warm',
+            ];
+        }
+
+        if ($balanceDue > 0) {
+            return [
+                'label' => 'Review payment',
+                'description' => 'There is an outstanding invoice on this case. Open billing to review the amount due and payment instructions.',
+                'target_tab' => 'billing',
+                'button_label' => 'Open billing',
+                'tone' => 'muted',
+            ];
+        }
+
+        if ($unreadMessagesCount > 0) {
+            return [
+                'label' => $unreadMessagesCount === 1 ? 'Read 1 new message' : "Read {$unreadMessagesCount} new messages",
+                'description' => 'Your visa team has sent an update. Open the message thread to read it and reply if needed.',
+                'target_tab' => 'messages',
+                'button_label' => 'Open messages',
+                'tone' => 'brand',
+            ];
+        }
+
+        if ($openTasksCount > 0) {
+            return [
+                'label' => $openTasksCount === 1 ? 'Review 1 checklist item' : "Review {$openTasksCount} checklist items",
+                'description' => 'There are still checklist items connected to this case. Review them so you know what the team is tracking next.',
+                'target_tab' => 'overview',
+                'button_label' => 'Open checklist',
+                'tone' => 'muted',
+            ];
+        }
+
+        if ($nextAppointment) {
+            return [
+                'label' => 'Check your appointment',
+                'description' => sprintf('You have an upcoming appointment on %s. Open the overview to confirm the time and details.', $nextAppointment->starts_at->toDayDateTimeString()),
+                'target_tab' => 'overview',
+                'button_label' => 'View appointment',
+                'tone' => 'brand',
+            ];
+        }
+
+        return [
+            'label' => 'You are up to date',
+            'description' => 'There is nothing urgent for you right now. Your visa team is handling the next step and will contact you here if anything new is needed.',
+            'target_tab' => 'overview',
+            'button_label' => 'View overview',
+            'tone' => 'success',
+        ];
+    }
+
+    private function buildCaseReminders(VisaCase $case, int $documentsWaiting, int $openTasksCount, int $unreadMessagesCount): array
+    {
+        $reminders = collect();
+        $nextAppointment = $case->appointments
+            ->first(fn ($appointment) => $appointment->starts_at && $appointment->starts_at->isFuture());
+        $balanceDue = (float) $case->invoices->sum('balance_due');
+
+        if ($documentsWaiting > 0) {
+            $reminders->push([
+                'type' => 'documents',
+                'title' => $documentsWaiting === 1 ? '1 document still needed' : "{$documentsWaiting} documents still needed",
+                'body' => 'Missing or corrected files are still required before the team can move this case forward.',
+                'target_tab' => 'documents',
+                'tone' => 'warm',
+            ]);
+        }
+
+        if ($unreadMessagesCount > 0) {
+            $reminders->push([
+                'type' => 'messages',
+                'title' => $unreadMessagesCount === 1 ? '1 unread message from your team' : "{$unreadMessagesCount} unread messages from your team",
+                'body' => 'Open the conversation to read the latest update and reply if needed.',
+                'target_tab' => 'messages',
+                'tone' => 'brand',
+            ]);
+        }
+
+        if ($nextAppointment && $nextAppointment->starts_at->isBefore(now()->addDays(2))) {
+            $reminders->push([
+                'type' => 'appointments',
+                'title' => 'Upcoming appointment',
+                'body' => sprintf('%s is scheduled for %s.', $nextAppointment->title, $nextAppointment->starts_at->toDayDateTimeString()),
+                'target_tab' => 'overview',
+                'tone' => 'muted',
+            ]);
+        }
+
+        if ($balanceDue > 0) {
+            $overdueCount = $case->invoices->filter(fn (Invoice $invoice) => $invoice->status === 'overdue')->count();
+
+            $reminders->push([
+                'type' => 'billing',
+                'title' => $overdueCount > 0 ? 'Payment overdue' : 'Outstanding balance',
+                'body' => $overdueCount > 0
+                    ? sprintf('At least one invoice is overdue. %s %.2f is still outstanding.', optional($case->invoices->first())->currency ?? 'USD', $balanceDue)
+                    : sprintf('%s %.2f is still due on this case.', optional($case->invoices->first())->currency ?? 'USD', $balanceDue),
+                'target_tab' => 'billing',
+                'tone' => $overdueCount > 0 ? 'warm' : 'muted',
+            ]);
+        }
+
+        if ($documentsWaiting === 0 && $balanceDue <= 0 && $unreadMessagesCount === 0 && $openTasksCount === 0) {
+            $reminders->push([
+                'type' => 'clear',
+                'title' => 'No urgent reminders right now',
+                'body' => 'Your case is currently with the team. We will let you know here if anything changes.',
+                'target_tab' => 'overview',
+                'tone' => 'success',
+            ]);
+        }
+
+        return $reminders->take(4)->values()->all();
+    }
+
+    private function unreadMessagesCount(VisaCase $case, ?Carbon $portalSeenAt): int
+    {
+        return $case->messages
+            ->filter(fn ($message) => $message->direction === 'outbound')
+            ->filter(fn ($message) => $message->sender_type !== 'system')
+            ->filter(function ($message) use ($portalSeenAt): bool {
+                $sentAt = $message->sent_at ?? $message->created_at;
+
+                return $sentAt !== null && ($portalSeenAt === null || $sentAt->greaterThan($portalSeenAt));
+            })
+            ->count();
+    }
+
+    private function documentStatusCopy(string $status): string
+    {
+        return match ($status) {
+            'verified' => 'Approved by your visa team.',
+            'uploaded' => 'Received. Your team will review it shortly.',
+            'rejected' => 'This needs one more update before it can be approved.',
+            default => 'Still needed before the case can move forward.',
+        };
+    }
+
+    private function portalNotificationChannels(Applicant $applicant): array
+    {
+        $preferences = $applicant->notificationPreferences();
+
+        return [
+            'email_enabled' => (bool) ($preferences['email_enabled'] ?? false),
+            'sms_enabled' => (bool) ($preferences['sms_enabled'] ?? false),
+        ];
+    }
+
+    private function markPortalSeen(Applicant $applicant): void
+    {
+        $applicant->forceFill(['portal_last_seen_at' => now()])->save();
     }
 
     private function portalTimeline(VisaCase $case): array

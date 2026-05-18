@@ -33,6 +33,7 @@ class Applicant extends Model
         'travel_history',
         'metadata',
         'notification_preferences',
+        'portal_last_seen_at',
     ];
 
     protected function casts(): array
@@ -44,6 +45,7 @@ class Applicant extends Model
             'travel_history' => 'array',
             'metadata' => 'array',
             'notification_preferences' => 'array',
+            'portal_last_seen_at' => 'datetime',
         ];
     }
 

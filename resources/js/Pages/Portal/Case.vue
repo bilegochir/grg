@@ -17,7 +17,11 @@ const props = defineProps({
 });
 
 const portalCase = props.case;
-const activeTab = ref('overview');
+const allowedTabs = ['overview', 'documents', 'billing', 'messages'];
+const initialTab = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('tab')
+    : null;
+const activeTab = ref(allowedTabs.includes(initialTab) ? initialTab : 'overview');
 const messageForm = useForm({
     body: '',
 });
@@ -59,58 +63,127 @@ const orderedDocuments = computed(() => [
     ...portalCase.documents.filter((document) => document.status_value !== 'verified'),
     ...portalCase.documents.filter((document) => document.status_value === 'verified'),
 ]);
+const pendingDocuments = computed(() => orderedDocuments.value.filter((document) => document.status_value !== 'verified'));
+const verifiedDocuments = computed(() => orderedDocuments.value.filter((document) => document.status_value === 'verified'));
 const nextAttentionCount = computed(() => openTasks.value.length + portalCase.summary.documents_waiting_count);
 const latestMessages = computed(() => [...portalCase.messages].sort((a, b) => new Date(b.sent_at).getTime() - new Date(a.sent_at).getTime()));
 const priorityDocuments = computed(() => orderedDocuments.value.filter((document) => document.status_value === 'pending' || document.status_value === 'rejected'));
 const overdueInvoices = computed(() => portalCase.invoices.filter((invoice) => invoice.status === 'overdue'));
 const waitingPaymentInvoices = computed(() => portalCase.invoices.filter((invoice) => invoice.status === 'sent' || invoice.status === 'partially_paid'));
-const primaryActionLabel = computed(() => {
-    if (priorityDocuments.value.length) {
-        return 'Upload documents';
+const nextAction = computed(() => portalCase.next_action);
+const reminders = computed(() => portalCase.reminders || []);
+const primaryActionLabel = computed(() => nextAction.value?.button_label || 'Open overview');
+const primaryActionTab = computed(() => nextAction.value?.target_tab || 'overview');
+const nextActionSummary = computed(() => nextAction.value?.description || 'Everything important is up to date right now.');
+
+const caseStatus = computed(() => {
+    if (nextAction.value?.target_tab === 'documents') {
+        return {
+            label: 'Action needed',
+            tone: 'portal-chip-warm',
+            helper: 'Your case is waiting on documents from you.',
+        };
+    }
+
+    if (nextAction.value?.target_tab === 'messages') {
+        return {
+            label: 'New update',
+            tone: 'portal-chip-brand',
+            helper: 'Your visa team has sent you a message to review.',
+        };
+    }
+
+    if (nextAction.value?.target_tab === 'billing') {
+        return {
+            label: 'Payment review',
+            tone: 'portal-chip-muted',
+            helper: 'Your case has invoice items that still need attention.',
+        };
     }
 
     if (openTasks.value.length) {
-        return 'Review checklist';
+        return {
+            label: 'In progress',
+            tone: 'portal-chip-brand',
+            helper: 'There are still a few open checklist steps on this case.',
+        };
     }
 
-    if (waitingPaymentInvoices.value.length) {
-        return 'Review payment';
-    }
-
-    return 'Send message';
+    return {
+        label: 'Waiting on team',
+        tone: 'portal-chip-success',
+        helper: 'You are up to date. Your visa team is working on the next step.',
+    };
 });
 
-const primaryActionTab = computed(() => {
-    if (priorityDocuments.value.length) {
-        return 'documents';
-    }
+const applicantActionItems = computed(() => {
+    const items = [];
 
-    if (waitingPaymentInvoices.value.length) {
-        return 'billing';
+    if (priorityDocuments.value.length) {
+        items.push({
+            key: 'documents',
+            title: `Send ${priorityDocuments.value.length} document${priorityDocuments.value.length === 1 ? '' : 's'}`,
+            body: 'These files are still missing or need to be corrected before your case can move forward.',
+            cta: 'Open documents',
+            tab: 'documents',
+        });
     }
 
     if (openTasks.value.length) {
-        return 'overview';
+        items.push({
+            key: 'checklist',
+            title: `Review ${openTasks.value.length} checklist item${openTasks.value.length === 1 ? '' : 's'}`,
+            body: 'These are the remaining steps your team still needs help with or is waiting to confirm.',
+            cta: 'Review checklist',
+            tab: 'overview',
+        });
     }
 
-    return 'messages';
+    if (waitingPaymentInvoices.value.length || overdueInvoices.value.length) {
+        const invoiceCount = waitingPaymentInvoices.value.length + overdueInvoices.value.length;
+
+        items.push({
+            key: 'billing',
+            title: `Review ${invoiceCount} invoice${invoiceCount === 1 ? '' : 's'}`,
+            body: overdueInvoices.value.length ? 'At least one payment is overdue.' : 'A payment is waiting to be reviewed.',
+            cta: 'Open billing',
+            tab: 'billing',
+        });
+    }
+
+    return items;
 });
 
-const nextActionSummary = computed(() => {
-    if (priorityDocuments.value.length) {
-        return `Please send ${priorityDocuments.value.length} document${priorityDocuments.value.length === 1 ? '' : 's'} so your case can keep moving.`;
-    }
-
-    if (openTasks.value.length) {
-        return `You still have ${openTasks.value.length} checklist item${openTasks.value.length === 1 ? '' : 's'} open.`;
-    }
-
-    if (waitingPaymentInvoices.value.length) {
-        return `There ${waitingPaymentInvoices.value.length === 1 ? 'is' : 'are'} ${waitingPaymentInvoices.value.length} invoice${waitingPaymentInvoices.value.length === 1 ? '' : 's'} waiting for payment attention.`;
-    }
-
-    return 'Everything important is up to date right now.';
-});
+const latestTimelineItems = computed(() => portalCase.timeline.slice(0, 4));
+const actionCards = computed(() => [
+    {
+        key: 'documents',
+        title: 'Documents',
+        emphasis: pendingDocuments.value.length ? `${pendingDocuments.value.length} still needed` : `${verifiedDocuments.value.length}/${portalCase.summary.documents_total} verified`,
+        helper: pendingDocuments.value.length ? 'Send or replace the files your team still needs.' : 'Your current requested files are already in place.',
+        button: pendingDocuments.value.length ? 'Open documents' : 'Review documents',
+        tab: 'documents',
+        active: primaryActionTab.value === 'documents',
+    },
+    {
+        key: 'checklist',
+        title: 'Checklist',
+        emphasis: openTasks.value.length ? `${openTasks.value.length} step${openTasks.value.length === 1 ? '' : 's'} open` : 'All steps complete',
+        helper: openTasks.value.length ? 'Review the remaining tasks connected to this case.' : 'There are no outstanding checklist items right now.',
+        button: 'Open overview',
+        tab: 'overview',
+        active: primaryActionTab.value === 'overview' && openTasks.value.length > 0,
+    },
+    {
+        key: 'billing',
+        title: 'Billing',
+        emphasis: waitingPaymentInvoices.value.length || overdueInvoices.value.length ? `$${portalCase.summary.balance_due} due` : 'No payment pending',
+        helper: waitingPaymentInvoices.value.length || overdueInvoices.value.length ? 'Review invoices or payment details for this case.' : 'No invoice action is needed from you right now.',
+        button: 'Open billing',
+        tab: 'billing',
+        active: primaryActionTab.value === 'billing',
+    },
+]);
 
 const quickFacts = computed(() => [
     {
@@ -134,19 +207,19 @@ const openPrimaryTab = () => {
     activeTab.value = primaryActionTab.value;
 };
 
+const openTab = (tab) => {
+    activeTab.value = allowedTabs.includes(tab) ? tab : 'overview';
+};
+
 const tabs = computed(() => [
     { key: 'overview', label: t('common.overview') },
-    { key: 'documents', label: `${t('common.documents')} (${portalCase.summary.documents_waiting_count})` },
+    { key: 'documents', label: `${t('common.documents')} (${pendingDocuments.value.length})` },
     { key: 'billing', label: `${t('common.billing')} (${portalCase.invoices.length})` },
     { key: 'messages', label: `${t('common.messages')} (${portalCase.messages.length})` },
 ]);
 
-const workflowStateClasses = (state) => {
-    if (state === 'completed') return 'border-green-200 bg-green-50 text-green-700';
-    if (state === 'current') return 'border-brand-primary/30 bg-brand-primary/10 text-brand-primary';
-
-    return 'border-slate-200 bg-white text-brand-muted';
-};
+const workflowCompletedCount = computed(() => portalCase.workflow.filter((step) => step.state === 'completed').length);
+const currentWorkflowStep = computed(() => portalCase.workflow.find((step) => step.state === 'current') ?? null);
 
 const documentStatusClasses = (status) => {
     if (status === 'verified') return 'bg-green-50 text-green-700';
@@ -161,7 +234,7 @@ const taskStatusClasses = (status) => {
     if (status === 'in_progress') return 'bg-blue-50 text-blue-700';
     if (status === 'skipped') return 'bg-slate-100 text-slate-600';
 
-    return 'bg-amber-50 text-amber-700';
+    return 'bg-blue-50 text-blue-700';
 };
 
 const invoiceStatusClasses = (status) => {
@@ -169,7 +242,7 @@ const invoiceStatusClasses = (status) => {
     if (status === 'partially_paid') return 'bg-blue-50 text-blue-700';
     if (status === 'overdue') return 'bg-red-50 text-red-700';
 
-    return 'bg-amber-50 text-amber-700';
+    return 'bg-slate-100 text-slate-700';
 };
 
 const timelineIcon = (type) => {
@@ -190,78 +263,105 @@ const { t } = useLocale();
 <template>
     <PortalLayout :title="portalCase.reference_code" :business="business" :applicant="applicant">
         <section class="portal-hero">
-            <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-                <div class="min-w-0">
-                    <p class="ui-kicker text-orange-500">{{ t('pages.portal.yourCase') }}</p>
-                    <div class="mt-2 flex flex-wrap items-center gap-3">
-                        <h1 class="text-[30px] leading-tight text-slate-900 sm:text-[34px]">{{ portalCase.reference_code }}</h1>
-                        <span class="portal-chip-brand">
-                            {{ portalCase.stage || t('pages.portal.inProgress') }}
-                        </span>
+            <div class="portal-summary-card">
+                <div class="flex items-start justify-between gap-4">
+                    <div class="min-w-0">
+                        <p class="ui-kicker text-slate-500">{{ t('pages.portal.yourCase') }}</p>
+                        <h1 class="mt-1.5 text-[21px] font-semibold tracking-tight text-slate-900">{{ portalCase.reference_code }}</h1>
+                        <p class="mt-1 text-[13px] text-slate-500">{{ applicant.name }} • {{ portalCase.country }} • {{ portalCase.visa_type }}</p>
                     </div>
-                    <p class="mt-2 text-sm text-brand-muted">{{ portalCase.country }} • {{ portalCase.visa_type }}</p>
-                    <p class="mt-4 max-w-3xl text-[15px] leading-7 text-brand-text">{{ portalCase.stage_copy }}</p>
-                    <p class="mt-3 text-sm font-medium text-brand-text">{{ portalCase.next_step_copy }}</p>
-                    <div class="mt-4 flex flex-wrap gap-2">
-                        <span v-if="nextAttentionCount" class="portal-chip-warm">
-                            {{ nextAttentionCount }} item{{ nextAttentionCount === 1 ? '' : 's' }} may need your attention
-                        </span>
-                        <span v-if="portalCase.summary.next_appointment_at" class="portal-chip-muted">
-                            Next appointment: {{ portalCase.summary.next_appointment_at }}
-                        </span>
+
+                    <Link :href="route('portal.dashboard')" class="portal-inline-link shrink-0">{{ t('common.backToOverview') }}</Link>
+                </div>
+
+                <div class="mt-4 grid gap-3 md:grid-cols-4">
+                    <div class="portal-stat-card">
+                        <p class="text-[12px] text-slate-500">Status</p>
+                        <div class="mt-1.5"><span :class="caseStatus.tone">{{ caseStatus.label }}</span></div>
                     </div>
-                    <div class="mt-5 flex flex-wrap gap-3">
-                        <button type="button" class="ui-button-primary" @click="openPrimaryTab">
+                    <div class="portal-stat-card">
+                        <p class="text-[12px] text-slate-500">Current stage</p>
+                        <p class="mt-1.5 text-[16px] font-semibold tracking-tight text-slate-900">{{ portalCase.stage || t('pages.portal.inProgress') }}</p>
+                    </div>
+                    <div class="portal-stat-card">
+                        <p class="text-[12px] text-slate-500">Documents</p>
+                        <p class="mt-1.5 text-[16px] font-semibold tracking-tight text-slate-900">{{ portalCase.summary.documents_verified }}/{{ portalCase.summary.documents_total }}</p>
+                    </div>
+                    <div class="portal-stat-card">
+                        <p class="text-[12px] text-slate-500">{{ portalCase.summary.next_appointment_at ? 'Next appointment' : 'Balance due' }}</p>
+                        <p class="mt-1.5 text-[16px] font-semibold tracking-tight text-slate-900">{{ portalCase.summary.next_appointment_at || `$${portalCase.summary.balance_due}` }}</p>
+                    </div>
+                </div>
+
+                <div class="mt-4 border-t border-slate-100 pt-4">
+                    <p class="text-[12px] uppercase tracking-[0.12em] text-slate-500">What happens next</p>
+                    <p class="mt-1.5 max-w-3xl text-[13px] leading-5 text-slate-600">{{ portalCase.stage_copy }}</p>
+
+                    <div class="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                        <div class="min-w-0">
+                            <p class="text-[15px] font-semibold text-slate-900">{{ nextAction?.label || 'You are up to date' }}</p>
+                            <p class="mt-1 text-[13px] leading-5 text-slate-600">{{ nextActionSummary }}</p>
+                            <p v-if="currentWorkflowStep" class="mt-1 text-[13px] text-slate-500">
+                                Current step: {{ currentWorkflowStep.name }}
+                            </p>
+                        </div>
+                        <button type="button" class="portal-inline-link" @click="openPrimaryTab">
                             {{ primaryActionLabel }}
                         </button>
-                        <button type="button" class="ui-button-secondary" @click="activeTab = 'messages'">
-                            Ask a question
+                    </div>
+
+                    <div v-if="reminders.length" class="mt-4 grid gap-3 md:grid-cols-2">
+                        <button
+                            v-for="reminder in reminders"
+                            :key="reminder.type"
+                            type="button"
+                            class="rounded-2xl bg-slate-50 px-4 py-3 text-left ring-1 ring-slate-200/70 transition hover:bg-slate-100/80"
+                            @click="openTab(reminder.target_tab)"
+                        >
+                            <p class="text-[13px] font-medium text-slate-900">{{ reminder.title }}</p>
+                            <p class="mt-1 text-[12px] leading-5 text-slate-600">{{ reminder.body }}</p>
                         </button>
                     </div>
                 </div>
-
-                <Link :href="route('portal.dashboard')" class="ui-button-secondary">{{ t('common.backToOverview') }}</Link>
             </div>
 
-            <div class="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div class="portal-metric-card">
-                    <p class="text-sm text-brand-muted">{{ t('pages.portal.progress') }}</p>
-                    <p class="portal-kpi-value">{{ portalCase.progress_percent }}%</p>
-                </div>
-                <div class="portal-metric-card">
-                    <p class="text-sm text-brand-muted">{{ t('common.documents') }}</p>
-                    <p class="portal-kpi-value">{{ portalCase.summary.documents_verified }}/{{ portalCase.summary.documents_total }}</p>
-                </div>
-                <div class="portal-metric-card">
-                    <p class="text-sm text-brand-muted">{{ t('common.checklist') }}</p>
-                    <p class="portal-kpi-value">{{ portalCase.summary.completed_tasks_count }}/{{ portalCase.tasks.length }}</p>
-                </div>
-                <div class="portal-metric-card">
-                    <p class="text-sm text-brand-muted">{{ t('pages.portal.balanceDue') }}</p>
-                    <p class="portal-kpi-value">${{ portalCase.summary.balance_due }}</p>
-                </div>
-            </div>
-
-            <div class="portal-soft-panel mt-6">
-                <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500">What to do next</p>
-                <p class="mt-2 text-base font-medium text-slate-900">{{ nextActionSummary }}</p>
-                <p class="mt-1 text-sm text-slate-500">If something is unclear, send a message and your visa team will guide you.</p>
-            </div>
-
-            <div class="mt-6">
-                <div class="h-2 rounded-full bg-slate-100">
-                    <div class="h-2 rounded-full bg-brand-primary transition-all" :style="{ width: `${portalCase.progress_percent}%` }"></div>
-                </div>
-                <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    <div
-                        v-for="step in portalCase.workflow"
-                        :key="step.id"
-                        class="rounded-2xl border px-4 py-3"
-                        :class="workflowStateClasses(step.state)"
+            <div class="mt-5 portal-choice-grid lg:grid-cols-1">
+                    <button
+                        v-for="card in actionCards"
+                        :key="card.key"
+                        type="button"
+                        class="portal-choice-card text-left"
+                        :class="card.active ? 'portal-choice-card-active' : ''"
+                        @click="activeTab = card.tab"
                     >
-                        <p class="text-sm font-medium">{{ step.name }}</p>
-                    </div>
-                </div>
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <p class="text-[12px] text-slate-500">{{ card.title }}</p>
+                                <p class="mt-1.5 text-[18px] font-semibold tracking-tight text-slate-900">{{ card.emphasis }}</p>
+                            </div>
+                            <span v-if="card.active" class="portal-chip-brand !py-0.5 !text-xs">Next</span>
+                        </div>
+                        <p class="mt-2.5 text-[13px] leading-5 text-slate-600">{{ card.helper }}</p>
+                        <div class="mt-3.5 flex items-center justify-between gap-4 pt-3">
+                            <span class="text-[13px] font-medium text-slate-700">{{ card.button }}</span>
+                            <span class="text-[13px] font-medium text-teal-700">Open</span>
+                        </div>
+                    </button>
+
+                    <button type="button" class="portal-choice-card text-left" @click="activeTab = 'messages'">
+                        <div class="flex items-start justify-between gap-4">
+                            <div>
+                                <p class="text-[12px] text-slate-500">Messages</p>
+                                <p class="mt-1.5 text-[18px] font-semibold tracking-tight text-slate-900">{{ portalCase.messages.length }}</p>
+                            </div>
+                            <span class="portal-chip-muted !py-0.5 !text-xs">Support</span>
+                        </div>
+                        <p class="mt-2.5 text-[13px] leading-5 text-slate-600">Send a question or update to your visa team any time from the portal.</p>
+                        <div class="mt-3.5 flex items-center justify-between gap-4 pt-3">
+                            <span class="text-[13px] font-medium text-slate-700">Ask a question</span>
+                            <span class="text-[13px] font-medium text-teal-700">Open</span>
+                        </div>
+                    </button>
             </div>
         </section>
 
@@ -281,37 +381,53 @@ const { t } = useLocale();
                 </div>
 
                 <div v-if="activeTab === 'overview'" class="space-y-6">
-                    <AppCard title="What needs your attention now">
-                        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                            <div class="portal-soft-panel !bg-white">
-                                <p class="text-sm text-brand-muted">Documents to send or fix</p>
-                                <p class="mt-2 text-2xl font-semibold text-brand-text">{{ priorityDocuments.length }}</p>
-                                <button type="button" class="mt-3 text-sm font-medium text-brand-primary hover:underline" @click="activeTab = 'documents'">
-                                    Open documents
-                                </button>
-                            </div>
-                            <div class="portal-soft-panel !bg-white">
-                                <p class="text-sm text-brand-muted">Checklist items still open</p>
-                                <p class="mt-2 text-2xl font-semibold text-brand-text">{{ openTasks.length }}</p>
-                                <p class="mt-3 text-sm text-brand-muted">These are the actions still holding the case open.</p>
-                            </div>
-                            <div class="portal-soft-panel !bg-white">
-                                <p class="text-sm text-brand-muted">Payment items to review</p>
-                                <p class="mt-2 text-2xl font-semibold text-brand-text">{{ waitingPaymentInvoices.length + overdueInvoices.length }}</p>
-                                <button type="button" class="mt-3 text-sm font-medium text-brand-primary hover:underline" @click="activeTab = 'billing'">
-                                    Open billing
+                    <AppCard title="Next action">
+                        <div class="rounded-2xl bg-slate-50 px-4 py-4 ring-1 ring-slate-200/70">
+                            <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                <div>
+                                    <p class="font-medium text-brand-text">{{ nextAction?.label || 'You are up to date' }}</p>
+                                    <p class="mt-2 text-sm leading-6 text-brand-muted">{{ nextActionSummary }}</p>
+                                </div>
+                                <button type="button" class="ui-button-secondary whitespace-nowrap" @click="openPrimaryTab">
+                                    {{ primaryActionLabel }}
                                 </button>
                             </div>
                         </div>
                     </AppCard>
 
+                    <AppCard title="What you need to do">
+                        <div v-if="applicantActionItems.length" class="space-y-3">
+                            <div
+                                v-for="item in applicantActionItems"
+                                :key="item.key"
+                                class="rounded-2xl bg-white/92 px-4 py-4 shadow-[0_8px_20px_rgba(15,23,42,0.04)] ring-1 ring-slate-200/70"
+                            >
+                                <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                    <div>
+                                        <p class="font-medium text-brand-text">{{ item.title }}</p>
+                                        <p class="mt-2 text-sm leading-6 text-brand-muted">{{ item.body }}</p>
+                                    </div>
+                                    <button type="button" class="ui-button-secondary whitespace-nowrap" @click="activeTab = item.tab">
+                                        {{ item.cta }}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="rounded-2xl border border-green-200 bg-green-50 px-4 py-4">
+                            <p class="font-medium text-green-900">You are up to date</p>
+                            <p class="mt-2 text-sm leading-6 text-green-800">
+                                There is nothing urgent for you right now. Your visa team is handling the next step and will contact you here if anything new is needed.
+                            </p>
+                        </div>
+                    </AppCard>
+
                     <AppCard :title="t('common.checklist')">
                         <div v-if="openTasks.length" class="space-y-3">
-                            <p class="text-sm text-brand-muted">{{ openTasks.length }} open item{{ openTasks.length === 1 ? '' : 's' }} to keep this case moving.</p>
+                            <p class="text-sm text-brand-muted">{{ openTasks.length }} open item{{ openTasks.length === 1 ? '' : 's' }} still connected to this case.</p>
                             <div
                                 v-for="task in openTasks"
                                 :key="task.id"
-                                class="rounded-2xl border border-slate-200 px-4 py-4"
+                                class="rounded-2xl bg-slate-50/70 px-4 py-4"
                             >
                                 <div class="flex flex-wrap items-start justify-between gap-3">
                                     <div>
@@ -332,7 +448,7 @@ const { t } = useLocale();
                                     </span>
                                 </div>
                             </div>
-                            <details v-if="completedTasks.length" class="rounded-2xl border border-slate-200 px-4 py-4">
+                            <details v-if="completedTasks.length" class="rounded-2xl bg-slate-50/65 px-4 py-4 ring-1 ring-slate-200/60">
                                 <summary class="cursor-pointer list-none text-sm font-medium text-brand-text">
                                     {{ completedTasks.length }} completed item{{ completedTasks.length === 1 ? '' : 's' }}
                                 </summary>
@@ -340,7 +456,7 @@ const { t } = useLocale();
                                     <div
                                         v-for="task in completedTasks"
                                         :key="`completed-${task.id}`"
-                                        class="rounded-2xl bg-slate-50 px-4 py-4"
+                                        class="rounded-2xl bg-white px-4 py-4 ring-1 ring-slate-200/60"
                                     >
                                         <div class="flex flex-wrap items-start justify-between gap-3">
                                             <div>
@@ -365,55 +481,57 @@ const { t } = useLocale();
                         />
                     </AppCard>
 
-                    <AppCard :title="t('common.appointments')">
-                        <div v-if="portalCase.appointments.length" class="space-y-3">
-                            <div v-for="appointment in portalCase.appointments" :key="appointment.id" class="rounded-2xl border border-slate-200 px-4 py-4">
-                                <div class="flex flex-wrap items-start justify-between gap-3">
-                                    <div>
-                                        <p class="font-medium text-brand-text">{{ appointment.title }}</p>
-                                        <p class="mt-1 text-sm text-brand-muted">{{ appointment.starts_at }}</p>
-                                        <p v-if="appointment.location" class="mt-1 text-sm text-brand-muted">{{ appointment.location }}</p>
-                                        <p v-if="appointment.notes" class="mt-3 text-sm leading-6 text-brand-text">{{ appointment.notes }}</p>
+                    <div class="grid gap-6 xl:grid-cols-2">
+                        <AppCard :title="t('common.appointments')">
+                            <div v-if="portalCase.appointments.length" class="space-y-3">
+                                <div v-for="appointment in portalCase.appointments" :key="appointment.id" class="rounded-2xl bg-white/92 px-4 py-4 ring-1 ring-slate-200/70 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
+                                    <div class="flex flex-wrap items-start justify-between gap-3">
+                                        <div>
+                                            <p class="font-medium text-brand-text">{{ appointment.title }}</p>
+                                            <p class="mt-1 text-sm text-brand-muted">{{ appointment.starts_at }}</p>
+                                            <p v-if="appointment.location" class="mt-1 text-sm text-brand-muted">{{ appointment.location }}</p>
+                                            <p v-if="appointment.notes" class="mt-3 text-sm leading-6 text-brand-text">{{ appointment.notes }}</p>
+                                        </div>
+                                        <a
+                                            v-if="appointment.meeting_link"
+                                            :href="appointment.meeting_link"
+                                            target="_blank"
+                                            class="ui-button-secondary"
+                                        >
+                                            {{ t('pages.portal.joinMeeting') }}
+                                        </a>
                                     </div>
-                                    <a
-                                        v-if="appointment.meeting_link"
-                                        :href="appointment.meeting_link"
-                                        target="_blank"
-                                        class="ui-button-secondary"
-                                    >
-                                        {{ t('pages.portal.joinMeeting') }}
-                                    </a>
                                 </div>
                             </div>
-                        </div>
-                        <EmptyState
-                            v-else
-                            icon="clock"
-                            :title="t('pages.portal.noAppointmentsTitle')"
-                            :description="t('pages.portal.noAppointmentsDescription')"
-                        />
-                    </AppCard>
+                            <EmptyState
+                                v-else
+                                icon="clock"
+                                :title="t('pages.portal.noAppointmentsTitle')"
+                                :description="t('pages.portal.noAppointmentsDescription')"
+                            />
+                        </AppCard>
 
-                    <AppCard :title="t('pages.portal.recentUpdates')">
-                        <div v-if="portalCase.timeline.length" class="space-y-4">
-                            <div v-for="item in portalCase.timeline" :key="`${item.type}-${item.title}-${item.at}`" class="flex gap-4">
-                                <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-brand-muted">
-                                    <AppIcon :name="timelineIcon(item.type)" :size="16" />
-                                </div>
-                                <div class="min-w-0">
-                                    <p class="font-medium text-brand-text">{{ item.title }}</p>
-                                    <p class="mt-1 text-sm leading-6 text-brand-text">{{ item.body }}</p>
-                                    <p class="mt-1 text-xs text-brand-muted">{{ item.at }}</p>
+                        <AppCard :title="t('pages.portal.recentUpdates')">
+                            <div v-if="latestTimelineItems.length" class="space-y-4">
+                                <div v-for="item in latestTimelineItems" :key="`${item.type}-${item.title}-${item.at}`" class="flex gap-4">
+                                    <div class="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-brand-muted">
+                                        <AppIcon :name="timelineIcon(item.type)" :size="16" />
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="font-medium text-brand-text">{{ item.title }}</p>
+                                        <p class="mt-1 text-sm leading-6 text-brand-text">{{ item.body }}</p>
+                                        <p class="mt-1 text-xs text-brand-muted">{{ item.at }}</p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <EmptyState
-                            v-else
-                            icon="sparkle"
-                            :title="t('pages.portal.noUpdatesTitle')"
-                            :description="t('pages.portal.noUpdatesDescription')"
-                        />
-                    </AppCard>
+                            <EmptyState
+                                v-else
+                                icon="sparkle"
+                                :title="t('pages.portal.noUpdatesTitle')"
+                                :description="t('pages.portal.noUpdatesDescription')"
+                            />
+                        </AppCard>
+                    </div>
                 </div>
 
                 <div v-else-if="activeTab === 'documents'" class="space-y-6">
@@ -424,18 +542,18 @@ const { t } = useLocale();
                             </div>
                         </template>
 
-                        <div v-if="priorityDocuments.length" class="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
-                            <p class="text-sm font-medium text-amber-900">Start with these documents</p>
-                            <p class="mt-1 text-sm text-amber-700">
+                        <div v-if="priorityDocuments.length" class="mb-4 rounded-2xl bg-blue-50 px-4 py-4 ring-1 ring-blue-200/80">
+                            <p class="text-sm font-medium text-blue-900">Start with these documents</p>
+                            <p class="mt-1 text-sm text-blue-700">
                                 These are the files still waiting on you or need to be corrected before your case can move forward.
                             </p>
                         </div>
 
-                        <div v-if="portalCase.documents.length" class="space-y-4">
+                        <div v-if="pendingDocuments.length" class="space-y-4">
                             <div
-                                v-for="document in orderedDocuments"
+                                v-for="document in pendingDocuments"
                                 :key="document.id"
-                                class="rounded-[20px] border border-slate-200 bg-white px-4 py-4"
+                                class="rounded-[20px] bg-white/94 px-4 py-4 ring-1 ring-slate-200/70 shadow-[0_8px_20px_rgba(15,23,42,0.04)]"
                             >
                                 <div class="flex flex-wrap items-start justify-between gap-3">
                                     <div>
@@ -445,8 +563,8 @@ const { t } = useLocale();
                                                 {{ document.status }}
                                             </span>
                                         </div>
-                                        <p v-if="document.client_instructions" class="mt-2 text-sm leading-6 text-brand-text">
-                                            {{ document.client_instructions }}
+                                        <p v-if="document.what_needed" class="mt-2 text-sm leading-6 text-brand-text">
+                                            {{ document.what_needed }}
                                         </p>
                                         <p class="mt-2 text-sm text-brand-muted">{{ document.status_copy }}</p>
                                     </div>
@@ -456,23 +574,32 @@ const { t } = useLocale();
                                 </div>
 
                                 <div class="mt-4 grid gap-3 md:grid-cols-2">
-                                    <div class="rounded-xl bg-slate-50 px-4 py-3 text-sm text-brand-muted">
-                                        {{ document.accepted_file_types.join(', ').toUpperCase() || 'PDF or image files' }}
-                                        <span v-if="document.max_file_size_mb"> • {{ document.max_file_size_mb }}MB max</span>
+                                    <div class="rounded-xl bg-slate-50 px-4 py-3">
+                                        <p class="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Why we need it</p>
+                                        <p class="mt-1.5 text-sm leading-6 text-slate-700">
+                                            {{ document.why_needed }}
+                                        </p>
                                     </div>
-                                    <div v-if="document.sample_hint || document.expiry_date" class="rounded-xl bg-slate-50 px-4 py-3 text-sm text-brand-muted">
-                                        <span v-if="document.sample_hint">{{ document.sample_hint }}</span>
-                                        <span v-if="document.sample_hint && document.expiry_date"> • </span>
-                                        <span v-if="document.expiry_date">Expires {{ document.expiry_date }}</span>
+                                    <div class="rounded-xl bg-slate-50 px-4 py-3">
+                                        <p class="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">Accepted files</p>
+                                        <p class="mt-1.5 text-sm text-slate-700">
+                                            {{ document.accepted_file_types_label || 'PDF or image files' }}
+                                            <span v-if="document.max_file_size_mb"> • {{ document.max_file_size_mb }}MB max</span>
+                                        </p>
+                                        <p v-if="document.sample_hint || document.expiry_date" class="mt-1.5 text-sm text-slate-500">
+                                            <span v-if="document.sample_hint">{{ document.sample_hint }}</span>
+                                            <span v-if="document.sample_hint && document.expiry_date"> • </span>
+                                            <span v-if="document.expiry_date">Expires {{ document.expiry_date }}</span>
+                                        </p>
                                     </div>
                                 </div>
 
-                                <div v-if="document.rejection_reason" class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+                                <div v-if="document.what_to_fix" class="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
                                     <p class="text-sm font-medium text-red-700">What needs fixing</p>
-                                    <p class="mt-1 text-sm leading-6 text-red-700">{{ document.rejection_reason }}</p>
+                                    <p class="mt-1 text-sm leading-6 text-red-700">{{ document.what_to_fix }}</p>
                                 </div>
 
-                                <div class="mt-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-4">
+                                <div class="mt-4 rounded-2xl bg-slate-50/80 px-4 py-4 ring-1 ring-slate-200/60">
                                     <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                                         <div>
                                             <p class="text-sm font-medium text-brand-text">Upload or replace file</p>
@@ -521,8 +648,36 @@ const { t } = useLocale();
                             </div>
                         </div>
 
+                        <details v-if="verifiedDocuments.length" class="mt-4 rounded-2xl bg-slate-50/65 px-4 py-4 ring-1 ring-slate-200/60">
+                            <summary class="cursor-pointer list-none text-sm font-medium text-brand-text">
+                                {{ verifiedDocuments.length }} file{{ verifiedDocuments.length === 1 ? '' : 's' }} already received
+                            </summary>
+                            <div class="mt-4 space-y-3">
+                                <div
+                                    v-for="document in verifiedDocuments"
+                                    :key="`verified-${document.id}`"
+                                    class="rounded-2xl bg-white px-4 py-4 ring-1 ring-slate-200/60"
+                                >
+                                    <div class="flex flex-wrap items-start justify-between gap-3">
+                                        <div>
+                                            <div class="flex flex-wrap items-center gap-3">
+                                                <p class="font-medium text-brand-text">{{ document.name }}</p>
+                                                <span class="rounded-full px-3 py-1 text-xs font-medium" :class="documentStatusClasses(document.status_value)">
+                                                    {{ document.status }}
+                                                </span>
+                                            </div>
+                                            <p class="mt-2 text-sm text-brand-muted">{{ document.status_copy }}</p>
+                                        </div>
+                                        <a v-if="document.latest_version" :href="document.latest_version.download_url" class="ui-button-secondary">
+                                            View file
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+
                         <EmptyState
-                            v-else
+                            v-if="!portalCase.documents.length"
                             icon="note"
                             title="No documents requested right now"
                             description="If your team needs something from you, it will show up here."
@@ -540,15 +695,15 @@ const { t } = useLocale();
                         </div>
 
                         <div class="grid gap-3 sm:grid-cols-3">
-                            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                            <div class="rounded-2xl bg-white/92 px-4 py-4 ring-1 ring-slate-200/70">
                                 <p class="text-sm text-brand-muted">Total paid</p>
                                 <p class="mt-2 text-2xl font-semibold text-brand-text">${{ totalPaid }}</p>
                             </div>
-                            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                            <div class="rounded-2xl bg-white/92 px-4 py-4 ring-1 ring-slate-200/70">
                                 <p class="text-sm text-brand-muted">Balance due</p>
                                 <p class="mt-2 text-2xl font-semibold text-brand-text">${{ portalCase.summary.balance_due }}</p>
                             </div>
-                            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                            <div class="rounded-2xl bg-white/92 px-4 py-4 ring-1 ring-slate-200/70">
                                 <p class="text-sm text-brand-muted">Invoices</p>
                                 <p class="mt-2 text-2xl font-semibold text-brand-text">{{ portalCase.invoices.length }}</p>
                             </div>
@@ -556,7 +711,7 @@ const { t } = useLocale();
 
                         <div
                             v-if="business.bank_name || business.bank_account"
-                            class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
+                            class="mt-5 rounded-2xl bg-white/92 px-4 py-4 ring-1 ring-slate-200/70"
                         >
                             <p class="text-sm font-medium text-brand-text">Bank transfer details</p>
                             <p class="mt-1 text-sm text-brand-muted">Use these details when paying your invoice by bank transfer.</p>
@@ -573,7 +728,7 @@ const { t } = useLocale();
                         </div>
 
                         <div v-if="portalCase.invoices.length" class="mt-5 space-y-4">
-                            <div v-for="invoice in portalCase.invoices" :key="invoice.id" class="rounded-[20px] border border-slate-200 px-4 py-4">
+                            <div v-for="invoice in portalCase.invoices" :key="invoice.id" class="rounded-[20px] bg-white/94 px-4 py-4 ring-1 ring-slate-200/70 shadow-[0_8px_20px_rgba(15,23,42,0.04)]">
                                 <div class="flex flex-wrap items-start justify-between gap-3">
                                     <div>
                                         <div class="flex flex-wrap items-center gap-3">
@@ -591,11 +746,11 @@ const { t } = useLocale();
                                     </div>
                                 </div>
 
-                                <div v-if="invoice.line_items.length" class="mt-4 overflow-hidden rounded-xl border border-slate-200">
+                                <div v-if="invoice.line_items.length" class="mt-4 overflow-hidden rounded-xl bg-slate-50/80 ring-1 ring-slate-200/60">
                                     <div
                                         v-for="(lineItem, index) in invoice.line_items"
                                         :key="`${invoice.id}-${index}`"
-                                        class="flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-3 text-sm last:border-b-0"
+                                        class="flex items-center justify-between gap-4 border-b border-slate-100 px-4 py-3 text-sm last:border-b-0"
                                     >
                                         <span class="text-brand-text">{{ lineItem.description }}</span>
                                         <span class="font-medium text-brand-text">{{ invoice.currency }} {{ Number(lineItem.amount || 0).toFixed(2) }}</span>
@@ -645,7 +800,7 @@ const { t } = useLocale();
                                 v-for="message in latestMessages"
                                 :key="message.id"
                                 class="rounded-2xl px-4 py-4"
-                                :class="message.direction === 'inbound' ? 'bg-orange-50' : 'bg-slate-50'"
+                                :class="message.direction === 'inbound' ? 'bg-blue-50' : 'bg-slate-50'"
                             >
                                 <p class="text-sm font-medium text-brand-text">
                                     {{ message.direction === 'inbound' ? 'You' : 'Your team' }}
@@ -666,15 +821,24 @@ const { t } = useLocale();
             </div>
 
             <div class="space-y-6 xl:sticky xl:top-8 xl:self-start">
-                <AppCard title="Quick facts">
-                    <div class="space-y-4 text-sm">
-                        <div class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4">
-                            <p class="text-amber-800">Next action</p>
-                            <p class="mt-1 font-medium text-amber-900">{{ primaryActionLabel }}</p>
-                            <p class="mt-2 text-sm text-amber-800">{{ nextActionSummary }}</p>
-                            <button type="button" class="mt-3 text-sm font-medium text-amber-900 hover:underline" @click="openPrimaryTab">
-                                Open this section
+                <AppCard title="Case summary">
+                        <div class="space-y-4 text-sm">
+                            <div class="rounded-xl bg-white/92 px-4 py-4 ring-1 ring-slate-200/70">
+                                <p class="text-slate-500">Next action</p>
+                            <p class="mt-1 font-medium text-slate-900">{{ nextAction?.label || primaryActionLabel }}</p>
+                            <p class="mt-2 text-sm text-slate-600">{{ nextActionSummary }}</p>
+                            <button
+                                type="button"
+                                class="mt-3 text-sm font-medium text-slate-900 hover:underline"
+                                @click="openPrimaryTab"
+                            >
+                                {{ primaryActionLabel }}
                             </button>
+                        </div>
+                        <div v-if="portalCase.summary.unread_messages_count" class="portal-soft-panel">
+                            <p class="text-brand-muted">Unread messages</p>
+                            <p class="mt-1 font-medium text-brand-text">{{ portalCase.summary.unread_messages_count }}</p>
+                            <p class="mt-2 text-sm text-brand-muted">Your team has sent updates that you have not opened yet.</p>
                         </div>
                         <div v-for="fact in quickFacts" :key="fact.label" class="portal-soft-panel">
                             <p class="text-brand-muted">{{ fact.label }}</p>
@@ -693,6 +857,10 @@ const { t } = useLocale();
                     <div class="mt-4 space-y-2 text-sm text-brand-muted">
                         <p v-if="business.email">{{ business.email }}</p>
                         <p v-if="business.phone">{{ business.phone }}</p>
+                        <p class="text-xs text-slate-500">
+                            Reminders are currently sent by
+                            {{ applicant.notification_channels?.email_enabled ? ' email' : '' }}{{ applicant.notification_channels?.email_enabled && applicant.notification_channels?.sms_enabled ? ' and' : '' }}{{ applicant.notification_channels?.sms_enabled ? ' SMS' : '' }}.
+                        </p>
                     </div>
                     <button type="button" class="mt-4 ui-button-secondary" @click="activeTab = 'messages'">
                         Open messages

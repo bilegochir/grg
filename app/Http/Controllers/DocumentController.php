@@ -18,6 +18,7 @@ class DocumentController extends Controller
     {
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
+            'bucket' => ['nullable', 'string', 'in:all,review,expiring,verified'],
             'status' => ['nullable', 'string', 'max:255'],
             'country' => ['nullable', 'string', 'max:255'],
             'assigned_to' => ['nullable', 'integer'],
@@ -43,6 +44,16 @@ class DocumentController extends Controller
                                 ->orWhere('last_name', 'like', "%{$search}%")));
                 });
             })
+            ->when(($filters['bucket'] ?? null) === 'review', fn (Builder $query) => $query->whereIn('status', [
+                VisaCaseDocumentStatus::Pending->value,
+                VisaCaseDocumentStatus::Uploaded->value,
+                VisaCaseDocumentStatus::Rejected->value,
+            ]))
+            ->when(($filters['bucket'] ?? null) === 'expiring', fn (Builder $query) => $query
+                ->whereNotNull('expiry_date')
+                ->whereDate('expiry_date', '>=', now()->toDateString())
+                ->whereDate('expiry_date', '<=', now()->addDays(30)->toDateString()))
+            ->when(($filters['bucket'] ?? null) === 'verified', fn (Builder $query) => $query->where('status', VisaCaseDocumentStatus::Verified->value))
             ->when($filters['status'] ?? null, fn (Builder $query, string $status) => $query->where('status', $status))
             ->when($filters['country'] ?? null, function (Builder $query, string $country): void {
                 $query->whereHas('visaCase.country', fn (Builder $builder) => $builder->where('slug', $country));
@@ -59,12 +70,22 @@ class DocumentController extends Controller
 
         return Inertia::render('Documents/Index', [
             'documents' => $documents,
-            'filters' => $filters,
+            'filters' => [
+                'search' => $filters['search'] ?? '',
+                'bucket' => $filters['bucket'] ?? 'all',
+                'status' => $filters['status'] ?? '',
+                'country' => $filters['country'] ?? '',
+                'assigned_to' => $filters['assigned_to'] ?? '',
+            ],
             'summary' => [
                 'total' => (clone $summaryBase)->count(),
                 'pending' => (clone $summaryBase)->where('status', VisaCaseDocumentStatus::Pending->value)->count(),
                 'uploaded' => (clone $summaryBase)->where('status', VisaCaseDocumentStatus::Uploaded->value)->count(),
                 'verified' => (clone $summaryBase)->where('status', VisaCaseDocumentStatus::Verified->value)->count(),
+                'expired' => (clone $summaryBase)
+                    ->whereNotNull('expiry_date')
+                    ->whereDate('expiry_date', '<', now()->toDateString())
+                    ->count(),
                 'expiring_soon' => (clone $summaryBase)
                     ->whereNotNull('expiry_date')
                     ->whereDate('expiry_date', '>=', now()->toDateString())

@@ -15,6 +15,7 @@ class TaskController extends Controller
     {
         $filters = $request->validate([
             'search' => ['nullable', 'string', 'max:255'],
+            'bucket' => ['nullable', 'string', 'in:all,open,overdue,completed'],
             'status' => ['nullable', 'string', 'in:pending,in_progress,completed,skipped'],
             'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
         ]);
@@ -42,6 +43,11 @@ class TaskController extends Controller
                         });
                 });
             })
+            ->when(($filters['bucket'] ?? null) === 'open', fn (Builder $query) => $query->whereIn('status', ['pending', 'in_progress']))
+            ->when(($filters['bucket'] ?? null) === 'overdue', fn (Builder $query) => $query
+                ->whereDate('due_at', '<', now()->toDateString())
+                ->where('status', '!=', 'completed'))
+            ->when(($filters['bucket'] ?? null) === 'completed', fn (Builder $query) => $query->where('status', 'completed'))
             ->when($filters['status'] ?? null, fn (Builder $query, string $status) => $query->where('status', $status))
             ->when($filters['assigned_to'] ?? null, fn (Builder $query, int $assignedTo) => $query->where('assigned_to_user_id', $assignedTo));
 
@@ -78,6 +84,7 @@ class TaskController extends Controller
             'tasks' => $tasks,
             'filters' => [
                 'search' => $filters['search'] ?? '',
+                'bucket' => $filters['bucket'] ?? 'all',
                 'status' => $filters['status'] ?? '',
                 'assigned_to' => $filters['assigned_to'] ?? '',
             ],
